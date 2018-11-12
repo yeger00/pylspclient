@@ -1,4 +1,6 @@
-from lsp import json_rpc_client
+import pylspclient
+from pytest_mock import mocker 
+
 # content of test_sample.py
 def func(x):
     return x + 1

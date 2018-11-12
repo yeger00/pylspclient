@@ -22,6 +22,6 @@ class PyTest(TestCommand):
 setup(
     name="pylspclient", 
     packages=find_packages(),
-    tests_require=["pytest"],
+    tests_require=["pytest", "pytest_mock"],
     cmdclass={"test": PyTest},
 )

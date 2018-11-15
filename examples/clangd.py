@@ -3,13 +3,10 @@ import subprocess
 
 
 if __name__ == "__main__":
-    # clangd_path = "/usr/bin/clangd-6.0"
-    clangd_path = "/home/osboxes/projects/build/bin/clangd"
+    clangd_path = "/usr/bin/clangd-6.0"
     p = subprocess.Popen(clangd_path, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     json_rpc_endpoint = pylspclient.JsonRpcEndpoint(p.stdin, p.stdout)
-    # Working with socket:
-    # sock_fd = sock.makefile()
-    # json_rpc_endpoint = JsonRpcEndpoint(sock_fd, stext_document_res = lpc_client.send_notification(text_document_message)ock_fd)
+    # To work with socket: sock_fd = sock.makefile()
     lsp_endpoint = pylspclient.LspEndpoint(json_rpc_endpoint)
 
     lsp_client = pylspclient.LspClient(lsp_endpoint)
@@ -125,12 +122,12 @@ if __name__ == "__main__":
         25,
         26]}},'workspaceEdit': {'documentChanges': True},
     'workspaceFolders': True}}
-    workspace_folders = [{'name': 'python-lsp', 'uri': 'file:///home/osboxes/projects/ctest'}]
-    root_uri = 'file:///home/osboxes/projects/ctest'
+    workspace_folders = [{'name': 'python-lsp', 'uri': 'file:///path/to/dir'}]
+    root_uri = 'file:///path/to/dir'
     print(lsp_client.initialize(p.pid, None, root_uri, None, capabilities, "off", workspace_folders))
     print(lsp_client.initialized())
 
-    file_path = "/home/osboxes/projects/ctest/test.c"
+    file_path = "/path/to/dir/file.c"
     uri = "file://" + file_path
     text = open(file_path, "r").read()
     languageId = pylspclient.lsp_structs.LANGUAGE_IDENTIFIER.C

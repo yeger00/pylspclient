@@ -2,6 +2,11 @@ from pylspclient import lsp_structs
 
 class LspClient(object):
     def __init__(self, lsp_endpoint):
+        """
+        Constructs a new LspClient instance.
+
+        :param lsp_endpoint: TODO
+        """
         self.lsp_endpoint = lsp_endpoint
 
 

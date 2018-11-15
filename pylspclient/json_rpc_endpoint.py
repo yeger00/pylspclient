@@ -4,7 +4,7 @@ import re
 from pylspclient import lsp_structs
 import threading
 
-JSON_RPC_REQ_FORMAT = "Content-Length: {json_string_len}\r\n\r\n{json_string}\r\n\r\n"
+JSON_RPC_REQ_FORMAT = "Content-Length: {json_string_len}\r\n\r\n{json_string}"
 JSON_RPC_RES_REGEX = "Content-Length: ([0-9]*)\r\n"
 # TODO: add content-type
 
@@ -30,11 +30,19 @@ class JsonRpcEndpoint(object):
 
     @staticmethod
     def __add_header(json_string):
+        '''
+        Adds a header for the given json string
+        
+        :param str json_string: The string
+        :return: the string with the header
+        '''
         return JSON_RPC_REQ_FORMAT.format(json_string_len=len(json_string), json_string=json_string)
 
 
     def send_request(self, message):
         '''
+        Sends the given message.
+
         :param dict message: The message to send.            
         '''
         json_string = json.dumps(message, cls=MyEncoder)
@@ -46,27 +54,27 @@ class JsonRpcEndpoint(object):
 
 
     def recv_response(self):
-        '''
+        '''        
+       Recives a message.
+
+        :return: a message
         '''
         with self.read_lock:
             line = self.stdout.readline()
-            if line is None:
+            if not line:
                 return None
+            print(line)
             line = line.decode()
             # TODO: handle content type as well.
             match = re.match(JSON_RPC_RES_REGEX, line)
             if match is None or not match.groups():
-                # TODO: handle
-                print("error1: ", line)
-                return None
+                raise RuntimeError("Bad header: " + line)
             size = int(match.groups()[0])
             line = self.stdout.readline()
-            if line is None:
+            if not line:
                 return None
             line = line.decode()
             if line != "\r\n":
-                # TODO: handle
-                print("error2")
-                return None
+                raise RuntimeError("Bad header: missing newline")
             jsonrpc_res = self.stdout.read(size)
             return json.loads(jsonrpc_res)

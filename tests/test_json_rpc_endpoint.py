@@ -1,5 +1,7 @@
+import os
+#from pytest_mock import mocker 
+import pytest
 import pylspclient
-from pytest_mock import mocker 
 
 
 class StdinMock(object):
@@ -10,36 +12,72 @@ class StdinMock(object):
         pass
 
 
-def test_sanity(mocker):
-    stdin_mock = StdinMock();
-    mocker.patch.object(stdin_mock, 'write') 
-    json_rpc_endpoint = pylspclient.JsonRpcEndpoint(stdin_mock, None)
+class StdoutMock(object):
+    def readline(self):
+        pass
+    
+    def read(self):
+        pass
+
+JSON_RPC_RESULT_LIST = [
+    'Content-Length: 40\r\n\r\n{"key_str": "some_string", "key_num": 1}'.encode("utf-8"),
+    'Content-Length: 40\r\n\r\n{"key_num": 1, "key_str": "some_string"}'.encode("utf-8")
+]
+
+def test_send_sanity():
+    pipein, pipeout = os.pipe()
+    pipein = os.fdopen(pipein, "rb")
+    pipeout = os.fdopen(pipeout, "wb")
+    json_rpc_endpoint = pylspclient.JsonRpcEndpoint(pipeout, None)
     json_rpc_endpoint.send_request({"key_num":1, "key_str":"some_string"})
-    stdin_mock.write.assert_called()
-
-    assert(stdin_mock.write.call_args not in [
-        '''Content-Length: 40\r\n\r\n{"key_str": "some_string", "key_num": 1}\r\n\r\n'''.encode("utf-8"),
-        '''Content-Length: 40\r\n\r\n{"key_num": 1, "key_str": "some_string"}\r\n\r\n'''.encode("utf-8")
-    ])
+    result = pipein.read(len(JSON_RPC_RESULT_LIST[0]))
+    assert(result in JSON_RPC_RESULT_LIST)
 
 
-def test_class(mocker):
+def test_send_class():
     class RpcClass(object):
         def __init__(self, value_num, value_str):
             self.key_num = value_num
             self.key_str = value_str
-        
-    stdin_mock = StdinMock();
-    mocker.patch.object(stdin_mock, 'write') 
-    json_rpc_endpoint = pylspclient.JsonRpcEndpoint(stdin_mock, None)
+    
+    pipein, pipeout = os.pipe()
+    pipein = os.fdopen(pipein, "rb")
+    pipeout = os.fdopen(pipeout, "wb")
+    json_rpc_endpoint = pylspclient.JsonRpcEndpoint(pipeout, None)
     json_rpc_endpoint.send_request(RpcClass(1, "some_string"))
-    stdin_mock.write.assert_called()
+    result = pipein.read(len(JSON_RPC_RESULT_LIST[0]))
+    assert(result in JSON_RPC_RESULT_LIST)
+        
 
-    assert(stdin_mock.write.call_args not in [
-        '''Content-Length: 40\r\n\r\n{"key_str": "some_string", "key_num": 1}\r\n\r\n'''.encode("utf-8"),
-        '''Content-Length: 40\r\n\r\n{"key_num": 1, "key_str": "some_string"}\r\n\r\n'''.encode("utf-8")
-    ])
+def test_recv_sanity():
+    pipein, pipeout = os.pipe()
+    pipein = os.fdopen(pipein, "rb")
+    pipeout = os.fdopen(pipeout, "wb")
+    json_rpc_endpoint = pylspclient.JsonRpcEndpoint(None, pipein)
+    pipeout.write('Content-Length: 40\r\n\r\n{"key_str": "some_string", "key_num": 1}'.encode("utf-8"))
+    pipeout.flush()
+    result = json_rpc_endpoint.recv_response()
+    assert({"key_num":1, "key_str":"some_string"} == result)
 
-# content of test_sample.py
-def func(x):
-    return x + 1
+
+def test_recv_wrong_header():
+    pipein, pipeout = os.pipe()
+    pipein = os.fdopen(pipein, "rb")
+    pipeout = os.fdopen(pipeout, "wb")
+    json_rpc_endpoint = pylspclient.JsonRpcEndpoint(None, pipein)
+    pipeout.write('Contentength: 40\r\n\r\n{"key_str": "some_string", "key_num": 1}'.encode("utf-8"))
+    pipeout.flush()
+    with pytest.raises(RuntimeError):
+        result = json_rpc_endpoint.recv_response()
+
+
+def test_recv_close_pipe():
+    pipein, pipeout = os.pipe()
+    pipein = os.fdopen(pipein, "rb")
+    pipeout = os.fdopen(pipeout, "wb")
+    json_rpc_endpoint = pylspclient.JsonRpcEndpoint(None, pipein)
+    pipeout.close()
+    result = json_rpc_endpoint.recv_response()
+    assert(result is None)
+
+

@@ -4,7 +4,8 @@ import sys
 from setuptools import setup, find_packages
 from setuptools.command.test import test as TestCommand
 
-
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 class PyTest(TestCommand):
     user_options = [("pytest-args=", "a", "Arguments to pass to pytest")]
@@ -20,7 +21,14 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 setup(
-    name="pylspclient", 
+    name="pylspclient",
+    version="0.0.1",
+    author="Avi Yeger",
+    author_email="yeger00@gmail.com",
+    description="LSP client implementation in Python",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/yeger00/pylspclient",
     packages=find_packages(),
     tests_require=["pytest", "pytest_mock"],
     cmdclass={"test": PyTest},

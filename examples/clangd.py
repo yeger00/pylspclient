@@ -1,10 +1,24 @@
 import pylspclient
 import subprocess
+import threading
 
+
+class ReadPipe(threading.Thread):
+    def __init__(self, pipe):
+        threading.Thread.__init__(self)
+        self.pipe = pipe
+
+    def run(self):
+        line = self.pipe.readline()
+        while line:
+            print(line)
+            line = self.pipe.readline()
 
 if __name__ == "__main__":
     clangd_path = "/usr/bin/clangd-6.0"
     p = subprocess.Popen(clangd_path, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    read_pipe = ReadPipe(p.stderr)
+    read_pipe.start()
     json_rpc_endpoint = pylspclient.JsonRpcEndpoint(p.stdin, p.stdout)
     # To work with socket: sock_fd = sock.makefile()
     lsp_endpoint = pylspclient.LspEndpoint(json_rpc_endpoint)
@@ -122,21 +136,22 @@ if __name__ == "__main__":
         25,
         26]}},'workspaceEdit': {'documentChanges': True},
     'workspaceFolders': True}}
-    workspace_folders = [{'name': 'python-lsp', 'uri': 'file:///path/to/dir'}]
-    root_uri = 'file:///path/to/dir'
+    root_uri = 'file:///home/osboxes/projects/ctest'
+    workspace_folders = [{'name': 'python-lsp', 'uri': root_uri}]
     print(lsp_client.initialize(p.pid, None, root_uri, None, capabilities, "off", workspace_folders))
     print(lsp_client.initialized())
 
-    file_path = "/path/to/dir/file.c"
+    file_path = "/home/osboxes/projects/ctest/test.c"
     uri = "file://" + file_path
     text = open(file_path, "r").read()
     languageId = pylspclient.lsp_structs.LANGUAGE_IDENTIFIER.C
     version = 1
     lsp_client.didOpen(pylspclient.lsp_structs.TextDocumentItem(uri, languageId, version, text))
-    lsp_client.documentSymbol(pylspclient.lsp_structs.TextDocumentIdentifier(uri))
+    # documentSymbol is supported from version 8.
+    #lsp_client.documentSymbol(pylspclient.lsp_structs.TextDocumentIdentifier(uri))
 
     lsp_client.definition(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(15, 4))
     lsp_client.signatureHelp(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(15, 4))
-
+    lsp_client.completion(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(15, 4), pylspclient.lsp_structs.CompletionContext(pylspclient.lsp_structs.CompletionTriggerKind.Invoked))
     lsp_client.shutdown()
     lsp_client.exit()

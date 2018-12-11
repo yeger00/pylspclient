@@ -102,7 +102,7 @@ class LspClient(object):
         The goto definition request is sent from the client to the server to resolve the definition location of a symbol at a given text document position.
 
         :param TextDocumentItem textDocument: The text document.
-        :param Position position: The position inside the text document..
+        :param Position position: The position inside the text document.
         """
         result_dict = self.lsp_endpoint.call_method("textDocument/definition", textDocument=textDocument, position=position)
         return [lsp_structs.Location(**l) for l in result_dict]
@@ -113,7 +113,7 @@ class LspClient(object):
         The goto type definition request is sent from the client to the server to resolve the type definition location of a symbol at a given text document position.
 
         :param TextDocumentItem textDocument: The text document.
-        :param Position position: The position inside the text document..
+        :param Position position: The position inside the text document.
         """
         result_dict = self.lsp_endpoint.call_method("textDocument/definition", textDocument=textDocument, position=position)
         return [lsp_structs.Location(**l) for l in result_dict]
@@ -124,7 +124,23 @@ class LspClient(object):
             The signature help request is sent from the client to the server to request signature information at a given cursor position.            
 
             :param TextDocumentItem textDocument: The text document.
-            :param Position position: The position inside the text document..
+            :param Position position: The position inside the text document.
             """
             result_dict = self.lsp_endpoint.call_method("textDocument/signatureHelp", textDocument=textDocument, position=position)
             return lsp_structs.SignatureHelp(**result_dict)
+
+
+    def completion(self, textDocument, position, context):
+            """
+            The signature help request is sent from the client to the server to request signature information at a given cursor position.            
+
+            :param TextDocumentItem textDocument: The text document.
+            :param Position position: The position inside the text document.
+            :param CompletionContext context: The completion context. This is only available if the client specifies 
+                                                to send this using `ClientCapabilities.textDocument.completion.contextSupport === true`
+            """
+            result_dict = self.lsp_endpoint.call_method("textDocument/completion", textDocument=textDocument, position=position, context=context)
+            if "isIncomplete" in result_dict:
+                return lsp_structs.CompletionList (**result_dict)
+            
+            return [lsp_structs.CompletionItem(**l) for l in result_dict]

@@ -10,7 +10,6 @@ class LspEndpoint(threading.Thread):
         self.event_dict = {}
         self.response_dict = {}
         self.next_id = 0
-        # self.daemon = True
         self.shutdown_flag = False
 
 
@@ -34,7 +33,6 @@ class LspEndpoint(threading.Thread):
                 print("server quit")
                 break
 
-            print("recieved message:", jsonrpc_message)
             if "result" in jsonrpc_message or "error" in jsonrpc_message:
                 self.handle_result(jsonrpc_message)
             elif "method" in jsonrpc_message:
@@ -44,7 +42,6 @@ class LspEndpoint(threading.Thread):
                     self.default_callback(jsonrpc_message)
             else:
                 print("unknown jsonrpc message")
-            print(jsonrpc_message)
     
     
     def send_message(self, method_name, params, id = None):

@@ -46,7 +46,6 @@ class JsonRpcEndpoint(object):
         :param dict message: The message to send.            
         '''
         json_string = json.dumps(message, cls=MyEncoder)
-        print("sending:", json_string)
         jsonrpc_req = self.__add_header(json_string)
         with self.write_lock:
             self.stdin.write(jsonrpc_req.encode())
@@ -63,7 +62,6 @@ class JsonRpcEndpoint(object):
             line = self.stdout.readline()
             if not line:
                 return None
-            print(line)
             line = line.decode()
             # TODO: handle content type as well.
             match = re.match(JSON_RPC_RES_REGEX, line)

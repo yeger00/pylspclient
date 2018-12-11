@@ -314,3 +314,114 @@ class SignatureHelp(object):
         self.signatures = [to_type(signature, SignatureInformation) for signature in signatures]
         self.activeSignature = activeSignature
         self.activeParameter = activeParameter
+
+
+class CompletionTriggerKind(object):
+    Invoked = 1
+    TriggerCharacter = 2
+    TriggerForIncompleteCompletions = 3
+
+
+class CompletionContext(object):
+    """
+    Contains additional information about the context in which a completion request is triggered.
+    """
+    def __init__(self, triggerKind, triggerCharacter=None):
+        """
+        Constructs a new CompletionContext instance.
+
+        :param CompletionTriggerKind triggerKind: How the completion was triggered.
+        :param str triggerCharacter: The trigger character (a single character) that has trigger code complete.
+                                        Is undefined if `triggerKind !== CompletionTriggerKind.TriggerCharacter`
+        """
+        self.triggerKind = triggerKind
+        if triggerCharacter:
+            self.triggerCharacter = triggerCharacter
+
+
+class TextEdit(object):
+    """
+    A textual edit applicable to a text document.
+    """
+    def __init__(self, range, newText):
+        """
+        :param Range range: The range of the text document to be manipulated. To insert 
+                            text into a document create a range where start === end.
+        :param str newText: The string to be inserted. For delete operations use an empty string.
+        """
+        self.range = range
+        self.newText = newText
+
+
+class InsertTextFormat(object):
+    PlainText = 1
+    Snippet = 2
+
+
+class CompletionItem(object):
+    """
+    """
+    def __init__(self, label, kind=None, detail=None, documentation=None, deprecated=None, presented=None, sortText=None, filterText=None, insertText=None, insertTextFormat=None, textEdit=None, additionalTextEdits=None, commitCharacters=None, command=None, data=None): 
+        """  
+        :param str label: The label of this completion item. By default also the text that is inserted when selecting
+                        this completion.
+        :param int kind: The kind of this completion item. Based of the kind an icon is chosen by the editor.
+        :param str detail:  A human-readable string with additional information about this item, like type or symbol information.
+        :param tr ocumentation: A human-readable string that represents a doc-comment.
+        :param bool deprecated: Indicates if this item is deprecated.
+        :param bool presented: Select this item when showing. Note: that only one completion item can be selected and that the
+                                tool / client decides which item that is. The rule is that the first item of those that match best is selected.
+        :param str sortText: A string that should be used when comparing this item with other items. When `falsy` the label is used.
+        :param str filterText: A string that should be used when filtering a set of completion items. When `falsy` the label is used.
+        :param str insertText: A string that should be inserted into a document when selecting this completion. When `falsy` the label is used.
+                                The `insertText` is subject to interpretation by the client side. Some tools might not take the string literally. For example
+                                VS Code when code complete is requested in this example `con<cursor position>` and a completion item with an `insertText` of `console` is provided it
+                                will only insert `sole`. Therefore it is recommended to use `textEdit` instead since it avoids additional client side interpretation.
+                                @deprecated Use textEdit instead.
+        :param InsertTextFormat isertTextFormat: The format of the insert text. The format applies to both the `insertText` property
+                                                    and the `newText` property of a provided `textEdit`.
+        :param TextEdit textEdit: An edit which is applied to a document when selecting this completion. When an edit is provided the value of `insertText` is ignored.
+                                    Note:* The range of the edit must be a single line range and it must contain the position at which completion
+                                    has been requested.
+        :param TextEdit additionalTextEdits: An optional array of additional text edits that are applied when selecting this completion. 
+                                                Edits must not overlap (including the same insert position) with the main edit nor with themselves.
+                                                Additional text edits should be used to change text unrelated to the current cursor position
+                                                (for example adding an import statement at the top of the file if the completion item will
+                                                insert an unqualified type).
+        :param str commitCharacters: An optional set of characters that when pressed while this completion is active will accept it first and
+                                        then type that character. *Note* that all commit characters should have `length=1` and that superfluous
+                                        characters will be ignored.
+        :param Command command: An optional command that is executed *after* inserting this completion. Note: that
+                                additional modifications to the current document should be described with the additionalTextEdits-property.
+        :param data: An data entry field that is preserved on a completion item between a completion and a completion resolve request.
+        """
+        self.label = label
+        self.kind = kind
+        self.detail = detail
+        self.documentation = documentation
+        self.deprecated = deprecated
+        self.presented = presented
+        self.sortText = sortText
+        self.filterText = filterText
+        self.insertText = insertText
+        self.insertTextFormat = insertTextFormat
+        self.textEdit = textEdit
+        self.additionalTextEdits = additionalTextEdits
+        self.commitCharacters = commitCharacters
+        self.command = command
+        self.data = data
+
+
+class CompletionList(object):
+    """
+    Represents a collection of [completion items](#CompletionItem) to be presented in the editor.
+    """
+    def __init__(self, isIncomplete, items):
+        """
+        Constructs a new CompletionContext instance.
+        
+        :param bool isIncomplete: This list it not complete. Further typing should result in recomputing this list.
+        :param CompletionItem items: The completion items.
+        """
+        self.isIncomplete = isIncomplete
+        self.items = [to_type(i, CompletionItem) for i in items]

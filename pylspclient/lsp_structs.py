@@ -425,3 +425,26 @@ class CompletionList(object):
         """
         self.isIncomplete = isIncomplete
         self.items = [to_type(i, CompletionItem) for i in items]
+
+class ErrorCodes(object):
+	# Defined by JSON RPC
+	ParseError = -32700
+	InvalidRequest = -32600
+	MethodNotFound = -32601
+	InvalidParams = -32602
+	InternalError = -32603
+	serverErrorStart = -32099
+	serverErrorEnd = -32000
+	ServerNotInitialized = -32002
+	UnknownErrorCode = -32001
+
+	# Defined by the protocol.
+	RequestCancelled = -32800
+	ContentModified = -32801
+
+class ResponseError(Exception):
+    def __init__(self, code, message, data = None):
+        self.code = code
+        self.message = message
+        if data:
+            self.data = data

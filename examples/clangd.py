@@ -9,10 +9,10 @@ class ReadPipe(threading.Thread):
         self.pipe = pipe
 
     def run(self):
-        line = self.pipe.readline()
+        line = self.pipe.readline().decode('utf-8')
         while line:
             print(line)
-            line = self.pipe.readline()
+            line = self.pipe.readline().decode('utf-8')
 
 if __name__ == "__main__":
     clangd_path = "/usr/bin/clangd-6.0"

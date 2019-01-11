@@ -62,7 +62,7 @@ class JsonRpcEndpoint(object):
             line = self.stdout.readline()
             if not line:
                 return None
-            line = line.decode()
+            line = line.decode('utf-8')
             # TODO: handle content type as well.
             match = re.match(JSON_RPC_RES_REGEX, line)
             if match is None or not match.groups():
@@ -71,8 +71,8 @@ class JsonRpcEndpoint(object):
             line = self.stdout.readline()
             if not line:
                 return None
-            line = line.decode()
+            line = line.decode('utf-8')
             if line != "\r\n":
                 raise RuntimeError("Bad header: missing newline")
-            jsonrpc_res = self.stdout.read(size)
+            jsonrpc_res = self.stdout.read(size).decode('utf-8')
             return json.loads(jsonrpc_res)

@@ -46,15 +46,16 @@ class LspEndpoint(threading.Thread):
                     if rpc_id:
                         # a call for method
                         if method not in self.method_callbacks:
-                            raise lsp_structs.ResponseError("Method not found: {method}".format(method=method), lsp_structs.ErrorCodes.MethodNotFound)
+                            raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.MethodNotFound, "Method not found: {method}".format(method=method))
                         result = self.method_callbacks[method](params)
                         self.send_response(rpc_id, result, None)
                     else:
                         # a call for notify
                         if method not in self.notify_callbacks:
-                            raise lsp_structs.ResponseError("Method not found: {method}".format(method=method), lsp_structs.ErrorCodes.MethodNotFound)
-                        
-                        self.notify_callbacks[method](params)
+                            # Have nothing to do with this.
+                            print("Notify method not found: {method}.".format(method=method))
+                        else:
+                            self.notify_callbacks[method](params)
                 else:
                     self.handle_result(rpc_id, result, error)
             except lsp_structs.ResponseError as e:

@@ -21,9 +21,6 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 
-install_requires=["enum34;python_version<'3.4'"]
-tests_require=["pytest", "pytest_mock"] + install_requires
-
 setup(
     name="pylspclient",
     version="0.0.2",
@@ -34,7 +31,6 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/yeger00/pylspclient",
     packages=find_packages(),
-    install_requires=install_requires,
-    tests_require=tests_require,
+    tests_require=["pytest", "pytest_mock"],
     cmdclass={"test": PyTest},
 )

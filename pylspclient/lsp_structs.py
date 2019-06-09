@@ -1,3 +1,6 @@
+import enum
+
+
 def to_type(o, new_type):
     '''
     Helper funciton that receives an object or a dict and convert it to a new given type.
@@ -149,7 +152,7 @@ class TextDocumentPositionParams(object):
         self.position = position
 
 
-class LANGUAGE_IDENTIFIER:
+class LANGUAGE_IDENTIFIER(object):
     BAT="bat"
     BIBTEX="bibtex"
     CLOJURE="clojure"
@@ -201,7 +204,7 @@ class LANGUAGE_IDENTIFIER:
     YAML="yaml"
 
 
-class SymbolKind(object):
+class SymbolKind(enum.Enum):
     File = 1
     Module = 2
     Namespace = 3
@@ -256,7 +259,7 @@ class SymbolInformation(object):
         :param bool deprecated: Indicates if this symbol is deprecated.
         """
         self.name = name
-        self.kind = kind
+        self.kind = SymbolKind(kind)
         self.deprecated = deprecated
         self.location = to_type(location, Location)
         self.containerName = containerName
@@ -426,7 +429,7 @@ class CompletionList(object):
         self.isIncomplete = isIncomplete
         self.items = [to_type(i, CompletionItem) for i in items]
 
-class ErrorCodes(object):
+class ErrorCodes(enum.Enum):
 	# Defined by JSON RPC
 	ParseError = -32700
 	InvalidRequest = -32600

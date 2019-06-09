@@ -5,15 +5,18 @@ from pylspclient import lsp_structs
 import threading
 
 JSON_RPC_REQ_FORMAT = "Content-Length: {json_string_len}\r\n\r\n{json_string}"
-JSON_RPC_RES_REGEX = "Content-Length: ([0-9]*)\r\n"
+LEN_HEADER = "Content-Length: "
+TYPE_HEADER = "Content-Type: "
+
+
 # TODO: add content-type
 
 
-class MyEncoder(json.JSONEncoder):
+class MyEncoder(json.JSONEncoder): 
     """
     Encodes an object in JSON
     """
-    def default(self, o):
+    def default(self, o): # pylint: disable=E0202
         return o.__dict__ 
 
 
@@ -59,20 +62,33 @@ class JsonRpcEndpoint(object):
         :return: a message
         '''
         with self.read_lock:
-            line = self.stdout.readline()
-            if not line:
-                return None
-            line = line.decode("utf-8")
-            # TODO: handle content type as well.
-            match = re.match(JSON_RPC_RES_REGEX, line)
-            if match is None or not match.groups():
-                raise RuntimeError("Bad header: " + line)
-            size = int(match.groups()[0])
-            line = self.stdout.readline()
-            if not line:
-                return None
-            line = line.decode("utf-8")
-            if line != "\r\n":
-                raise RuntimeError("Bad header: missing newline")
-            jsonrpc_res = self.stdout.read(size).decode("utf-8")
+            message_size = None
+            while True:
+                #read header
+                line = self.stdout.readline()
+                if not line:
+                    # server quit
+                    return None
+                line = line.decode("utf-8")
+                if not line.endswith("\r\n"):
+                    raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.ParseError, "Bad header: missing newline")
+                #remove the "\r\n"
+                line = line[:-2]
+                if line == "":
+                    # done with the headers
+                    break
+                elif line.startswith(LEN_HEADER):
+                    line = line[len(LEN_HEADER):]
+                    if not line.isdigit():
+                        raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.ParseError, "Bad header: size is not int")
+                    message_size = int(line)
+                elif line.startswith(TYPE_HEADER):
+                    # nothing todo with type for now.
+                    pass
+                else:
+                    raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.ParseError, "Bad header: unkown header")
+            if not message_size:
+                raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.ParseError, "Bad header: missing size")
+
+            jsonrpc_res = self.stdout.read(message_size).decode("utf-8")
             return json.loads(jsonrpc_res)

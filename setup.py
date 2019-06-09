@@ -20,6 +20,7 @@ class PyTest(TestCommand):
         errno = pytest.main(self.pytest_args)
         sys.exit(errno)
 
+
 setup(
     name="pylspclient",
     version="0.0.2",

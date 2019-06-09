@@ -1,7 +1,7 @@
 import pylspclient
 import subprocess
 import threading
-
+import argparse
 
 class ReadPipe(threading.Thread):
     def __init__(self, pipe):
@@ -15,8 +15,11 @@ class ReadPipe(threading.Thread):
             line = self.pipe.readline().decode('utf-8')
 
 if __name__ == "__main__":
-    clangd_path = "/usr/bin/clangd-6.0"
-    p = subprocess.Popen(clangd_path, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    parser = argparse.ArgumentParser(description='pylspclient example with clangd')
+    parser.add_argument('clangd_path', type=str, default="/usr/bin/clangd-6.0", 
+                    help='the clangd path', nargs="?")
+    args = parser.parse_args()
+    p = subprocess.Popen([args.clangd_path], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     read_pipe = ReadPipe(p.stderr)
     read_pipe.start()
     json_rpc_endpoint = pylspclient.JsonRpcEndpoint(p.stdin, p.stdout)
@@ -136,7 +139,7 @@ if __name__ == "__main__":
         25,
         26]}},'workspaceEdit': {'documentChanges': True},
     'workspaceFolders': True}}
-    root_uri = 'file:///home/osboxes/projects/ctest'
+    root_uri = 'file:///home/osboxes/projects/ctest/'
     workspace_folders = [{'name': 'python-lsp', 'uri': root_uri}]
     print(lsp_client.initialize(p.pid, None, root_uri, None, capabilities, "off", workspace_folders))
     print(lsp_client.initialized())
@@ -147,11 +150,16 @@ if __name__ == "__main__":
     languageId = pylspclient.lsp_structs.LANGUAGE_IDENTIFIER.C
     version = 1
     lsp_client.didOpen(pylspclient.lsp_structs.TextDocumentItem(uri, languageId, version, text))
-    # documentSymbol is supported from version 8.
-    #lsp_client.documentSymbol(pylspclient.lsp_structs.TextDocumentIdentifier(uri))
+    try:
+        symbols = lsp_client.documentSymbol(pylspclient.lsp_structs.TextDocumentIdentifier(uri))
+        for symbol in symbols:
+            print(symbol.name)
+    except pylspclient.lsp_structs.ResponseError:
+        # documentSymbol is supported from version 8.
+        print("Failed to document symbols")
 
-    lsp_client.definition(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(15, 4))
-    lsp_client.signatureHelp(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(15, 4))
-    lsp_client.completion(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(15, 4), pylspclient.lsp_structs.CompletionContext(pylspclient.lsp_structs.CompletionTriggerKind.Invoked))
+    lsp_client.definition(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(14, 4))
+    lsp_client.signatureHelp(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(14, 4))
+    lsp_client.completion(pylspclient.lsp_structs.TextDocumentIdentifier(uri), pylspclient.lsp_structs.Position(14, 4), pylspclient.lsp_structs.CompletionContext(pylspclient.lsp_structs.CompletionTriggerKind.Invoked))
     lsp_client.shutdown()
     lsp_client.exit()

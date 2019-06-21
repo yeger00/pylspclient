@@ -160,6 +160,47 @@ class TextDocumentIdentifier(object):
         """
         self.uri = uri
 
+
+class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
+    """
+    An identifier to denote a specific version of a text document.
+    """
+    def __init__(self, uri, version):
+        """
+        Constructs a new TextDocumentIdentifier instance.
+        
+        :param DocumentUri uri: The text document's URI.
+        :param int version: The version number of this document. If a versioned 
+            text document identifier is sent from the server to the client and 
+            the file is not open in the editor (the server has not received an 
+            open notification before) the server can send `null` to indicate 
+            that the version is known and the content on disk is the truth (as 
+            speced with document content ownership).
+	    The version number of a document will increase after each change, including
+	    undo/redo. The number doesn't need to be consecutive.
+        """
+        super(VersionedTextDocumentIdentifier, self).__init__(uri)
+        self.version = version
+
+
+class TextDocumentContentChangeEvent(object):
+    """
+    An event describing a change to a text document. If range and rangeLength are omitted
+    the new text is considered to be the full content of the document.
+    """
+    def __init__(self, range, rangeLength, text):
+        """
+        Constructs a new TextDocumentContentChangeEvent instance.
+
+        :param Range range: The range of the document that changed.
+        :param int rangeLength: The length of the range that got replaced.
+        :param str text: The new text of the range/document.
+        """
+        self.range = range
+        self.rangeLength = rangeLength
+        self.text = text
+
+
 class TextDocumentPositionParams(object):
     """
     A parameter literal used in requests to pass a text document and a position inside that document.

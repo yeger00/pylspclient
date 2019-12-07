@@ -90,6 +90,9 @@ class LspEndpoint(threading.Thread):
         self.event_dict[current_id] = cond
         cond.acquire()
         self.send_message(method_name, kwargs, current_id)
+        if self.shutdown_flag:
+            return None
+
         cond.wait()
         cond.release()
         result, error = self.response_dict[current_id]

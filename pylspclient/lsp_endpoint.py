@@ -59,7 +59,7 @@ class LspEndpoint(threading.Thread):
                 else:
                     self.handle_result(rpc_id, result, error)
             except lsp_structs.ResponseError as e:
-                self.send_response(rpc_id, None, e)                         
+                self.send_response(rpc_id, None, e)
 
 
     def send_response(self, id, result, error):
@@ -71,7 +71,7 @@ class LspEndpoint(threading.Thread):
         if error:
             message_dict["error"] = error
         self.json_rpc_endpoint.send_request(message_dict)
-   
+
 
     def send_message(self, method_name, params, id = None):
         message_dict = {}
@@ -81,18 +81,21 @@ class LspEndpoint(threading.Thread):
         message_dict["method"] = method_name
         message_dict["params"] = params
         self.json_rpc_endpoint.send_request(message_dict)
-        
+
 
     def call_method(self, method_name, **kwargs):
         current_id = self.next_id
         self.next_id += 1
         cond = threading.Condition()
         self.event_dict[current_id] = cond
+
         cond.acquire()
         self.send_message(method_name, kwargs, current_id)
         cond.wait()
         cond.release()
-        result, error = self.response_dict[current_id]
+
+        self.event_dict.pop(current_id)
+        result, error = self.response_dict.pop(current_id)
         if error:
             raise lsp_structs.ResponseError(error.get("code"), error.get("message"), error.get("data"))
         return result

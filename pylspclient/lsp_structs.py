@@ -428,7 +428,7 @@ class InsertTextFormat(object):
 class CompletionItem(object):
     """
     """
-    def __init__(self, label, kind=None, detail=None, documentation=None, deprecated=None, presented=None, sortText=None, filterText=None, insertText=None, insertTextFormat=None, textEdit=None, additionalTextEdits=None, commitCharacters=None, command=None, data=None): 
+    def __init__(self, label, kind=None, detail=None, documentation=None, deprecated=None, presented=None, sortText=None, filterText=None, insertText=None, insertTextFormat=None, textEdit=None, additionalTextEdits=None, commitCharacters=None, command=None, data=None, score=0.0): 
         """  
         :param str label: The label of this completion item. By default also the text that is inserted when selecting
                         this completion.
@@ -445,7 +445,7 @@ class CompletionItem(object):
                                 VS Code when code complete is requested in this example `con<cursor position>` and a completion item with an `insertText` of `console` is provided it
                                 will only insert `sole`. Therefore it is recommended to use `textEdit` instead since it avoids additional client side interpretation.
                                 @deprecated Use textEdit instead.
-        :param InsertTextFormat isertTextFormat: The format of the insert text. The format applies to both the `insertText` property
+        :param InsertTextFormat insertTextFormat: The format of the insert text. The format applies to both the `insertText` property
                                                     and the `newText` property of a provided `textEdit`.
         :param TextEdit textEdit: An edit which is applied to a document when selecting this completion. When an edit is provided the value of `insertText` is ignored.
                                     Note:* The range of the edit must be a single line range and it must contain the position at which completion
@@ -461,6 +461,7 @@ class CompletionItem(object):
         :param Command command: An optional command that is executed *after* inserting this completion. Note: that
                                 additional modifications to the current document should be described with the additionalTextEdits-property.
         :param data: An data entry field that is preserved on a completion item between a completion and a completion resolve request.
+        :param float score: Score of the code completion item.
         """
         self.label = label
         self.kind = kind
@@ -477,6 +478,7 @@ class CompletionItem(object):
         self.commitCharacters = commitCharacters
         self.command = command
         self.data = data
+        self.score = score
 
 
 class CompletionList(object):

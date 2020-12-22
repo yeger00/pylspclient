@@ -176,8 +176,8 @@ class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
             open notification before) the server can send `null` to indicate 
             that the version is known and the content on disk is the truth (as 
             speced with document content ownership).
-	    The version number of a document will increase after each change, including
-	    undo/redo. The number doesn't need to be consecutive.
+        The version number of a document will increase after each change, including
+        undo/redo. The number doesn't need to be consecutive.
         """
         super(VersionedTextDocumentIdentifier, self).__init__(uri)
         self.version = version
@@ -301,7 +301,7 @@ class SymbolInformation(object):
     """
     Represents information about programming constructs like variables, classes, interfaces etc.
     """
-    def __init__(self, name, kind, location, containerName, deprecated=False):
+    def __init__(self, name, kind, location, containerName=None, deprecated=False):
         """
         Constructs a new SymbolInformation instance.
 
@@ -481,6 +481,34 @@ class CompletionItem(object):
         self.score = score
 
 
+class CompletionItemKind(enum.Enum):
+    Text = 1
+    Method = 2
+    Function = 3
+    Constructor = 4
+    Field = 5
+    Variable = 6
+    Class = 7
+    Interface = 8
+    Module = 9
+    Property = 10
+    Unit = 11
+    Value = 12
+    Enum = 13
+    Keyword = 14
+    Snippet = 15
+    Color = 16
+    File = 17
+    Reference = 18
+    Folder = 19
+    EnumMember = 20
+    Constant = 21
+    Struct = 22
+    Event = 23
+    Operator = 24
+    TypeParameter = 25
+
+
 class CompletionList(object):
     """
     Represents a collection of [completion items](#CompletionItem) to be presented in the editor.
@@ -496,20 +524,20 @@ class CompletionList(object):
         self.items = [to_type(i, CompletionItem) for i in items]
 
 class ErrorCodes(enum.Enum):
-	# Defined by JSON RPC
-	ParseError = -32700
-	InvalidRequest = -32600
-	MethodNotFound = -32601
-	InvalidParams = -32602
-	InternalError = -32603
-	serverErrorStart = -32099
-	serverErrorEnd = -32000
-	ServerNotInitialized = -32002
-	UnknownErrorCode = -32001
+    # Defined by JSON RPC
+    ParseError = -32700
+    InvalidRequest = -32600
+    MethodNotFound = -32601
+    InvalidParams = -32602
+    InternalError = -32603
+    serverErrorStart = -32099
+    serverErrorEnd = -32000
+    ServerNotInitialized = -32002
+    UnknownErrorCode = -32001
 
-	# Defined by the protocol.
-	RequestCancelled = -32800
-	ContentModified = -32801
+    # Defined by the protocol.
+    RequestCancelled = -32800
+    ContentModified = -32801
 
 class ResponseError(Exception):
     def __init__(self, code, message, data = None):

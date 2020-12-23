@@ -5,7 +5,7 @@ from pylspclient import lsp_structs
 
 
 class LspEndpoint(threading.Thread):
-    def __init__(self, json_rpc_endpoint, method_callbacks={}, notify_callbacks={}):
+    def __init__(self, json_rpc_endpoint, method_callbacks={}, notify_callbacks={}, timeout=2):
         threading.Thread.__init__(self)
         self.json_rpc_endpoint = json_rpc_endpoint
         self.notify_callbacks = notify_callbacks
@@ -13,6 +13,7 @@ class LspEndpoint(threading.Thread):
         self.event_dict = {}
         self.response_dict = {}
         self.next_id = 0
+        self._timeout = timeout
         self.shutdown_flag = False
 
 
@@ -93,7 +94,8 @@ class LspEndpoint(threading.Thread):
         if self.shutdown_flag:
             return None
 
-        cond.wait()
+        if not cond.wait(timeout=self._timeout):
+            raise TimeoutError()
         cond.release()
 
         self.event_dict.pop(current_id)

@@ -428,7 +428,7 @@ class InsertTextFormat(object):
 class CompletionItem(object):
     """
     """
-    def __init__(self, label, kind=None, detail=None, documentation=None, deprecated=None, presented=None, sortText=None, filterText=None, insertText=None, insertTextFormat=None, textEdit=None, additionalTextEdits=None, commitCharacters=None, command=None, data=None, score=0.0): 
+    def __init__(self, label, kind=None, detail=None, documentation=None, deprecated=None, preselect=None, sortText=None, filterText=None, insertText=None, insertTextFormat=None, textEdit=None, additionalTextEdits=None, commitCharacters=None, command=None, data=None, score=0.0): 
         """  
         :param str label: The label of this completion item. By default also the text that is inserted when selecting
                         this completion.
@@ -436,7 +436,7 @@ class CompletionItem(object):
         :param str detail:  A human-readable string with additional information about this item, like type or symbol information.
         :param tr ocumentation: A human-readable string that represents a doc-comment.
         :param bool deprecated: Indicates if this item is deprecated.
-        :param bool presented: Select this item when showing. Note: that only one completion item can be selected and that the
+        :param bool preselect: Select this item when showing. Note: that only one completion item can be selected and that the
                                 tool / client decides which item that is. The rule is that the first item of those that match best is selected.
         :param str sortText: A string that should be used when comparing this item with other items. When `falsy` the label is used.
         :param str filterText: A string that should be used when filtering a set of completion items. When `falsy` the label is used.
@@ -468,7 +468,7 @@ class CompletionItem(object):
         self.detail = detail
         self.documentation = documentation
         self.deprecated = deprecated
-        self.presented = presented
+        self.preselect = preselect
         self.sortText = sortText
         self.filterText = filterText
         self.insertText = insertText

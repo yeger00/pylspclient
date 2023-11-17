@@ -92,6 +92,7 @@ class LspEndpoint(threading.Thread):
         cond.acquire()
         self.send_message(method_name, kwargs, current_id)
         if self.shutdown_flag:
+            cond.release()
             return None
 
         if not cond.wait(timeout=self._timeout):

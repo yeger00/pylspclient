@@ -24,8 +24,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: install Pytest
-        run: pip install 'pytest==7.4.3'
-
+        run: pip install -r requirements.dev.txt
 
       - name: test
         run: pytest

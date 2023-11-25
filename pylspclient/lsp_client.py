@@ -110,17 +110,6 @@ class LspClient(object):
         return [lsp_structs.SymbolInformation(**sym) for sym in result_dict]
 
 
-    def definition(self, textDocument, position):
-        """
-        The goto definition request is sent from the client to the server to resolve the definition location of a symbol at a given text document position.
-
-        :param TextDocumentItem textDocument: The text document.
-        :param Position position: The position inside the text document.
-        """
-        result_dict = self.lsp_endpoint.call_method("textDocument/definition", textDocument=textDocument, position=position)
-        return [lsp_structs.Location(**l) for l in result_dict]
-
-
     def typeDefinition(self, textDocument, position):
         """
         The goto type definition request is sent from the client to the server to resolve the type definition location of a symbol at a given text document position.
@@ -129,7 +118,7 @@ class LspClient(object):
         :param Position position: The position inside the text document.
         """
         result_dict = self.lsp_endpoint.call_method("textDocument/definition", textDocument=textDocument, position=position)
-        return [lsp_structs.Location(**l) for l in result_dict]
+        return [lsp_structs.Location(**result) for result in result_dict]
 
 
     def signatureHelp(self, textDocument, position):
@@ -156,7 +145,7 @@ class LspClient(object):
             if "isIncomplete" in result_dict:
                 return lsp_structs.CompletionList(**result_dict)
             
-            return [lsp_structs.CompletionItem(**l) for l in result_dict]
+            return [lsp_structs.CompletionItem(**result) for result in result_dict]
     
     
     def declaration(self, textDocument, position):
@@ -174,7 +163,7 @@ class LspClient(object):
             if "uri" in result_dict:
                 return lsp_structs.Location(**result_dict)
 
-            return [lsp_structs.Location(**l) if "uri" in l else lsp_structs.LinkLocation(**l) for l in result_dict]
+            return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LinkLocation(**result) for result in result_dict]
    
 
     def definition(self, textDocument, position):
@@ -192,4 +181,4 @@ class LspClient(object):
             if "uri" in result_dict:
                 return lsp_structs.Location(**result_dict)
 
-            return [lsp_structs.Location(**l) if "uri" in l else lsp_structs.LinkLocation(**l) for l in result_dict]
+            return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LinkLocation(**result) for result in result_dict]

@@ -1,6 +1,5 @@
 from __future__ import print_function
 import json
-import re
 from pylspclient import lsp_structs
 import threading
 

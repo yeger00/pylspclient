@@ -1,4 +1,3 @@
-import os
 import pytest
 import threading
 import subprocess
@@ -54,7 +53,7 @@ def test_initialize(json_rpc: pylspclient.JsonRpcEndpoint):
     trace = "off"
     workspace_folders = None
     initialize_response = lsp_client.initialize(process_id, root_path, root_uri, initialization_options, capabilities, trace, workspace_folders)
-    initialized_initializ = lsp_client.initialized()
+    _ = lsp_client.initialized()
     assert initialize_response['serverInfo']['name'] == 'pylsp'
     lsp_client.shutdown()
     lsp_client.exit()

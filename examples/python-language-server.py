@@ -19,8 +19,8 @@ class ReadPipe(threading.Thread):
             line = self.pipe.readline().decode('utf-8')
 
 if __name__ == "__main__":
-    pyls_cmd = ["python", "-m", "pyls"]
-    p = subprocess.Popen(pyls_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    pylsp_cmd = ["python", "-m", "pylsp"]
+    p = subprocess.Popen(pylsp_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     read_pipe = ReadPipe(p.stderr)
     read_pipe.start()
     json_rpc_endpoint = pylspclient.JsonRpcEndpoint(p.stdin, p.stdout)
@@ -142,8 +142,8 @@ if __name__ == "__main__":
     'workspaceFolders': True}}
     root_uri = 'file:///path/to/python/project'
     workspace_folders = [{'name': 'python-lsp', 'uri': root_uri}]
-    print(lsp_client.initialize(p.pid, None, root_uri, None, capabilities, "off", workspace_folders))
-    print(lsp_client.initialized())
+    print('initialize', lsp_client.initialize(p.pid, None, root_uri, None, capabilities, "off", workspace_folders))
+    print('initiazlied', lsp_client.initialized())
 
     lsp_client.shutdown()
     lsp_client.exit()

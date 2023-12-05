@@ -20,14 +20,11 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: install requirements
-        run: pip install -r requirements.txt
-
-      - name: install Pytest
-        run: pip install -r requirements.test.txt
+      - name: install poetry
+        uses: snok/install-poetry@v1.3.2
 
       - name: lint
-        run: ruff check .
+        run: make lint
 
       - name: test
-        run: pytest
+        run: make test

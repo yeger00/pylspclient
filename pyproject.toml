@@ -1,0 +1,34 @@
+[tool.poetry]
+name = "pylspclient"
+version = "0.0.2"
+description = "LSP client implementation in Python"
+authors = ["yeger00 <yeger00@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+[tool.poetry.group.tests]
+optional = true
+
+[tool.poetry.group.tests.dependencies]
+ruff = "^0.1.6"
+pytest = "^7.4.0"
+python-lsp-server = "^1.9.0"
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+ipython = "^8.8.0"
+ipdb = "^0.13.11"
+
+[tool.poetry.group.publish]
+optional = true
+
+[tool.poetry.group.publish.dependencies]
+twine = "^4.0.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

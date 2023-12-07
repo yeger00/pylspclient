@@ -1,5 +1,5 @@
 import enum
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, Any, List
 
 def to_type(o, new_type):

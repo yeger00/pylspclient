@@ -414,9 +414,9 @@ class TextEdit(BaseModel):
     range: Range
     newText: str
 
-class InsertTextFormat(BaseModel):
-    PlainText: int = Field(1, Literal=True)
-    Snippet: int = Field(2, Literal=True)
+class InsertTextFormat(object):
+    PlainText: int = 1
+    Snippet: int = 2
 
 class CompletionItem(BaseModel):
     label: str

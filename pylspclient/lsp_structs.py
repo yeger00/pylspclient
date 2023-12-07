@@ -107,11 +107,11 @@ class Diagnostic(BaseModel):
     relatedInformation: list
 
 
-class DiagnosticSeverity(BaseModel):
-    Error: int = Field(1, Literal=True)
-    Warning: int = Field(2, Literal=True) # TODO: warning is known in python
-    Information: int = Field(3, Literal=True)
-    Hint: int = Field(4, Literal=True)
+class DiagnosticSeverity(object):
+    Error: int = 1
+    Warning: int = 2 # TODO: warning is known in python
+    Information: int = 3
+    Hint: int = 4
 
 
 class DiagnosticRelatedInformation(BaseModel):

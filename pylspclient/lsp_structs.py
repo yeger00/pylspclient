@@ -428,7 +428,7 @@ class CompletionItem(BaseModel):
     sortText: Optional[str] = None
     filterText: Optional[str] = None
     insertText: Optional[str] = None
-    insertTextFormat: Optional[InsertTextFormat] = None
+    insertTextFormat: Optional[int] = None
     textEdit: Optional[TextEdit] = None
     additionalTextEdits: Optional[TextEdit] = None
     commitCharacters: Optional[str] = None

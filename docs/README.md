@@ -16,18 +16,25 @@ pip install pylspclient
 ```
 
 # Contributing
-In order to contribute you need to make sure your PR passes all the [Test Package](https://github.com/yeger00/pylspclient/blob/main/.github/workflows/test-pkg.yml) steps. You can run it locally as well:
+In order to contribute you need to make sure your PR passes all the [Test Package](https://github.com/yeger00/pylspclient/blob/main/.github/workflows/test-pkg.yml) steps.
+All the development related commands are wrap with Makefile just for easy access from both the development environment and from the workflows. You can see that most of the commands are only 1 line and you can run them directly.
+You can run it locally as well:
 
 ## Run the tests
 ```
-pip install -e .
-pip install -r requirements.test.txt
-pytest test
+make test
 ```
 
 ## Run the linter
 ```
-ruff check .
+make lint
+```
+
+## New release
+```
+make bump
+make build
+make publish
 ```
 
 # License

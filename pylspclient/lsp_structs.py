@@ -33,12 +33,8 @@ class Range(BaseModel):
     :param Position start: The range's start position.
     :param Position end: The range's end position.
     """
-    start: Any
-    end: Any
-    def __init__(self, **data):
-        data["start"] = to_type(data["start"], Range)
-        data["end"] = to_type(data["end"], Range)
-        super().__init__(**data)
+    start: Position
+    end: Position
 
 
 class Location(BaseModel):
@@ -46,44 +42,27 @@ class Location(BaseModel):
     Represents a location inside a resource, such as a line inside a text file.
     """
     uri: str
-    range: Any
-    def __init__(self, **data):
-        """
-        Constructs a new Location instance.
-
-        :param str uri: Resource file.
-        :param Range range: The range inside the file
-        """
-        data["range"] = to_type(data["range"], Range)
-        super().__init__(**data)
+    range: Range
 
 
 class LocationLink(BaseModel):
     """
     Represents a link between a source and a target location.
+    Constructs a new LocationLink instance.
+
+    :param Range originSelectionRange: Span of the origin of this link.
+        Used as the underlined span for mouse interaction. Defaults to the word range at the mouse position.
+    :param str targetUri: The target resource identifier of this link.
+    :param Range targetRange: The full target range of this link. If the target for example is a symbol then target 
+        range is the range enclosing this symbol not including leading/trailing whitespace but everything else
+        like comments. This information is typically used to highlight the range in the editor.
+    :param Range targetSelectionRange: The range that should be selected and revealed when this link is being followed, 
+        e.g the name of a function. Must be contained by the the `targetRange`. See also `DocumentSymbol#range`
     """
-    originSelectionRange: Any
+    originSelectionRange: Range
     targetUri: str
-    targetRange: Any
-    targetSelectionRange: Any
-
-    def __init__(self, **data):
-        """
-        Constructs a new LocationLink instance.
-
-        :param Range originSelectionRange: Span of the origin of this link.
-            Used as the underlined span for mouse interaction. Defaults to the word range at the mouse position.
-        :param str targetUri: The target resource identifier of this link.
-        :param Range targetRange: The full target range of this link. If the target for example is a symbol then target 
-            range is the range enclosing this symbol not including leading/trailing whitespace but everything else
-            like comments. This information is typically used to highlight the range in the editor.
-        :param Range targetSelectionRange: The range that should be selected and revealed when this link is being followed, 
-            e.g the name of a function. Must be contained by the the `targetRange`. See also `DocumentSymbol#range`
-        """
-        data["originSelectionRange"] = to_type(data["originSelectionRange"], Range)
-        data["targetRange"] = to_type(data["targetRange"], Range)
-        data["targetSelectionRange"] = to_type(data["targetSelectionRange"], Range)
-        super().__init__(**data)
+    targetRange: Range
+    targetSelectionRange: Range
 
 
 class Diagnostic(BaseModel):
@@ -161,27 +140,28 @@ class TextDocumentIdentifier(BaseModel):
     """
     uri: str
 
-
 class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
-    """
-    An identifier to denote a specific version of a text document.
-    """
-    def __init__(self, version, uri):
-        """
-        Constructs a new TextDocumentIdentifier instance.
-        
-        :param DocumentUri uri: The text document's URI.
-        :param int version: The version number of this document. If a versioned 
-            text document identifier is sent from the server to the client and 
-            the file is not open in the editor (the server has not received an 
-            open notification before) the server can send `null` to indicate 
-            that the version is known and the content on disk is the truth (as 
-            speced with document content ownership).
-        The version number of a document will increase after each change, including
-        undo/redo. The number doesn't need to be consecutive.
-        """
-        self.version = version
-        super(VersionedTextDocumentIdentifier, self).__init__(uri=uri)
+    version: int
+# class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
+#     """
+#     An identifier to denote a specific version of a text document.
+#     """
+#     def __init__(self, version, uri):
+#         """
+#         Constructs a new TextDocumentIdentifier instance.
+
+#         :param DocumentUri uri: The text document's URI.
+#         :param int version: The version number of this document. If a versioned 
+#             text document identifier is sent from the server to the client and 
+#             the file is not open in the editor (the server has not received an 
+#             open notification before) the server can send `null` to indicate 
+#             that the version is known and the content on disk is the truth (as 
+#             speced with document content ownership).
+#         The version number of a document will increase after each change, including
+#         undo/redo. The number doesn't need to be consecutive.
+#         """
+#         self.version = version
+#         super(VersionedTextDocumentIdentifier, self).__init__(uri=uri)
 
 
 class TextDocumentContentChangeEvent(BaseModel):
@@ -315,14 +295,10 @@ class SymbolInformation(BaseModel):
     :param bool deprecated: Indicates if this symbol is deprecated.
     """
     name: str
-    kind: Any
-    location: Any
+    kind: SymbolKind
+    location: Location
     containerName: Optional[str] = None
     deprecated: Optional[bool] = False
-    def __init__(self, **data):
-        data["location"] = to_type(data["location"], Location)
-        data["kind"] = SymbolKind(data["kind"])        
-        super().__init__(**data)
 
 
 class ParameterInformation(BaseModel):
@@ -351,10 +327,7 @@ class SignatureInformation(BaseModel):
     """
     label: str
     documentation: Optional[str] = ''
-    parameters: List[Any] = []
-    def __init__(self, **data):
-        data["parameters"] = [to_type(parameter, ParameterInformation) for parameter in data["parameters"]]
-        super().__init__(**data)
+    parameters: List[ParameterInformation] = []
 
 
 class SignatureHelp(BaseModel):
@@ -370,9 +343,7 @@ class SignatureHelp(BaseModel):
     """
     activeSignature: Optional[int] = 0
     activeParameter: Optional[int] = 0
-    signatures: List[Any]
-    def __init__(self, **data):
-        data["signatures"] = [to_type(signature, SignatureInformation) for signature in data["signatures"]]
+    signatures: List[SignatureInformation]
 
 
 class CompletionTriggerKind(object):
@@ -473,10 +444,7 @@ class CompletionList(BaseModel):
     :param CompletionItem items: The completion items.
     """
     isIncomplete: bool
-    items: List[Any]
-    def __init__(self, **data):
-        data["items"] = [to_type(it, CompletionItem) for it in data["items"]]
-        super().__init__(**data)
+    items: List[CompletionItem]
 
 
 class ErrorCodes(enum.Enum):

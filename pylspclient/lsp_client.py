@@ -1,4 +1,5 @@
 from pylspclient import lsp_structs
+from pylspclient.lsp_pydantic_strcuts import TextDocumentItem
 
 class LspClient(object):
     def __init__(self, lsp_endpoint):
@@ -68,7 +69,7 @@ class LspClient(object):
         self.lsp_endpoint.send_notification("exit")
 
 
-    def didOpen(self, textDocument):
+    def didOpen(self, textDocument: TextDocumentItem):
         """
         The document open notification is sent from the client to the server to signal newly opened text documents. The document's truth is
         now managed by the client and the server must not try to read the document's truth using the document's uri. Open in this sense 
@@ -83,7 +84,7 @@ class LspClient(object):
 
         :param TextDocumentItem textDocument: The document that was opened.
         """
-        return self.lsp_endpoint.send_notification("textDocument/didOpen", textDocument=textDocument)
+        return self.lsp_endpoint.send_notification("textDocument/didOpen", textDocument=textDocument.dict())
     
     
     def didChange(self, textDocument, contentChanges):

@@ -3,7 +3,7 @@ import enum
 
 def to_type(o, new_type):
     '''
-    Helper funciton that receives an object or a dict and convert it to a new given type.
+    Helper function that receives an object or a dict and convert it to a new given type.
 
     :param object|dict o: The object to convert
     :param Type new_type: The type to convert to.

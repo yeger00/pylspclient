@@ -164,7 +164,7 @@ class LspClient(object):
             if "uri" in result_dict:
                 return lsp_structs.Location(**result_dict)
 
-            return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LinkLocation(**result) for result in result_dict]
+            return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LocationLink(**result) for result in result_dict]
    
 
     def definition(self, textDocument, position):
@@ -182,4 +182,4 @@ class LspClient(object):
             if "uri" in result_dict:
                 return lsp_structs.Location(**result_dict)
 
-            return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LinkLocation(**result) for result in result_dict]
+            return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LocationLink(**result) for result in result_dict]

@@ -4,7 +4,7 @@ import subprocess
 import threading
 
 import pylspclient
-from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem
+from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier
 
 
 def to_uri(path: str) -> str:
@@ -94,7 +94,7 @@ def test_type_definition(lsp_client: pylspclient.LspClient):
     relative_file_path = os.path.join(DEFAULT_ROOT, file_path)
     uri = to_uri(relative_file_path)
     text = open(relative_file_path, "r").read()
-    languageId = pylspclient.lsp_structs.LANGUAGE_IDENTIFIER.PYTHON
+    languageId = LanguageIdentifier.PYTHON
     version = 1
     # First need to open the file, and then iterate over the docuemnt's symbols
     symbols = lsp_client.documentSymbol(TextDocumentIdentifier(uri=uri))

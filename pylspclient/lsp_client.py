@@ -1,3 +1,4 @@
+from pydantic import ValidationError
 from pylspclient import lsp_structs
 from pylspclient.lsp_pydantic_strcuts import TextDocumentItem, TextDocumentIdentifier, DocumentSymbol, SymbolInformation
 
@@ -110,7 +111,7 @@ class LspClient(object):
         result_dict =  self.lsp_endpoint.call_method("textDocument/documentSymbol", textDocument=textDocument.dict())
         try:
             return [DocumentSymbol.parse_obj(sym) for sym in result_dict]
-        except:
+        except ValidationError:
             return [SymbolInformation.parse_obj(sym) for sym in result_dict]
 
 

@@ -1,4 +1,5 @@
-from enum import Enum
+from typing import Optional, List
+from enum import Enum, IntEnum
 from pydantic import BaseModel
 
 
@@ -67,3 +68,81 @@ class TextDocumentItem(BaseModel):
     languageId: LanguageIdentifier
     version: int
     text: str
+
+class TextDocumentIdentifier(BaseModel):
+    """
+    Identifies a text document using its URI.
+    """
+    uri: str
+
+class Position(BaseModel):
+    """Represents a position in a text document."""
+    line: int
+    character: int
+
+class Range(BaseModel):
+    """Defines a range in a text document."""
+    start: Position
+    end: Position
+
+class Location(BaseModel):
+    """Represents a location inside a resource, such as a line inside a text file."""
+    uri: str
+    range: Range
+
+class SymbolKind(IntEnum):
+    """Represents various symbol kinds like File, Module, Namespace, Package, Class, Method, etc."""
+    File = 1
+    Module = 2
+    Namespace = 3
+    Package = 4
+    Class = 5
+    Method = 6
+    Property = 7
+    Field = 8
+    Constructor = 9
+    Enum = 10
+    Interface = 11
+    Function = 12
+    Variable = 13
+    Constant = 14
+    String = 15
+    Number = 16
+    Boolean = 17
+    Array = 18
+    Object = 19
+    Key = 20
+    Null = 21
+    EnumMember = 22
+    Struct = 23
+    Event = 24
+    Operator = 25
+    TypeParameter = 26
+
+class SymbolTag(Enum):
+    """Represents additional information about the symbol."""
+    # Define the symbol tags as per your specification, for example:
+    Deprecated = 1
+
+class DocumentSymbol(BaseModel):
+    """
+    Represents information about programming constructs like variables, classes, interfaces etc.
+    """
+    name: str
+    detail: Optional[str] = None
+    kind: SymbolKind
+    tags: Optional[List[SymbolTag]] = None
+    deprecated: Optional[bool] = None
+    range: Range
+    selectionRange: Range
+    children: Optional[List['DocumentSymbol']] = None
+
+class SymbolInformation(BaseModel):
+    """
+    Represents information about programming constructs like variables, classes, interfaces, etc.
+    """
+    name: str
+    kind: SymbolKind
+    deprecated: Optional[bool] = None
+    location: Location
+    containerName: Optional[str] = None

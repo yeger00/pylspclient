@@ -297,38 +297,6 @@ class SymbolKind(enum.Enum):
     TypeParameter = 26
 
 
-class SymbolInformation(object):
-    """
-    Represents information about programming constructs like variables, classes, interfaces etc.
-    """
-    def __init__(self, name, kind, location, containerName=None, deprecated=False):
-        """
-        Constructs a new SymbolInformation instance.
-
-        :param str name: The name of this symbol.
-        :param int kind: The kind of this symbol.
-        :param bool Location: The location of this symbol. The location's range is used by a tool
-                                to reveal the location in the editor. If the symbol is selected in the
-                                tool the range's start information is used to position the cursor. So
-                                the range usually spans more then the actual symbol's name and does
-                                normally include things like visibility modifiers.
-
-                                The range doesn't have to denote a node range in the sense of a abstract
-                                syntax tree. It can therefore not be used to re-construct a hierarchy of
-                                the symbols.
-        :param str containerName: The name of the symbol containing this symbol. This information is for
-                                    user interface purposes (e.g. to render a qualifier in the user interface
-                                    if necessary). It can't be used to re-infer a hierarchy for the document
-                                    symbols.
-        :param bool deprecated: Indicates if this symbol is deprecated.
-        """
-        self.name = name
-        self.kind = SymbolKind(kind)
-        self.deprecated = deprecated
-        self.location = to_type(location, Location)
-        self.containerName = containerName
-
-
 class ParameterInformation(object):
     """
     Represents a parameter of a callable-signature. A parameter can

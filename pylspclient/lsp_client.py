@@ -1,5 +1,6 @@
+from pydantic import ValidationError
 from pylspclient import lsp_structs
-from pylspclient.lsp_pydantic_strcuts import TextDocumentItem
+from pylspclient.lsp_pydantic_strcuts import TextDocumentItem, TextDocumentIdentifier, DocumentSymbol, SymbolInformation
 
 class LspClient(object):
     def __init__(self, lsp_endpoint):
@@ -100,15 +101,18 @@ class LspClient(object):
         return self.lsp_endpoint.send_notification("textDocument/didChange", textDocument=textDocument, contentChanges=contentChanges)
 
 
-    def documentSymbol(self, textDocument):
+    def documentSymbol(self, textDocument: TextDocumentIdentifier) -> list[DocumentSymbol] | list[SymbolInformation]:
         """
         The document symbol request is sent from the client to the server to return a flat list of all symbols found in a given text document. 
         Neither the symbol's location range nor the symbol's container name should be used to infer a hierarchy.
 
         :param TextDocumentItem textDocument: The text document.
         """
-        result_dict =  self.lsp_endpoint.call_method("textDocument/documentSymbol", textDocument=textDocument)
-        return [lsp_structs.SymbolInformation(**sym) for sym in result_dict]
+        result_dict =  self.lsp_endpoint.call_method("textDocument/documentSymbol", textDocument=textDocument.dict())
+        try:
+            return [DocumentSymbol.parse_obj(sym) for sym in result_dict]
+        except ValidationError:
+            return [SymbolInformation.parse_obj(sym) for sym in result_dict]
 
 
     def typeDefinition(self, textDocument, position):

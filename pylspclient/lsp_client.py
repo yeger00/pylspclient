@@ -1,4 +1,6 @@
+from pydantic import ValidationError
 from pylspclient import lsp_structs
+from pylspclient.lsp_pydantic_strcuts import TextDocumentItem, TextDocumentIdentifier, DocumentSymbol, SymbolInformation
 
 class LspClient(object):
     def __init__(self, lsp_endpoint):
@@ -68,7 +70,7 @@ class LspClient(object):
         self.lsp_endpoint.send_notification("exit")
 
 
-    def didOpen(self, textDocument):
+    def didOpen(self, textDocument: TextDocumentItem):
         """
         The document open notification is sent from the client to the server to signal newly opened text documents. The document's truth is
         now managed by the client and the server must not try to read the document's truth using the document's uri. Open in this sense 
@@ -83,7 +85,7 @@ class LspClient(object):
 
         :param TextDocumentItem textDocument: The document that was opened.
         """
-        return self.lsp_endpoint.send_notification("textDocument/didOpen", textDocument=textDocument)
+        return self.lsp_endpoint.send_notification("textDocument/didOpen", textDocument=textDocument.dict())
     
     
     def didChange(self, textDocument, contentChanges):
@@ -99,15 +101,18 @@ class LspClient(object):
         return self.lsp_endpoint.send_notification("textDocument/didChange", textDocument=textDocument, contentChanges=contentChanges)
 
 
-    def documentSymbol(self, textDocument):
+    def documentSymbol(self, textDocument: TextDocumentIdentifier) -> list[DocumentSymbol] | list[SymbolInformation]:
         """
         The document symbol request is sent from the client to the server to return a flat list of all symbols found in a given text document. 
         Neither the symbol's location range nor the symbol's container name should be used to infer a hierarchy.
 
         :param TextDocumentItem textDocument: The text document.
         """
-        result_dict =  self.lsp_endpoint.call_method("textDocument/documentSymbol", textDocument=textDocument)
-        return [lsp_structs.SymbolInformation(**sym) for sym in result_dict]
+        result_dict =  self.lsp_endpoint.call_method("textDocument/documentSymbol", textDocument=textDocument.dict())
+        try:
+            return [DocumentSymbol.parse_obj(sym) for sym in result_dict]
+        except ValidationError:
+            return [SymbolInformation.parse_obj(sym) for sym in result_dict]
 
 
     def typeDefinition(self, textDocument, position):
@@ -163,7 +168,7 @@ class LspClient(object):
             if "uri" in result_dict:
                 return lsp_structs.Location(**result_dict)
 
-            return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LinkLocation(**result) for result in result_dict]
+            return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LocationLink(**result) for result in result_dict]
    
 
     def definition(self, textDocument, position):
@@ -181,4 +186,4 @@ class LspClient(object):
             if "uri" in result_dict:
                 return lsp_structs.Location(**result_dict)
 
-            return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LinkLocation(**result) for result in result_dict]
+            return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LocationLink(**result) for result in result_dict]

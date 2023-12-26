@@ -96,7 +96,7 @@ def test_type_definition(lsp_client: pylspclient.LspClient):
     text = open(relative_file_path, "r").read()
     languageId = LanguageIdentifier.PYTHON
     version = 1
-    # First need to open the file, and then iterate over the docuemnt's symbols
+    # First need to open the file, and then iterate over the document's symbols
     symbols = lsp_client.documentSymbol(TextDocumentIdentifier(uri=uri))
     assert set(symbol.name for symbol in symbols) == set([])
     lsp_client.didOpen(TextDocumentItem(uri=uri, languageId=languageId, version=version, text=text))

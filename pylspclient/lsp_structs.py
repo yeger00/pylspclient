@@ -1,5 +1,6 @@
 import enum
-
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, Any, List
 
 def to_type(o, new_type):
     '''
@@ -14,358 +15,287 @@ def to_type(o, new_type):
         return new_type(**o)
 
 
-class Position(object):
-    def __init__(self, line, character):
-        """
-        Constructs a new Position instance.
+class Position(BaseModel):
+    """
+    Constructs a new Position instance.
 
-        :param int line: Line position in a document (zero-based).
-        :param int character: Character offset on a line in a document (zero-based).
-        """
-        self.line = line
-        self.character = character
-
-
-class Range(object):
-    def __init__(self, start, end):
-        """
-        Constructs a new Range instance.
-
-        :param Position start: The range's start position.
-        :param Position end: The range's end position.
-        """
-        self.start = to_type(start, Position)
-        self.end = to_type(end, Position)
+    :param int line: Line position in a document (zero-based).
+    :param int character: Character offset on a line in a document (zero-based).
+    """
+    line: int
+    character: int
 
 
-class Location(object):
+class Range(BaseModel):
+    """
+    Constructs a new Range instance.
+
+    :param Position start: The range's start position.
+    :param Position end: The range's end position.
+    """
+    start: Position
+    end: Position
+
+
+class Location(BaseModel):
     """
     Represents a location inside a resource, such as a line inside a text file.
     """
-    def __init__(self, uri, range):
-        """
-        Constructs a new Location instance.
-
-        :param str uri: Resource file.
-        :param Range range: The range inside the file
-        """
-        self.uri = uri
-        self.range = to_type(range, Range)
+    uri: str
+    range: Range
 
 
-class LocationLink(object):
+class LocationLink(BaseModel):
     """
     Represents a link between a source and a target location.
+    Constructs a new LocationLink instance.
+
+    :param Range originSelectionRange: Span of the origin of this link.
+        Used as the underlined span for mouse interaction. Defaults to the word range at the mouse position.
+    :param str targetUri: The target resource identifier of this link.
+    :param Range targetRange: The full target range of this link. If the target for example is a symbol then target 
+        range is the range enclosing this symbol not including leading/trailing whitespace but everything else
+        like comments. This information is typically used to highlight the range in the editor.
+    :param Range targetSelectionRange: The range that should be selected and revealed when this link is being followed, 
+        e.g the name of a function. Must be contained by the the `targetRange`. See also `DocumentSymbol#range`
     """
-    def __init__(self, originSelectionRange, targetUri, targetRange, targetSelectionRange):
-        """
-        Constructs a new LocationLink instance.
+    originSelectionRange: Range
+    targetUri: str
+    targetRange: Range
+    targetSelectionRange: Range
 
-        :param Range originSelectionRange: Span of the origin of this link.
-            Used as the underlined span for mouse interaction. Defaults to the word range at the mouse position.
-        :param str targetUri: The target resource identifier of this link.
-        :param Range targetRange: The full target range of this link. If the target for example is a symbol then target 
-            range is the range enclosing this symbol not including leading/trailing whitespace but everything else
-            like comments. This information is typically used to highlight the range in the editor.
-        :param Range targetSelectionRange: The range that should be selected and revealed when this link is being followed, 
-            e.g the name of a function. Must be contained by the the `targetRange`. See also `DocumentSymbol#range`
-        """
-        self.originSelectionRange = to_type(originSelectionRange, Range)
-        self.targetUri = targetUri
-        self.targetRange = to_type(targetRange, Range)
-        self.targetSelectionRange = to_type(targetSelectionRange, Range)
 
- 
-class Diagnostic(object):
-     def __init__(self, range, severity, code, source, message, relatedInformation):
-        """
-        Constructs a new Diagnostic instance.
-        :param Range range: The range at which the message applies.Resource file.
-        :param int severity: The diagnostic's severity. Can be omitted. If omitted it is up to the
-                                client to interpret diagnostics as error, warning, info or hint.
-        :param str code: The diagnostic's code, which might appear in the user interface.
-        :param str source: A human-readable string describing the source of this
-                            diagnostic, e.g. 'typescript' or 'super lint'.
-        :param str message: The diagnostic's message.
-        :param list relatedInformation: An array of related diagnostic information, e.g. when symbol-names within   
-                                        a scope collide all definitions can be marked via this property.
-        """
-        self.range = range
-        self.severity = severity
-        self.code = code
-        self.source = source
-        self.message = message
-        self.relatedInformation = relatedInformation
+class Diagnostic(BaseModel):
+    """
+    Constructs a new Diagnostic instance.
+    :param Range range: The range at which the message applies.Resource file.
+    :param int severity: The diagnostic's severity. Can be omitted. If omitted it is up to the
+                            client to interpret diagnostics as error, warning, info or hint.
+    :param str code: The diagnostic's code, which might appear in the user interface.
+    :param str source: A human-readable string describing the source of this
+                        diagnostic, e.g. 'typescript' or 'super lint'.
+    :param str message: The diagnostic's message.
+    :param list relatedInformation: An array of related diagnostic information, e.g. when symbol-names within   
+                                    a scope collide all definitions can be marked via this property.
+    """
+    range: Range
+    severity: int
+    code: str
+    source: str
+    message: str
+    relatedInformation: list
 
 
 class DiagnosticSeverity(object):
-    Error = 1
-    Warning = 2 # TODO: warning is known in python
-    Information = 3
-    Hint = 4
+    Error: int = 1
+    Warning: int = 2 # TODO: warning is known in python
+    Information: int = 3
+    Hint: int = 4
 
 
-class DiagnosticRelatedInformation(object):
-    def __init__(self, location, message):
-        """
-        Constructs a new Diagnostic instance.
-        :param Location location: The location of this related diagnostic information.
-        :param str message: The message of this related diagnostic information.
-        """
-        self.location = location
-        self.message = message
-
- 
-class Command(object):
-     def __init__(self, title, command, arguments):
-        """
-        Constructs a new Diagnostic instance.
-        :param str title: Title of the command, like `save`.
-        :param str command: The identifier of the actual command handler.
-        :param list argusments: Arguments that the command handler should be invoked with.
-        """
-        self.title = title
-        self.command = command
-        self.arguments = arguments
+class DiagnosticRelatedInformation(BaseModel):
+    """
+    Constructs a new Diagnostic instance.
+    :param Location location: The location of this related diagnostic information.
+    :param str message: The message of this related diagnostic information.
+    """
+    location: Location
+    message: str
 
 
-class TextDocumentItem(object):
+class Command(BaseModel):
+    """
+    Constructs a new Diagnostic instance.
+    :param str title: Title of the command, like `save`.
+    :param str command: The identifier of the actual command handler.
+    :param list arguments: Arguments that the command handler should be invoked with.
+    """
+    title: str
+    command: str
+    arguments: list
+
+
+class TextDocumentItem(BaseModel):
     """
     An item to transfer a text document from the client to the server.
+    Constructs a new Diagnostic instance.
+    
+    :param DocumentUri uri: Title of the command, like `save`.
+    :param str languageId: The identifier of the actual command handler.
+    :param int version: Arguments that the command handler should be invoked with.
+    :param str text: Arguments that the command handler should be invoked with.
     """
-    def __init__(self, uri, languageId, version, text):
-        """
-        Constructs a new Diagnostic instance.
-        
-        :param DocumentUri uri: Title of the command, like `save`.
-        :param str languageId: The identifier of the actual command handler.
-        :param int version: Arguments that the command handler should be invoked with.
-        :param str text: Arguments that the command handler should be invoked with.
-        """
-        self.uri = uri
-        self.languageId = languageId
-        self.version = version
-        self.text = text
+    uri: str
+    languageId: str
+    version: int
+    text: str
 
 
-class TextDocumentIdentifier(object):
+class TextDocumentIdentifier(BaseModel):
     """
     Text documents are identified using a URI. On the protocol level, URIs are passed as strings. 
+    Constructs a new TextDocumentIdentifier instance.
+
+    :param DocumentUri uri: The text document's URI.       
     """
-    def __init__(self, uri):
-        """
-        Constructs a new TextDocumentIdentifier instance.
-
-        :param DocumentUri uri: The text document's URI.       
-        """
-        self.uri = uri
-
+    uri: str
 
 class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
-    """
-    An identifier to denote a specific version of a text document.
-    """
-    def __init__(self, uri, version):
-        """
-        Constructs a new TextDocumentIdentifier instance.
-        
-        :param DocumentUri uri: The text document's URI.
-        :param int version: The version number of this document. If a versioned 
-            text document identifier is sent from the server to the client and 
-            the file is not open in the editor (the server has not received an 
-            open notification before) the server can send `null` to indicate 
-            that the version is known and the content on disk is the truth (as 
-            speced with document content ownership).
-        The version number of a document will increase after each change, including
-        undo/redo. The number doesn't need to be consecutive.
-        """
-        super(VersionedTextDocumentIdentifier, self).__init__(uri)
-        self.version = version
+    version: int
+# class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
+#     """
+#     An identifier to denote a specific version of a text document.
+#     """
+#     def __init__(self, version, uri):
+#         """
+#         Constructs a new TextDocumentIdentifier instance.
+
+#         :param DocumentUri uri: The text document's URI.
+#         :param int version: The version number of this document. If a versioned 
+#             text document identifier is sent from the server to the client and 
+#             the file is not open in the editor (the server has not received an 
+#             open notification before) the server can send `null` to indicate 
+#             that the version is known and the content on disk is the truth (as 
+#             speced with document content ownership).
+#         The version number of a document will increase after each change, including
+#         undo/redo. The number doesn't need to be consecutive.
+#         """
+#         self.version = version
+#         super(VersionedTextDocumentIdentifier, self).__init__(uri=uri)
 
 
-class TextDocumentContentChangeEvent(object):
+class TextDocumentContentChangeEvent(BaseModel):
     """
     An event describing a change to a text document. If range and rangeLength are omitted
     the new text is considered to be the full content of the document.
+    Constructs a new TextDocumentContentChangeEvent instance.
+
+    :param Range range: The range of the document that changed.
+    :param int rangeLength: The length of the range that got replaced.
+    :param str text: The new text of the range/document.
     """
-    def __init__(self, range, rangeLength, text):
-        """
-        Constructs a new TextDocumentContentChangeEvent instance.
-
-        :param Range range: The range of the document that changed.
-        :param int rangeLength: The length of the range that got replaced.
-        :param str text: The new text of the range/document.
-        """
-        self.range = range
-        self.rangeLength = rangeLength
-        self.text = text
+    range: Range
+    rangeLength: int
+    text: str
 
 
-class TextDocumentPositionParams(object):
+class TextDocumentPositionParams(BaseModel):
     """
     A parameter literal used in requests to pass a text document and a position inside that document.
+    Constructs a new TextDocumentPositionParams instance.
+
+    :param TextDocumentIdentifier textDocument: The text document.
+    :param Position position: The position inside the text document.
     """
-    def __init__(self, textDocument, position):
-        """
-        Constructs a new TextDocumentPositionParams instance.
-        
-        :param TextDocumentIdentifier textDocument: The text document.
-        :param Position position: The position inside the text document.
-        """
-        self.textDocument = textDocument
-        self.position = position
+    textDocument: TextDocumentIdentifier
+    Position: Position
 
 
-class ParameterInformation(object):
+class ParameterInformation(BaseModel):
     """
     Represents a parameter of a callable-signature. A parameter can
     have a label and a doc-comment.
+            Constructs a new ParameterInformation instance.
+
+    :param str label: The label of this parameter. Will be shown in the UI.
+    :param str documentation: The human-readable doc-comment of this parameter. Will be shown in the UI but can be omitted.
     """
-    def __init__(self, label, documentation=""):
-        """
-        Constructs a new ParameterInformation instance.
-
-        :param str label: The label of this parameter. Will be shown in the UI.
-        :param str documentation: The human-readable doc-comment of this parameter. Will be shown in the UI but can be omitted.
-        """
-        self.label = label
-        self.documentation = documentation
+    label: str
+    documentation: str
 
 
-class SignatureInformation(object):
+class SignatureInformation(BaseModel):
     """
     Represents the signature of something callable. A signature
     can have a label, like a function-name, a doc-comment, and
     a set of parameters.
+    Constructs a new SignatureInformation instance.
+
+    :param str label: The label of this signature. Will be shown in the UI.
+    :param str documentation: The human-readable doc-comment of this signature. Will be shown in the UI but can be omitted.
+    :param ParameterInformation[] parameters: The parameters of this signature.
     """
-    def __init__(self, label, documentation="", parameters=[]):
-        """
-        Constructs a new SignatureInformation instance.
-
-        :param str label: The label of this signature. Will be shown in the UI.
-        :param str documentation: The human-readable doc-comment of this signature. Will be shown in the UI but can be omitted.
-        :param ParameterInformation[] parameters: The parameters of this signature.
-        """
-        self.label = label
-        self.documentation = documentation
-        self.parameters = [to_type(parameter, ParameterInformation) for parameter in parameters]
+    label: str
+    documentation: Optional[str] = ''
+    parameters: List[ParameterInformation] = []
 
 
-class SignatureHelp(object):
+class SignatureHelp(BaseModel):
     """
     Signature help represents the signature of something
     callable. There can be multiple signature but only one
     active and only one active parameter.
-    """
-    def __init__(self, signatures, activeSignature=0, activeParameter=0):
-        """
-        Constructs a new SignatureHelp instance.
+    Constructs a new SignatureHelp instance.
 
-        :param SignatureInformation[] signatures: One or more signatures.
-        :param int activeSignature:
-        :param int activeParameter:
-        """
-        self.signatures = [to_type(signature, SignatureInformation) for signature in signatures]
-        self.activeSignature = activeSignature
-        self.activeParameter = activeParameter
+    :param SignatureInformation[] signatures: One or more signatures.
+    :param int activeSignature:
+    :param int activeParameter:
+    """
+    activeSignature: Optional[int] = 0
+    activeParameter: Optional[int] = 0
+    signatures: List[SignatureInformation]
 
 
 class CompletionTriggerKind(object):
-    Invoked = 1
-    TriggerCharacter = 2
-    TriggerForIncompleteCompletions = 3
+    Invoked: int = 1
+    TriggerCharacter: int = 2
+    TriggerForIncompleteCompletions: int = 3
 
-
-class CompletionContext(object):
+class CompletionContext(BaseModel):
     """
     Contains additional information about the context in which a completion request is triggered.
+    Constructs a new CompletionContext instance.
+
+    :param CompletionTriggerKind triggerKind: How the completion was triggered.
+    :param str triggerCharacter: The trigger character (a single character) that has trigger code complete.
+                                    Is undefined if `triggerKind !== CompletionTriggerKind.TriggerCharacter`
     """
-    def __init__(self, triggerKind, triggerCharacter=None):
-        """
-        Constructs a new CompletionContext instance.
+    model_config = ConfigDict(extra='allow')
+    triggerKind: int
+    def __init__(self, **data):
+        for k in data.keys():
+            if k == "triggerCharacter":
+                curr_val = data.get(k)
+                # if value for triggerCharacter is None or non string
+                # then ensure attribute doesnt exist in the object
+                if curr_val is None and not isinstance(curr_val, str):
+                    data.pop(k)
+            elif k not in self.__class__.model_fields.keys():
+                data.pop(k)
+        super().__init__(**data)
 
-        :param CompletionTriggerKind triggerKind: How the completion was triggered.
-        :param str triggerCharacter: The trigger character (a single character) that has trigger code complete.
-                                        Is undefined if `triggerKind !== CompletionTriggerKind.TriggerCharacter`
-        """
-        self.triggerKind = triggerKind
-        if triggerCharacter:
-            self.triggerCharacter = triggerCharacter
 
-
-class TextEdit(object):
+class TextEdit(BaseModel):
     """
     A textual edit applicable to a text document.
+    :param Range range: The range of the text document to be manipulated. To insert
+                        text into a document create a range where start === end.
+    :param str newText: The string to be inserted. For delete operations use an empty string.
     """
-    def __init__(self, range, newText):
-        """
-        :param Range range: The range of the text document to be manipulated. To insert 
-                            text into a document create a range where start === end.
-        :param str newText: The string to be inserted. For delete operations use an empty string.
-        """
-        self.range = range
-        self.newText = newText
-
+    range: Range
+    newText: str
 
 class InsertTextFormat(object):
-    PlainText = 1
-    Snippet = 2
+    PlainText: int = 1
+    Snippet: int = 2
 
-
-class CompletionItem(object):
-    """
-    """
-    def __init__(self, label, kind=None, detail=None, documentation=None, deprecated=None, preselect=None, sortText=None, filterText=None, insertText=None, insertTextFormat=None, textEdit=None, additionalTextEdits=None, commitCharacters=None, command=None, data=None, score=0.0): 
-        """  
-        :param str label: The label of this completion item. By default also the text that is inserted when selecting
-                        this completion.
-        :param int kind: The kind of this completion item. Based of the kind an icon is chosen by the editor.
-        :param str detail:  A human-readable string with additional information about this item, like type or symbol information.
-        :param tr ocumentation: A human-readable string that represents a doc-comment.
-        :param bool deprecated: Indicates if this item is deprecated.
-        :param bool preselect: Select this item when showing. Note: that only one completion item can be selected and that the
-                                tool / client decides which item that is. The rule is that the first item of those that match best is selected.
-        :param str sortText: A string that should be used when comparing this item with other items. When `falsy` the label is used.
-        :param str filterText: A string that should be used when filtering a set of completion items. When `falsy` the label is used.
-        :param str insertText: A string that should be inserted into a document when selecting this completion. When `falsy` the label is used.
-                                The `insertText` is subject to interpretation by the client side. Some tools might not take the string literally. For example
-                                VS Code when code complete is requested in this example `con<cursor position>` and a completion item with an `insertText` of `console` is provided it
-                                will only insert `sole`. Therefore it is recommended to use `textEdit` instead since it avoids additional client side interpretation.
-                                @deprecated Use textEdit instead.
-        :param InsertTextFormat insertTextFormat: The format of the insert text. The format applies to both the `insertText` property
-                                                    and the `newText` property of a provided `textEdit`.
-        :param TextEdit textEdit: An edit which is applied to a document when selecting this completion. When an edit is provided the value of `insertText` is ignored.
-                                    Note:* The range of the edit must be a single line range and it must contain the position at which completion
-                                    has been requested.
-        :param TextEdit additionalTextEdits: An optional array of additional text edits that are applied when selecting this completion. 
-                                                Edits must not overlap (including the same insert position) with the main edit nor with themselves.
-                                                Additional text edits should be used to change text unrelated to the current cursor position
-                                                (for example adding an import statement at the top of the file if the completion item will
-                                                insert an unqualified type).
-        :param str commitCharacters: An optional set of characters that when pressed while this completion is active will accept it first and
-                                        then type that character. *Note* that all commit characters should have `length=1` and that superfluous
-                                        characters will be ignored.
-        :param Command command: An optional command that is executed *after* inserting this completion. Note: that
-                                additional modifications to the current document should be described with the additionalTextEdits-property.
-        :param data: An data entry field that is preserved on a completion item between a completion and a completion resolve request.
-        :param float score: Score of the code completion item.
-        """
-        self.label = label
-        self.kind = kind
-        self.detail = detail
-        self.documentation = documentation
-        self.deprecated = deprecated
-        self.preselect = preselect
-        self.sortText = sortText
-        self.filterText = filterText
-        self.insertText = insertText
-        self.insertTextFormat = insertTextFormat
-        self.textEdit = textEdit
-        self.additionalTextEdits = additionalTextEdits
-        self.commitCharacters = commitCharacters
-        self.command = command
-        self.data = data
-        self.score = score
+class CompletionItem(BaseModel):
+    label: str
+    kind: Optional[int] = None
+    detail: Optional[str] = None
+    documentation: Optional[str] = None
+    deprecated: Optional[bool] = None
+    preselect: Optional[bool] = None
+    sortText: Optional[str] = None
+    filterText: Optional[str] = None
+    insertText: Optional[str] = None
+    insertTextFormat: Optional[int] = None
+    textEdit: Optional[TextEdit] = None
+    additionalTextEdits: Optional[TextEdit] = None
+    commitCharacters: Optional[str] = None
+    command: Optional[Command] = None
+    data: Optional[Any] = None
+    score: float = 0.0
 
 
 class CompletionItemKind(enum.Enum):
@@ -396,19 +326,16 @@ class CompletionItemKind(enum.Enum):
     TypeParameter = 25
 
 
-class CompletionList(object):
+class CompletionList(BaseModel):
     """
     Represents a collection of [completion items](#CompletionItem) to be presented in the editor.
+    Constructs a new CompletionContext instance.
+    :param bool isIncomplete: This list it not complete. Further typing should result in recomputing this list.
+    :param CompletionItem items: The completion items.
     """
-    def __init__(self, isIncomplete, items):
-        """
-        Constructs a new CompletionContext instance.
-        
-        :param bool isIncomplete: This list it not complete. Further typing should result in recomputing this list.
-        :param CompletionItem items: The completion items.
-        """
-        self.isIncomplete = isIncomplete
-        self.items = [to_type(i, CompletionItem) for i in items]
+    isIncomplete: bool
+    items: List[CompletionItem]
+
 
 class ErrorCodes(enum.Enum):
     # Defined by JSON RPC

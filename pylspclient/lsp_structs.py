@@ -191,7 +191,7 @@ class TextDocumentPositionParams(BaseModel):
     Position: Position
 
 
-class ParameterInformation(object):
+class ParameterInformation(BaseModel):
     """
     Represents a parameter of a callable-signature. A parameter can
     have a label and a doc-comment.

@@ -187,3 +187,23 @@ class LspClient(object):
                 return lsp_structs.Location(**result_dict)
 
             return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LocationLink(**result) for result in result_dict]
+
+
+    def references(self, textDocument, position, context):
+            """
+            The references request is sent from the client to the server to resolve project-wide references for the
+            symbol denoted by the given text document position.
+
+           :param TextDocumentItem textDocument: The text document.
+           :param Position position: The position inside the text document.
+           :param CompletionContext context: The completion context. This is only available if the client specifies
+                                               to send this using `ClientCapabilities.textDocument.completion.contextSupport === true`
+            """
+            result_dict = self.lsp_endpoint.call_method(
+                "textDocument/references",
+                textDocument=textDocument,
+                position=position,
+                context=context,
+            )
+
+            return [lsp_structs.Location(**result) if "uri" in result else lsp_structs.LocationLink(**result) for result in result_dict]

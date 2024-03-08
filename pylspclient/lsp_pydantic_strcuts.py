@@ -1,6 +1,6 @@
 from typing import Optional, List
 from enum import Enum, IntEnum
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 
 
 class LanguageIdentifier(str, Enum):
@@ -146,3 +146,30 @@ class SymbolInformation(BaseModel):
     deprecated: Optional[bool] = None
     location: Location
     containerName: Optional[str] = None
+
+class TextDocumentPositionParams(BaseModel):
+    """
+    A base class including the text document identifier and a position within that document.
+    """
+    textDocument: TextDocumentIdentifier
+    position: Position
+
+class ReferenceContext(BaseModel):
+    """
+    Additional information about the context of a reference request.
+    """
+    includeDeclaration: bool  # Whether to include the declaration of the symbol being referenced
+
+class ReferenceParams(TextDocumentPositionParams):
+    """
+    Parameters for a Reference Request in the Language Server Protocol.
+    """
+    context: ReferenceContext
+    workDoneToken: Optional[str] = None  # Optional; used for progress reporting
+    partialResultToken: Optional[str] = None  # Optional; used for partial results
+
+class LocationLink(BaseModel):
+    originSelectionRange: Optional[Range]
+    targetUri: HttpUrl
+    targetRange: Range
+    targetSelectionRange: Range

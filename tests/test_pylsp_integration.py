@@ -1,14 +1,21 @@
-import os.path
+from typing import Optional
+from os import path, listdir
 import pytest
 import subprocess
 import threading
 
 import pylspclient
-from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier
+from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range
 
 
 def to_uri(path: str) -> str:
+    if path.startswith("uri://"):
+        return path
     return f"uri://{path}"
+
+
+def from_uri(path: str) -> str:
+    return path.replace("uri://", "").replace("uri:", "")
 
 
 class ReadPipe(threading.Thread):
@@ -43,7 +50,7 @@ DEFAULT_CAPABILITIES = {
         }
     }
 }
-DEFAULT_ROOT = "./tests/test-workspace/"
+DEFAULT_ROOT = path.abspath("./tests/test-workspace/")
 
 
 @pytest.fixture
@@ -89,16 +96,13 @@ def test_initialize(json_rpc: pylspclient.JsonRpcEndpoint):
     lsp_client.exit()
 
 
-def test_type_definition(lsp_client: pylspclient.LspClient):
+def test_document_symbol(lsp_client: pylspclient.LspClient):
     file_path = "lsp_client.py"
-    relative_file_path = os.path.join(DEFAULT_ROOT, file_path)
+    relative_file_path = path.join(DEFAULT_ROOT, file_path)
     uri = to_uri(relative_file_path)
     text = open(relative_file_path, "r").read()
     languageId = LanguageIdentifier.PYTHON
     version = 1
-    # First need to open the file, and then iterate over the docuemnt's symbols
-    symbols = lsp_client.documentSymbol(TextDocumentIdentifier(uri=uri))
-    assert set(symbol.name for symbol in symbols) == set([])
     lsp_client.didOpen(TextDocumentItem(uri=uri, languageId=languageId, version=version, text=text))
     symbols = lsp_client.documentSymbol(TextDocumentIdentifier(uri=uri))
     expected_symbols = [
@@ -120,6 +124,53 @@ def test_type_definition(lsp_client: pylspclient.LspClient):
         'lsp_structs',
         'exit',
         'completion',
-        'documentSymbol'
+        'documentSymbol',
+        'LspEndpoint',
     ]
     assert set(symbol.name for symbol in symbols) == set(expected_symbols)
+
+
+def add_dir(lsp_client: pylspclient.LspClient, root: str):
+    for filename in listdir(root):
+        if filename.endswith(".py"):
+            add_file(lsp_client, path.join(root, filename))
+
+
+def add_file(lsp_client: pylspclient.LspClient, relative_file_path: str):
+    uri = to_uri(relative_file_path)
+    text = open(relative_file_path, "r").read()
+    languageId = LanguageIdentifier.PYTHON
+    version = 1
+    # First need to open the file, and then iterate over the docuemnt's symbols
+    lsp_client.didOpen(TextDocumentItem(uri=uri, languageId=languageId, version=version, text=text))
+
+
+def string_in_text_to_position(text: str, string: str) -> Optional[Position]:
+    for i, line in enumerate(text.splitlines()):
+        char = line.find(string)
+        if char != -1:
+            return Position(line=i, character=char)
+    return None
+
+
+def range_in_text_to_string(text: str, range_: Range) -> Optional[str]:
+    lines = text.splitlines()
+    if range_.start.line == range_.end.line:
+        # Same line
+        return lines[range_.start.line][range_.start.character:range_.end.character]
+    raise NotImplementedError
+
+
+def test_definition(lsp_client: pylspclient.LspClient):
+    add_dir(lsp_client, DEFAULT_ROOT)
+    file_path = "lsp_client.py"
+    relative_file_path = path.join(DEFAULT_ROOT, file_path)
+    uri = to_uri(relative_file_path)
+    file_content = open(relative_file_path, "r").read()
+    position = string_in_text_to_position(file_content, "send_notification")
+    definitions = lsp_client.definition(TextDocumentIdentifier(uri=uri), position)
+    assert len(definitions) == 1
+    result_path = from_uri(definitions[0].uri)
+    result_file_content = open(result_path, "r").read()
+    result_definition = range_in_text_to_string(result_file_content, definitions[0].range)
+    assert result_definition == "send_notification"

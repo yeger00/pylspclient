@@ -1,6 +1,6 @@
 from __future__ import print_function
 import json
-from pylspclient import lsp_structs
+from pylspclient.lsp_errors import ErrorCodes, ResponseError 
 import threading
 
 JSON_RPC_REQ_FORMAT = "Content-Length: {json_string_len}\r\n\r\n{json_string}"
@@ -70,7 +70,7 @@ class JsonRpcEndpoint(object):
                     return None
                 line = line.decode("utf-8")
                 if not line.endswith("\r\n"):
-                    raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.ParseError, "Bad header: missing newline")
+                    raise ResponseError(ErrorCodes.ParseError, "Bad header: missing newline")
                 #remove the "\r\n"
                 line = line[:-2]
                 if line == "":
@@ -79,15 +79,15 @@ class JsonRpcEndpoint(object):
                 elif line.startswith(LEN_HEADER):
                     line = line[len(LEN_HEADER):]
                     if not line.isdigit():
-                        raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.ParseError, "Bad header: size is not int")
+                        raise ResponseError(ErrorCodes.ParseError, "Bad header: size is not int")
                     message_size = int(line)
                 elif line.startswith(TYPE_HEADER):
                     # nothing todo with type for now.
                     pass
                 else:
-                    raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.ParseError, "Bad header: unkown header")
+                    raise ResponseError(ErrorCodes.ParseError, "Bad header: unkown header")
             if not message_size:
-                raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.ParseError, "Bad header: missing size")
+                raise ResponseError(ErrorCodes.ParseError, "Bad header: missing size")
 
             jsonrpc_res = self.stdout.read(message_size).decode("utf-8")
             return json.loads(jsonrpc_res)

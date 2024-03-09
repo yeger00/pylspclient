@@ -5,7 +5,7 @@ import subprocess
 import threading
 
 import pylspclient
-from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range
+from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext
 
 
 def to_uri(path: str) -> str:
@@ -174,3 +174,17 @@ def test_definition(lsp_client: pylspclient.LspClient):
     result_file_content = open(result_path, "r").read()
     result_definition = range_in_text_to_string(result_file_content, definitions[0].range)
     assert result_definition == "send_notification"
+
+
+def test_completion(lsp_client: pylspclient.LspClient):
+    add_dir(lsp_client, DEFAULT_ROOT)
+    file_path = "lsp_client.py"
+    relative_file_path = path.join(DEFAULT_ROOT, file_path)
+    uri = to_uri(relative_file_path)
+    file_content = open(relative_file_path, "r").read()
+    to_complete = "send_"
+    position = string_in_text_to_position(file_content, to_complete + " ")
+    position.character += len(to_complete)
+    context = CompletionContext(triggerKind=CompletionTriggerKind.Invoked)
+    completion_result = lsp_client.completion(TextDocumentIdentifier(uri=uri), position, context)
+    assert all([i.insertText.startswith(to_complete) for i in completion_result.items])

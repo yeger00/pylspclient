@@ -66,7 +66,7 @@ class LspClient(object):
         but before the client is sending any other request or notification to the server. The server can use the initialized notification
         for example to dynamically register capabilities. The initialized notification may only be sent once.
         """
-        self.lsp_endpoint.send_notification("exit")
+        self.lsp_endpoint.send_  # notification("exit")
 
 
     def didOpen(self, textDocument):

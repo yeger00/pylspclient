@@ -1,10 +1,9 @@
 from typing import Optional
 
 from pydantic import ValidationError
-from pylspclient import lsp_structs
 from pylspclient.lsp_endpoint import LspEndpoint
 from pylspclient.lsp_pydantic_strcuts import TextDocumentItem, TextDocumentIdentifier, DocumentSymbol, SymbolInformation, LocationLink, Location
-from pylspclient.lsp_pydantic_strcuts import Position
+from pylspclient.lsp_pydantic_strcuts import Position, SignatureHelp, CompletionContext, CompletionItem, CompletionList
 
 class LspClient(object):
     def __init__(self, lsp_endpoint: LspEndpoint):
@@ -89,10 +88,10 @@ class LspClient(object):
 
         :param TextDocumentItem textDocument: The document that was opened.
         """
-        return self.lsp_endpoint.send_notification("textDocument/didOpen", textDocument=textDocument)
+        self.lsp_endpoint.send_notification("textDocument/didOpen", textDocument=textDocument)
     
     
-    def didChange(self, textDocument, contentChanges):
+    def didChange(self, textDocument: TextDocumentItem, contentChanges):
         """
         The document change notification is sent from the client to the server to signal changes to a text document. 
         In 2.0 the shape of the params has changed to include proper version numbers and language ids.
@@ -134,7 +133,13 @@ class LspClient(object):
         return [Location.parse_obj(result) for result in result_dict]
 
 
-    def signatureHelp(self, textDocument, position):
+    def signatureHelp(
+        self,
+        textDocument: TextDocumentIdentifier,
+        position: Position,
+        workDoneToken: Optional[str] = None,
+        partialResultToken: Optional[str] = None
+    ) -> SignatureHelp:
             """
             The signature help request is sent from the client to the server to request signature information at a given cursor position.            
 
@@ -142,23 +147,28 @@ class LspClient(object):
             :param Position position: The position inside the text document.
             """
             result_dict = self.lsp_endpoint.call_method("textDocument/signatureHelp", textDocument=textDocument, position=position)
-            return lsp_structs.SignatureHelp(**result_dict)
+            return SignatureHelp.parse_obj(result_dict)
 
 
-    def completion(self, textDocument, position, context):
+    def completion(
+        self,
+        textDocument: TextDocumentIdentifier,
+        position: Position,
+        context: CompletionContext
+    ) -> CompletionItem | CompletionList:
             """
             The signature help request is sent from the client to the server to request signature information at a given cursor position.            
 
             :param TextDocumentItem textDocument: The text document.
             :param Position position: The position inside the text document.
             :param CompletionContext context: The completion context. This is only available if the client specifies 
-                                                to send this using `ClientCapabilities.textDocument.completion.contextSupport === true`
+                                 CompletionContext               to send this using `ClientCapabilities.textDocument.completion.contextSupport === true`
             """
             result_dict = self.lsp_endpoint.call_method("textDocument/completion", textDocument=textDocument, position=position, context=context)
             if "isIncomplete" in result_dict:
-                return lsp_structs.CompletionList(**result_dict)
+                return CompletionList.parse_obj(result_dict)
             
-            return [lsp_structs.CompletionItem(**result) for result in result_dict]
+            return [CompletionItem.parse_obj(result) for result in result_dict]
     
     
     def declaration(

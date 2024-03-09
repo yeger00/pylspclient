@@ -51,7 +51,7 @@ def test_recv_wrong_header():
     json_rpc_endpoint = pylspclient.JsonRpcEndpoint(None, pipein)
     pipeout.write('Contentength: 40\r\n\r\n{"key_str": "some_string", "key_num": 1}'.encode("utf-8"))
     pipeout.flush()
-    with pytest.raises(pylspclient.lsp_structs.ResponseError):
+    with pytest.raises(pylspclient.lsp_errors.ResponseError):
         result = json_rpc_endpoint.recv_response()
         print("should never get here", result)
 
@@ -63,7 +63,7 @@ def test_recv_missing_size():
     json_rpc_endpoint = pylspclient.JsonRpcEndpoint(None, pipein)
     pipeout.write('Content-Type: 40\r\n\r\n{"key_str": "some_string", "key_num": 1}'.encode("utf-8"))
     pipeout.flush()
-    with pytest.raises(pylspclient.lsp_structs.ResponseError):
+    with pytest.raises(pylspclient.lsp_errors.ResponseError):
         result = json_rpc_endpoint.recv_response()
         print("should never get here", result)
 

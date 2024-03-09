@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Union
 from enum import Enum, IntEnum
 from pydantic import BaseModel, HttpUrl
 
@@ -119,7 +119,7 @@ class SymbolKind(IntEnum):
     Operator = 25
     TypeParameter = 26
 
-class SymbolTag(Enum):
+class SymbolTag(IntEnum):
     """Represents additional information about the symbol."""
     # Define the symbol tags as per your specification, for example:
     Deprecated = 1
@@ -173,3 +173,70 @@ class LocationLink(BaseModel):
     targetUri: HttpUrl
     targetRange: Range
     targetSelectionRange: Range
+
+class SignatureInformation(BaseModel):
+    label: str
+    documentation: Optional[Union[str, dict]] = None
+    parameters: Optional[List[dict]] = None
+
+class SignatureHelp(BaseModel):
+    signatures: List[SignatureInformation]
+    activeSignature: Optional[int] = None
+    activeParameter: Optional[int] = None
+
+class CompletionTriggerKind(IntEnum):
+    """
+    Specifies how the completion was triggered.
+    """
+    Invoked = 1  # Completion was triggered by typing an identifier, manual invocation, etc.
+    TriggerCharacter = 2  # Completion was triggered by a trigger character.
+    TriggerForIncompleteCompletions = 3  # Completion was re-triggered as the current completion list is incomplete.
+
+class CompletionContext(BaseModel):
+    """
+    Contains additional information about the context in which a completion request is triggered.
+    """
+    triggerKind: CompletionTriggerKind
+    triggerCharacter: Optional[str] = None  # Character that triggered the completion request.
+
+class CompletionItemKind(IntEnum):
+    """
+    Defines the kind of completion item.
+    """
+    Text = 1
+    Method = 2
+    Function = 3
+    Constructor = 4
+    Field = 5
+    Variable = 6
+    Class = 7
+    Interface = 8
+    Module = 9
+    Property = 10
+    Unit = 11
+    Value = 12
+    Enum = 13
+    Keyword = 14
+    Snippet = 15
+    Color = 16
+    File = 17
+    Reference = 18
+    Folder = 19
+    EnumMember = 20
+    Constant = 21
+    Struct = 22
+    Event = 23
+    Operator = 24
+    TypeParameter = 25
+
+class CompletionItem(BaseModel):
+    label: str
+    kind: Optional[CompletionItemKind] = None
+    detail: Optional[str] = None
+    documentation: Optional[Union[str, dict]] = None
+    insertText: Optional[str] = None
+    insertTextFormat: Optional[int] = None  # 1: PlainText, 2: Snippet
+
+class CompletionList(BaseModel):
+    isIncomplete: bool
+    items: List[CompletionItem]

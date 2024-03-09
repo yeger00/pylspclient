@@ -1,6 +1,6 @@
 from __future__ import print_function
 import threading
-from pylspclient import lsp_structs
+from pylspclient.lsp_errors import ErrorCodes, ResponseError
 
 
 class LspEndpoint(threading.Thread):
@@ -45,7 +45,7 @@ class LspEndpoint(threading.Thread):
                     if rpc_id:
                         # a call for method
                         if method not in self.method_callbacks:
-                            raise lsp_structs.ResponseError(lsp_structs.ErrorCodes.MethodNotFound, "Method not found: {method}".format(method=method))
+                            raise ResponseError(ErrorCodes.MethodNotFound, "Method not found: {method}".format(method=method))
                         result = self.method_callbacks[method](params)
                         self.send_response(rpc_id, result, None)
                     else:
@@ -57,7 +57,7 @@ class LspEndpoint(threading.Thread):
                             self.notify_callbacks[method](params)
                 else:
                     self.handle_result(rpc_id, result, error)
-            except lsp_structs.ResponseError as e:
+            except ResponseError as e:
                 self.send_response(rpc_id, None, e)
 
 
@@ -101,7 +101,7 @@ class LspEndpoint(threading.Thread):
         self.event_dict.pop(current_id)
         result, error = self.response_dict.pop(current_id)
         if error:
-            raise lsp_structs.ResponseError(error.get("code"), error.get("message"), error.get("data"))
+            raise ResponseError(error.get("code"), error.get("message"), error.get("data"))
         return result
 
 

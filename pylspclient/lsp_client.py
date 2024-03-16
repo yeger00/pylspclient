@@ -155,7 +155,7 @@ class LspClient(object):
         textDocument: TextDocumentIdentifier,
         position: Position,
         context: CompletionContext
-    ) -> CompletionItem | CompletionList:
+    ) -> list[CompletionItem] | CompletionList:
             """
             The signature help request is sent from the client to the server to request signature information at a given cursor position.            
 

@@ -1,18 +1,10 @@
 from __future__ import print_function
 import threading
 from pylspclient.lsp_errors import ErrorCodes, ResponseError
-from pylspclient import JsonRpcEndpoint
-from typing import Dict, Callable, Any, Union
 
 
 class LspEndpoint(threading.Thread):
-    def __init__(
-            self,
-            json_rpc_endpoint: JsonRpcEndpoint,
-            method_callbacks: Dict[str, Callable[[Any], Any]]={},
-            notify_callbacks: Dict[str, Callable[[Any], Any]]={},
-            timeout: int=2
-        ):
+    def __init__(self, json_rpc_endpoint, method_callbacks={}, notify_callbacks={}, timeout=2):
         threading.Thread.__init__(self)
         self.json_rpc_endpoint = json_rpc_endpoint
         self.notify_callbacks = notify_callbacks
@@ -32,7 +24,7 @@ class LspEndpoint(threading.Thread):
         cond.release()
 
 
-    def stop(self) -> None:
+    def stop(self):
         self.shutdown_flag = True
 
 
@@ -43,11 +35,11 @@ class LspEndpoint(threading.Thread):
                 if jsonrpc_message is None:
                     print("server quit")
                     break
-                method: str = jsonrpc_message.get("method")
-                result: any = jsonrpc_message.get("result")
-                error: dict = jsonrpc_message.get("error")
-                rpc_id: Union[str, int] = jsonrpc_message.get("id")
-                params: Union[dict, list] = jsonrpc_message.get("params")
+                method = jsonrpc_message.get("method")
+                result = jsonrpc_message.get("result")
+                error = jsonrpc_message.get("error")
+                rpc_id = jsonrpc_message.get("id")
+                params = jsonrpc_message.get("params")
 
                 if method:
                     if rpc_id:
@@ -80,7 +72,7 @@ class LspEndpoint(threading.Thread):
         self.json_rpc_endpoint.send_request(message_dict)
 
 
-    def send_message(self, method_name: str, params: dict, id: int=None):
+    def send_message(self, method_name, params, id = None):
         message_dict = {}
         message_dict["jsonrpc"] = "2.0"
         if id is not None:

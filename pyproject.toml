@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pylspclient"
-version = "0.1.1"
+version = "0.1.2"
 description = "LSP client implementation in Python"
 authors = ["yeger00 <yeger00@gmail.com>"]
 readme = "docs/README.md"
@@ -8,12 +8,14 @@ readme = "docs/README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 pydantic = "^2.5.2"
+mypy = "^1.9.0"
 
 [tool.poetry.group.tests]
 optional = true
 
 [tool.poetry.group.tests.dependencies]
 ruff = "^0.1.6"
+mypy = "^1.9.0"
 pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
 python-lsp-server = "^1.9.0"

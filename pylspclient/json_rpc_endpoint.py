@@ -2,7 +2,6 @@ from __future__ import print_function
 import json
 from pylspclient.lsp_errors import ErrorCodes, ResponseError 
 import threading
-from typing import BinaryIO
 
 JSON_RPC_REQ_FORMAT = "Content-Length: {json_string_len}\r\n\r\n{json_string}"
 LEN_HEADER = "Content-Length: "
@@ -16,7 +15,7 @@ class MyEncoder(json.JSONEncoder):
     """
     Encodes an object in JSON
     """
-    def default(self, o: object): # pylint: disable=E0202
+    def default(self, o): # pylint: disable=E0202
         return o.__dict__ 
 
 
@@ -25,14 +24,14 @@ class JsonRpcEndpoint(object):
     Thread safe JSON RPC endpoint implementation. Responsible to recieve and send JSON RPC messages, as described in the
     protocol. More information can be found: https://www.jsonrpc.org/
     '''
-    def __init__(self, stdin: BinaryIO, stdout: BinaryIO):
+    def __init__(self, stdin, stdout):
         self.stdin = stdin
         self.stdout = stdout
         self.read_lock = threading.Lock() 
         self.write_lock = threading.Lock() 
 
     @staticmethod
-    def __add_header(json_string: str) -> str:
+    def __add_header(json_string):
         '''
         Adds a header for the given json string
         
@@ -42,7 +41,7 @@ class JsonRpcEndpoint(object):
         return JSON_RPC_REQ_FORMAT.format(json_string_len=len(json_string), json_string=json_string)
 
 
-    def send_request(self, message: any) -> None:
+    def send_request(self, message):
         '''
         Sends the given message.
 
@@ -55,7 +54,7 @@ class JsonRpcEndpoint(object):
             self.stdin.flush()
 
 
-    def recv_response(self) -> any:
+    def recv_response(self):
         '''        
         Recives a message.
 

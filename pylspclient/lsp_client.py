@@ -190,7 +190,11 @@ class LspClient(object):
             if "uri" in result_dict:
                 return Location.parse_obj(result_dict)
 
-            return [Location.parse_obj(result) if "uri" in result else LocationLink.parse_obj(result) for result in result_dict]
+            try:
+                return [Location.parse_obj(result) for result in result_dict]
+            except ValidationError:
+                return [LocationLink.parse_obj(result) for result in result_dict]
+
    
 
     def definition(
@@ -214,4 +218,7 @@ class LspClient(object):
             if "uri" in result_dict:
                 return Location.parse_obj(result_dict)
 
-            return [Location.parse_obj(result) if "uri" in result else LocationLink.parse_obj(result) for result in result_dict]
+            try:
+                return [Location.parse_obj(result) for result in result_dict]
+            except ValidationError:
+                return [LocationLink.parse_obj(result) for result in result_dict]

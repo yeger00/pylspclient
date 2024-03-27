@@ -7,6 +7,7 @@ build:
 lint:
 	poetry install --no-interaction --no-root --with tests
 	poetry run ruff check .
+	poetry run mypy pylspclient
 
 test:
 	poetry install --no-interaction --no-root --with tests

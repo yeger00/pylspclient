@@ -1,6 +1,5 @@
-#from __future__ import absolute_import
-
-__all__ = []
+from typing import Any
+__all__: list[Any] = []
 
 from pylspclient.json_rpc_endpoint import JsonRpcEndpoint
 from pylspclient.lsp_client import LspClient

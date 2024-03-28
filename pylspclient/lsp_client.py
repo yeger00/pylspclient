@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import ValidationError
 from pylspclient.lsp_endpoint import LspEndpoint
@@ -15,7 +15,16 @@ class LspClient(object):
         self.lsp_endpoint = lsp_endpoint
 
 
-    def initialize(self, processId, rootPath, rootUri, initializationOptions, capabilities, trace, workspaceFolders):
+    def initialize(
+        self,
+        processId: Optional[int] = None,
+        rootPath: Optional[str] = None,
+        rootUri: Optional[str] = None,
+        initializationOptions: Optional[Any] = None,
+        capabilities: Optional[dict] = None,
+        trace: Optional[str] = None,
+        workspaceFolders: Optional[list] = None,
+    ):
         """
         The initialize request is sent as the first request from the client to the server. If the server receives a request or notification 
         before the initialize request it should act as follows:
@@ -33,7 +42,7 @@ class LspClient(object):
         :param int processId: The process Id of the parent process that started the server. Is null if the process has not been started by another process.
                                 If the parent process is not alive then the server should exit (see exit notification) its process.
         :param str rootPath: The rootPath of the workspace. Is null if no folder is open. Deprecated in favour of rootUri.
-        :param DocumentUri rootUri: The rootUri of the workspace. Is null if no folder is open. If both `rootPath` and `rootUri` are set
+        :param str rootUri: The rootUri of the workspace. Is null if no folder is open. If both `rootPath` and `rootUri` are set
                                     `rootUri` wins.
         :param any initializationOptions: User provided initialization options.
         :param ClientCapabilities capabilities: The capabilities provided by the client (editor or tool).
@@ -41,6 +50,8 @@ class LspClient(object):
         :param list workspaceFolders: The workspace folders configured in the client when the server starts. This property is only available if the client supports workspace folders.
                                         It can be `null` if the client supports workspace folders but none are configured.
         """
+        if capabilities is None:
+             raise ValueError("capabilities is required")
         self.lsp_endpoint.start()
         return self.lsp_endpoint.call_method("initialize", processId=processId, rootPath=rootPath, rootUri=rootUri, initializationOptions=initializationOptions, capabilities=capabilities, trace=trace, workspaceFolders=workspaceFolders)
 

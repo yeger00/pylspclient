@@ -50,6 +50,8 @@ class LspClient(object):
         :param list workspaceFolders: The workspace folders configured in the client when the server starts. This property is only available if the client supports workspace folders.
                                         It can be `null` if the client supports workspace folders but none are configured.
         """
+        if capabilities is None:
+             raise ValueError("capabilities is required")
         self.lsp_endpoint.start()
         return self.lsp_endpoint.call_method("initialize", processId=processId, rootPath=rootPath, rootUri=rootUri, initializationOptions=initializationOptions, capabilities=capabilities, trace=trace, workspaceFolders=workspaceFolders)
 

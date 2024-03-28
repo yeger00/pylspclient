@@ -1,22 +1,37 @@
 from __future__ import print_function
 import threading
 from pylspclient.lsp_errors import ErrorCodes, ResponseError
+from pylspclient import JsonRpcEndpoint
+from typing import Any, Dict, Callable, Union, Optional, Tuple, TypeAlias, TypedDict
+
+ResultType: TypeAlias = Optional[Dict[str, Any]]
+
+class ErrorType(TypedDict):
+    code: ErrorCodes
+    message: str
+    data: Optional[Any]
 
 
 class LspEndpoint(threading.Thread):
-    def __init__(self, json_rpc_endpoint, method_callbacks={}, notify_callbacks={}, timeout=2):
+    def __init__(
+            self,
+            json_rpc_endpoint: JsonRpcEndpoint,
+            method_callbacks: Dict[str, Callable[[Any], Any]] = {},
+            notify_callbacks: Dict[str, Callable[[Any], Any]] = {},
+            timeout: int = 2
+        ):
         threading.Thread.__init__(self)
         self.json_rpc_endpoint = json_rpc_endpoint
         self.notify_callbacks = notify_callbacks
         self.method_callbacks = method_callbacks
-        self.event_dict = {}
-        self.response_dict = {}
-        self.next_id = 0
-        self._timeout = timeout
-        self.shutdown_flag = False
+        self.event_dict: dict = {}
+        self.response_dict: Dict[Union[str, int], Tuple[ResultType, ErrorType]] = {}
+        self.next_id: int = 0
+        self._timeout: int = timeout
+        self.shutdown_flag: bool = False
 
 
-    def handle_result(self, rpc_id, result, error):
+    def handle_result(self, rpc_id: Union[str, int], result: ResultType, error: ErrorType):
         self.response_dict[rpc_id] = (result, error)
         cond = self.event_dict[rpc_id]
         cond.acquire()
@@ -24,11 +39,11 @@ class LspEndpoint(threading.Thread):
         cond.release()
 
 
-    def stop(self):
+    def stop(self) -> None:
         self.shutdown_flag = True
 
 
-    def run(self):
+    def run(self) -> None:
         while not self.shutdown_flag:
             try:
                 jsonrpc_message = self.json_rpc_endpoint.recv_response()
@@ -61,8 +76,8 @@ class LspEndpoint(threading.Thread):
                 self.send_response(rpc_id, None, e)
 
 
-    def send_response(self, id, result, error):
-        message_dict = {}
+    def send_response(self, id: Union[str, int, None], result: Any = None, error: Optional[Exception] = None) -> None:
+        message_dict: dict = {}
         message_dict["jsonrpc"] = "2.0"
         message_dict["id"] = id
         if result:
@@ -72,8 +87,8 @@ class LspEndpoint(threading.Thread):
         self.json_rpc_endpoint.send_request(message_dict)
 
 
-    def send_message(self, method_name, params, id = None):
-        message_dict = {}
+    def send_message(self, method_name: str, params: dict, id = None) -> None:
+        message_dict: dict = {}
         message_dict["jsonrpc"] = "2.0"
         if id is not None:
             message_dict["id"] = id
@@ -82,7 +97,7 @@ class LspEndpoint(threading.Thread):
         self.json_rpc_endpoint.send_request(message_dict)
 
 
-    def call_method(self, method_name, **kwargs):
+    def call_method(self, method_name: str, **kwargs) -> Any:
         current_id = self.next_id
         self.next_id += 1
         cond = threading.Condition()
@@ -101,9 +116,9 @@ class LspEndpoint(threading.Thread):
         self.event_dict.pop(current_id)
         result, error = self.response_dict.pop(current_id)
         if error:
-            raise ResponseError(error.get("code"), error.get("message"), error.get("data"))
+            raise ResponseError(error["code"], error["message"], error.get("data"))
         return result
 
 
-    def send_notification(self, method_name, **kwargs):
+    def send_notification(self, method_name: str, **kwargs):
         self.send_message(method_name, kwargs)

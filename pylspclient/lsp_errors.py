@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 from enum import IntEnum
 
 
@@ -20,7 +20,7 @@ class ErrorCodes(IntEnum):
 
 
 class ResponseError(Exception):
-    def __init__(self, code: ErrorCodes, message: str, data: Any = None):
+    def __init__(self, code: ErrorCodes, message: str, data: Optional[Any] = None):
         self.code = code
         self.message = message
         if data:

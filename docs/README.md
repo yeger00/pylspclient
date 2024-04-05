@@ -3,7 +3,7 @@
 [![Test Package](https://github.com/yeger00/pylspclient/actions/workflows/test-pkg.yml/badge.svg)](https://github.com/yeger00/pylspclient/actions/workflows/test-pkg.yml)
 [![image](https://img.shields.io/github/license/python-ls/python-ls.svg)](https://github.com/yeger00/pylspclient/blob/main/LICENSE)
 
-A Python 3.10+ implemntation of a [LSP](https://microsoft.github.io/language-server-protocol/) client.
+A Python 3.10+ implementation of a [LSP](https://microsoft.github.io/language-server-protocol/) client.
 
 
 # What is LSP?

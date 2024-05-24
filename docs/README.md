@@ -2,6 +2,7 @@
 [![image](https://img.shields.io/pypi/v/pylspclient.svg)](https://pypi.org/project/pylspclient/)
 [![Test Package](https://github.com/yeger00/pylspclient/actions/workflows/test-pkg.yml/badge.svg)](https://github.com/yeger00/pylspclient/actions/workflows/test-pkg.yml)
 [![image](https://img.shields.io/github/license/python-ls/python-ls.svg)](https://github.com/yeger00/pylspclient/blob/main/LICENSE)
+[![image](https://blanket-d37ae43238cc.herokuapp.com/badge?repo_name=yeger00/pylspclient)](https://blanket-d37ae43238cc.herokuapp.com/?repo_name=yeger00/pylspclient)
 
 A Python 3.10+ implementation of a [LSP](https://microsoft.github.io/language-server-protocol/) client.
 

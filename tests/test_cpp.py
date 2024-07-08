@@ -24,3 +24,8 @@ def test_client_init():
     assert (len(ss) > 0)
     for i in ss:
         print(i)
+
+    s3 = client.get_document_symbol(file)
+
+    for s in s3:
+        print(s.name,s.kind)

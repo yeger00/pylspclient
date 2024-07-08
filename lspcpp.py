@@ -3,7 +3,8 @@ import json
 import pylspclient
 import threading
 from os import path
-from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext
+from pylspclient import LspClient, LspEndpoint
+from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation
 
 DEFAULT_CAPABILITIES = {
     'textDocument': {
@@ -37,6 +38,17 @@ def to_file(path: str) -> str:
     return f"file://{path}"
 
 
+class LspClient2(LspClient):
+
+    def __init__(self, lsp_endpoint: LspEndpoint):
+        """
+
+        Args:
+            lsp_endpoint: 
+        """
+        LspClient.__init__(self, lsp_endpoint)
+
+
 class project_config:
     data_path: None | str
     DEFAULT_ROOT: None | str
@@ -47,11 +59,12 @@ class project_config:
 
 
 class lspcppclient:
+    lsp_client: LspClient2
 
     def __init__(self, config: project_config,
                  json_rpc_endpoint: pylspclient.JsonRpcEndpoint) -> None:
-        lsp_endpoint = pylspclient.LspEndpoint(json_rpc_endpoint)
-        lsp_client = pylspclient.LspClient(lsp_endpoint)
+        lsp_endpoint = LspEndpoint(json_rpc_endpoint)
+        lsp_client = LspClient2(lsp_endpoint)
         process_id = None
         root_path = None
         assert (config.DEFAULT_ROOT != None)
@@ -68,7 +81,7 @@ class lspcppclient:
                                                     initialization_options,
                                                     capabilities, trace,
                                                     workspace_folders)
-        print(json.dumps(initialize_response,indent=4))
+        print(json.dumps(initialize_response, indent=4))
         if initialize_response['serverInfo']['name'] != 'clangd':
             raise RuntimeError("failed to initialize lsp_client")
         lsp_client.initialized()
@@ -77,6 +90,12 @@ class lspcppclient:
 
     def close(self):
         self.lsp_client.exit()
+
+    def get_document_symbol(
+            self, file: str) -> list[DocumentSymbol] | list[SymbolInformation]:
+        x = TextDocumentIdentifier(uri=to_file(file))
+        symbol = self.lsp_client.documentSymbol(x)
+        return symbol
 
     def get_symbol(self, file):
         uri = to_file(file)
@@ -133,6 +152,11 @@ if __name__ == "__main__":
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     ss = client.get_symbol(file)
+    assert (len(ss) > 0)
+    for i in ss:
+        print(i.name, i.kind)
+
+    ss = client.get_document_symbol(file)
     assert (len(ss) > 0)
     for i in ss:
         print(i.name, i.kind)

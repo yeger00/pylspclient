@@ -1,9 +1,13 @@
 import lspcpp
 from os import path
+
 DEFAULT_ROOT = "/home/z/dev/lsp/pylspclient/tests/test-workspace"
+
+
 def test_client_init():
     lspcppserver = lspcpp.lspcppserver()
     cfg = lspcpp.project_config()
-    cfg.DEFAULT_ROOT=DEFAULT_ROOT
+    cfg.DEFAULT_ROOT = DEFAULT_ROOT
+    cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = lspcppserver.newclient(cfg)
-    assert(client !=None)
+    assert (client != None)

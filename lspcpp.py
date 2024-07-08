@@ -34,12 +34,14 @@ def to_file(path: str) -> str:
         return path
     return f"file://{path}"
 
-
 class project_config:
+    data_path: None | str
     DEFAULT_ROOT: None | str
 
     def __init__(self) -> None:
         self.DEFAULT_ROOT = None
+        self.data_path = None
+
 
 
 class lspcppclient:
@@ -52,8 +54,12 @@ class lspcppclient:
         root_path = None
         assert (config.DEFAULT_ROOT != None)
         root_uri = to_file(config.DEFAULT_ROOT)
-        initialization_options = None
+        data_path = config.data_path
+        initialization_options = {
+            "compilationDatabasePath": data_path
+        } if data_path != None else None
         capabilities = DEFAULT_CAPABILITIES
+        capabilities[""]
         trace = "off"
         workspace_folders = None
         initialize_response = lsp_client.initialize(process_id, root_path,

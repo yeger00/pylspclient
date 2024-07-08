@@ -1,6 +1,6 @@
 import lspcpp
 from os import path
-DEFAULT_ROOT = path.abspath("./tests/test-workspace/")
+DEFAULT_ROOT = "/home/z/dev/lsp/pylspclient/tests/test-workspace"
 def test_client_init():
     lspcppserver = lspcpp.lspcppserver()
     cfg = lspcpp.project_config()

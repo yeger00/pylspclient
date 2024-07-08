@@ -1,5 +1,6 @@
 import subprocess
 import json
+from typing import List
 
 from annotated_types import LowerCase
 from pydantic import BaseModel
@@ -20,6 +21,32 @@ DEFAULT_CAPABILITIES = {
         }
     }
 }
+
+
+class SymbolClass:
+    sym: SymbolInformation
+    members: list['SymbolClass']
+
+    def __init__(self, sym: SymbolInformation) -> None:
+        self.sym = sym
+        self.members = []
+
+    def find_members(self, syms: list[SymbolInformation]):
+        yes = self.sym.kind == SymbolKind.Class or self.sym.kind == SymbolKind.Struct
+        if yes==False:
+            return syms 
+        while len(syms):
+            s = syms[0]
+            if s.kind == SymbolKind.Method or s.kind==SymbolKind.Constructor:
+                self.members.append(SymbolClass(s))
+                syms=syms[1:]
+            elif s.kind == SymbolKind.Field:
+                s1 = SymbolClass(s)
+                self.members.append(s1)
+                syms = s1.find_members(syms[1:])
+            else:
+                return syms
+        return syms
 
 
 class ReadPipe(threading.Thread):
@@ -96,9 +123,8 @@ class SymbolParser:
         with open(from_file(self.location.uri), "r") as fp:
             lines = fp.readlines()
             line = lines[self.location.range.start.line]
-            self.symbol_col = line[
-                self.location.range.start.character:].index(
-                    self.name) + self.location.range.start.character
+            self.symbol_col = line[self.location.range.start.character:].index(
+                self.name) + self.location.range.start.character
 
 
 class LspClient2(LspClient):
@@ -229,8 +255,22 @@ class lspcppclient:
     def close(self):
         self.lsp_client.exit()
 
-    def get_document_symbol(
-            self, file: str) -> list[DocumentSymbol] | list[SymbolInformation]:
+    def get_class_symbol(self, file):
+        ret=[]
+        symbols = self.get_document_symbol(file)
+        while len(symbols):
+            s = symbols[0]
+            if s.kind == SymbolKind.Class or s.kind==SymbolKind.Struct:
+                s1 = SymbolClass(s)
+                symbols = s1.find_members(symbols[1:])
+                ret.append(s1)
+            else:
+                s1 = SymbolClass(s)
+                ret.append(s1)
+                symbols=symbols[1:]
+        return ret
+
+    def get_document_symbol(self, file: str) -> list[SymbolInformation]:
         x = TextDocumentIdentifier(uri=to_file(file))
         symbol = self.lsp_client.documentSymbol(x)
         return symbol
@@ -245,7 +285,7 @@ class lspcppclient:
     def get_reference(self, file, col: int, line: int) -> list[Location]:
         return self.lsp_client.references(file, col, line)
 
-    def get_symbol(self, file):
+    def open_file(self, file):
         uri = to_file(file)
         relative_file_path = file
         import os
@@ -259,9 +299,6 @@ class lspcppclient:
                              languageId=LanguageIdentifier.CPP,
                              version=version,
                              text=text))
-        symbols = self.lsp_client.documentSymbol(
-            TextDocumentIdentifier(uri=uri))
-        return symbols
 
 
 class lspcppserver:
@@ -286,10 +323,10 @@ DEFAULT_ROOT = path.abspath("./tests/test-workspace/cpp")
 
 class lspcpp:
 
-    def __init__(self) -> None:
+    def __init__(self, default_root) -> None:
         self.serv = lspcppserver()
         config = project_config()
-        config.DEFAULT_ROOT = DEFAULT_ROOT
+        config.DEFAULT_ROOT = default_root
         self.client = self.serv.newclient(config)
         pass
 
@@ -301,9 +338,9 @@ if __name__ == "__main__":
     # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
-    lines = open(file, "r").readlines()
-    ss = client.get_symbol(file)
-    # assert (len(ss) > 0)
+    client.open_file(file)
+    ss = client.get_document_symbol(file)
+    sssss=client.get_class_symbol(file)
     for i in ss:
         if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
             sss = client.get_symbol_reference(i)

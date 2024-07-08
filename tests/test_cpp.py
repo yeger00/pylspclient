@@ -23,7 +23,7 @@ def test_client_symbol():
     cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = lspcppserver.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
-    ss = client.get_symbol(file)
+    ss = client.open_file(file)
     assert (len(ss) > 0)
     for i in ss:
         print(i)
@@ -42,7 +42,7 @@ def test_client_reference():
     # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
-    ss = client.get_symbol(file)
+    ss = client.open_file(file)
     assert (len(ss) > 0)
     for i in ss:
         if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
@@ -60,7 +60,7 @@ def test_client_prepare():
     # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
-    ss = client.get_symbol(file)
+    ss = client.open_file(file)
     assert (len(ss) > 0)
     for i in ss:
         if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:

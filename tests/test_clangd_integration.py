@@ -8,10 +8,17 @@ import pylspclient
 from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext
 
 
+def to_file(path: str) -> str:
+    if path.startswith("file://"):
+        return path
+    return f"file://{path}"
 def to_uri(path: str) -> str:
     if path.startswith("uri://"):
         return path
     return f"uri://{path}"
+
+def from_file(path: str) -> str:
+    return path.replace("file://", "").replace("file:", "")
 
 
 def from_uri(path: str) -> str:
@@ -65,7 +72,7 @@ def lsp_client(json_rpc: pylspclient.JsonRpcEndpoint) -> pylspclient.LspClient:
     lsp_client = pylspclient.LspClient(lsp_endpoint)
     process_id = None
     root_path = None
-    root_uri = to_uri(DEFAULT_ROOT)
+    root_uri = to_file(DEFAULT_ROOT)
     initialization_options = None
     capabilities = DEFAULT_CAPABILITIES
     trace = "off"
@@ -99,7 +106,7 @@ def test_initialize(json_rpc: pylspclient.JsonRpcEndpoint):
 def test_document_symbol(lsp_client: pylspclient.LspClient):
     file_path = "test_main.cpp"
     relative_file_path = path.join(DEFAULT_ROOT, file_path)
-    uri = to_uri(relative_file_path)
+    uri = to_file(relative_file_path)
     text = open(relative_file_path, "r").read()
     languageId = LanguageIdentifier.CPP
     version = 1
@@ -112,12 +119,12 @@ def test_document_symbol(lsp_client: pylspclient.LspClient):
 
 def add_dir(lsp_client: pylspclient.LspClient, root: str):
     for filename in listdir(root):
-        if filename.endswith(".py"):
+        if filename.endswith(".cpp"):
             add_file(lsp_client, path.join(root, filename))
 
 
 def add_file(lsp_client: pylspclient.LspClient, relative_file_path: str):
-    uri = to_uri(relative_file_path)
+    uri = to_file(relative_file_path)
     text = open(relative_file_path, "r").read()
     languageId = LanguageIdentifier.CPP
     version = 1
@@ -145,12 +152,12 @@ def test_definition(lsp_client: pylspclient.LspClient):
     add_dir(lsp_client, DEFAULT_ROOT)
     file_path = "test_main.cpp"
     relative_file_path = path.join(DEFAULT_ROOT, file_path)
-    uri = to_uri(relative_file_path)
+    uri = to_file(relative_file_path)
     file_content = open(relative_file_path, "r").read()
     position = string_in_text_to_position(file_content, "send_notification")
     definitions = lsp_client.definition(TextDocumentIdentifier(uri=uri), position)
     assert len(definitions) == 1
-    result_path = from_uri(definitions[0].uri)
+    result_path = from_file(definitions[0].uri)
     result_file_content = open(result_path, "r").read()
     result_definition = range_in_text_to_string(result_file_content, definitions[0].range)
     assert result_definition == "send_notification"
@@ -160,7 +167,7 @@ def test_completion(lsp_client: pylspclient.LspClient):
     add_dir(lsp_client, DEFAULT_ROOT)
     file_path = "test_main.cpp"
     relative_file_path = path.join(DEFAULT_ROOT, file_path)
-    uri = to_uri(relative_file_path)
+    uri = to_file(relative_file_path)
     file_content = open(relative_file_path, "r").read()
     to_complete = "send_"
     position = string_in_text_to_position(file_content, to_complete + " ")

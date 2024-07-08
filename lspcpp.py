@@ -1,6 +1,7 @@
 import subprocess
 import json
 
+from annotated_types import LowerCase
 from pydantic import BaseModel
 import pylspclient
 import threading
@@ -30,7 +31,7 @@ class ReadPipe(threading.Thread):
     def run(self):
         line = self.pipe.readline().decode('utf-8')
         while line:
-            print('pipe:', line)
+            # print('pipe:', line)
             line = self.pipe.readline().decode('utf-8')
 
 
@@ -83,8 +84,10 @@ class PrepareReturn(BaseModel):
         return ret
 
 
-class SymbolParser(SymbolInformation):
-    symbol_begin :int = -1
+class SymbolParser:
+    symbol_col: int = -1
+    location: Location
+
     def __init__(self, sym: SymbolInformation):
         self.name = sym.name
         self.location = sym.location
@@ -93,10 +96,9 @@ class SymbolParser(SymbolInformation):
         with open(from_file(self.location.uri), "r") as fp:
             lines = fp.readlines()
             line = lines[self.location.range.start.line]
-            self.symbol_begin = line[
+            self.symbol_col = line[
                 self.location.range.start.character:].index(
                     self.name) + self.location.range.start.character
-
 
 
 class LspClient2(LspClient):
@@ -138,12 +140,9 @@ class LspClient2(LspClient):
         return list(filter(lambda x: x != None, map(convert, ret)))
 
     def callHierarchyPrepare(self, sym: SymbolInformation):
-        start = sym.location.range.start
-        lines = open(from_file(sym.location.uri), "r").readlines()
-        text = lines[start.line][start.character:]
-        col = text.index(sym.name) + start.character
-        line = start.line
-        print(text, "---", text[col:col + len(sym.name)])
+        s = SymbolParser(sym)
+        col = s.symbol_line
+        line = s.symbol_line
         ret = self.endpoint.call_method(
             "textDocument/prepareCallHierarchy",
             textDocument=TextDocumentIdentifier(uri=sym.location.uri),
@@ -238,11 +237,9 @@ class lspcppclient:
 
     def get_symbol_reference(self,
                              symbol: SymbolInformation) -> list[Location]:
-        lines = open(from_file(symbol.location.uri), "r").readlines()
-        rets = self.get_reference(
-            symbol.location.uri,
-            lines[symbol.location.range.start.line].index(symbol.name),
-            symbol.location.range.start.line)
+        s = SymbolParser(symbol)
+        rets = self.get_reference(symbol.location.uri, s.symbol_col,
+                                  s.symbol_line)
         return rets
 
     def get_reference(self, file, col: int, line: int) -> list[Location]:

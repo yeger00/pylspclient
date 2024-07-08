@@ -1,4 +1,5 @@
 import subprocess
+import json
 import pylspclient
 import threading
 from os import path
@@ -67,6 +68,7 @@ class lspcppclient:
                                                     initialization_options,
                                                     capabilities, trace,
                                                     workspace_folders)
+        print(json.dumps(initialize_response,indent=4))
         if initialize_response['serverInfo']['name'] != 'clangd':
             raise RuntimeError("failed to initialize lsp_client")
         lsp_client.initialized()

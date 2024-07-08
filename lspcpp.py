@@ -49,36 +49,56 @@ class CallHierarchyItem(BaseModel):
     kind: SymbolKind
     range: Range
     uri: TextDocumentIdentifier
-    selectionRange:Range
+    selectionRange: Range
+
     def setvalue(self, sym: SymbolInformation):
         self.name = sym.name
         self.kind = sym.kind
         self.uri = TextDocumentIdentifier(uri=sym.location.uri)
         self.range = sym.location.range
-        
+
         self.range.end = self.range.start
-        self.range.end.character = self.range.start.character+len(self.name)
-        self.range.end.character = self.range.start.character+len(self.name)
+        self.range.end.character = self.range.start.character + len(self.name)
+        self.range.end.character = self.range.start.character + len(self.name)
         self.selectionRange = self.range
 
+
 class PrepareReturn(BaseModel):
-    data:str
-    kind:SymbolKind
-    range:Range
-    selectionRange:Range
-    uri:str
-    name :str
+    data: str
+    kind: SymbolKind
+    range: Range
+    selectionRange: Range
+    uri: str
+    name: str
+
     @staticmethod
-    def create(data:dict, sym:DocumentSymbol) :
-        ret = PrepareReturn(
-        range = Range.parse_obj(data["range"]),
-        selectionRange = Range.parse_obj(data["selectionRange"]),
-        kind= int(data["kind"]),
-        data = data["data"],
-        uri = sym.location.uri,
-        name = sym.name)
+    def create(data: dict, sym: SymbolInformation):
+        ret = PrepareReturn(range=Range.parse_obj(data["range"]),
+                            selectionRange=Range.parse_obj(
+                                data["selectionRange"]),
+                            kind=SymbolKind(data["kind"]),
+                            data=data["data"],
+                            uri=sym.location.uri,
+                            name=sym.name)
         return ret
-    
+
+
+class SymbolParser(SymbolInformation):
+    symbol_begin :int = -1
+    def __init__(self, sym: SymbolInformation):
+        self.name = sym.name
+        self.location = sym.location
+        self.kind = sym.kind
+        self.symbol_line = self.location.range.start.line
+        with open(from_file(self.location.uri), "r") as fp:
+            lines = fp.readlines()
+            line = lines[self.location.range.start.line]
+            self.symbol_begin = line[
+                self.location.range.start.character:].index(
+                    self.name) + self.location.range.start.character
+
+
+
 class LspClient2(LspClient):
     endpoint: LspEndpoint
 
@@ -90,40 +110,48 @@ class LspClient2(LspClient):
         """
         LspClient.__init__(self, lsp_endpoint)
         self.endpoint = lsp_endpoint
-    
-    
 
-
-    def callIncomingTree(self, param:PrepareReturn):
+    def callIncomingTree(self, param: PrepareReturn):
         for a in self.callIncoming(param):
             print(a.name)
             self.callIncomingTree(a)
-    def callIncoming(self, param:PrepareReturn):
-        sss =dict(param) 
-        ret = self.endpoint.call_method("callHierarchy/incomingCalls",item=sss)
+
+    def callIncoming(self, param: PrepareReturn) -> list[PrepareReturn]:
+        sss = dict(param)
+        ret = self.endpoint.call_method("callHierarchy/incomingCalls",
+                                        item=sss)
+
         def convert(s):
             try:
-                from_=s["from"]
-                return PrepareReturn(data=from_["data"],kind=from_["kind"],range=Range.parse_obj(from_["range"]),selectionRange=Range.parse_obj(from_["selectionRange"]),uri=from_["uri"],name=from_["name"])
+                from_ = s["from"]
+                return PrepareReturn(data=from_["data"],
+                                     kind=from_["kind"],
+                                     range=Range.parse_obj(from_["range"]),
+                                     selectionRange=Range.parse_obj(
+                                         from_["selectionRange"]),
+                                     uri=from_["uri"],
+                                     name=from_["name"])
             except Exception as e:
+                print(e)
                 return None
+
         return list(filter(lambda x: x != None, map(convert, ret)))
-        
+
     def callHierarchyPrepare(self, sym: SymbolInformation):
         start = sym.location.range.start
         lines = open(from_file(sym.location.uri), "r").readlines()
         text = lines[start.line][start.character:]
-        col = text.index(sym.name)+start.character
-        line = start.line 
-        print(text,"---",text[col:col+len(sym.name)])
+        col = text.index(sym.name) + start.character
+        line = start.line
+        print(text, "---", text[col:col + len(sym.name)])
         ret = self.endpoint.call_method(
-            "textDocument/prepareCallHierarchy", textDocument =TextDocumentIdentifier(uri=sym.location.uri),
+            "textDocument/prepareCallHierarchy",
+            textDocument=TextDocumentIdentifier(uri=sym.location.uri),
             position={
                 "character": col,
                 "line": line
-            }
-            )
-        ret  = list(map(lambda x: PrepareReturn.create(x,sym), ret))
+            })
+        ret = list(map(lambda x: PrepareReturn.create(x, sym), ret))
         return ret
 
     def call_hierarchy_incoming_calls(self):
@@ -222,9 +250,9 @@ class lspcppclient:
 
     def get_symbol(self, file):
         uri = to_file(file)
-        relative_file_path = file 
+        relative_file_path = file
         import os
-        if os.path.isabs(file)==False:
+        if os.path.isabs(file) == False:
             relative_file_path = path.join(DEFAULT_ROOT, file)
         uri = to_file(relative_file_path)
         text = open(relative_file_path, "r").read()
@@ -288,10 +316,10 @@ if __name__ == "__main__":
                 for a in callcontext:
                     tree = client.lsp_client.callIncoming(a)
                     print(a.name)
-                    i=1
+                    i = 1
                     for t in tree:
-                        print("\t"*i,"--", t.name)
-                        i=i+1
+                        print("\t" * i, "--", t.name)
+                        i = i + 1
                         # print(json.dumps(t))
                 print(len(callcontext))
 

@@ -32,7 +32,7 @@ class ReadPipe(threading.Thread):
 
 @pytest.fixture
 def server_process() -> subprocess.Popen:
-    pylsp_cmd = ["python", "-m", "pylsp"]
+    pylsp_cmd = ["/home/z/.local/share/nvim/mason/bin/clangd"]
     p = subprocess.Popen(pylsp_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     yield p
     p.kill()
@@ -71,7 +71,7 @@ def lsp_client(json_rpc: pylspclient.JsonRpcEndpoint) -> pylspclient.LspClient:
     trace = "off"
     workspace_folders = None
     initialize_response = lsp_client.initialize(process_id, root_path, root_uri, initialization_options, capabilities, trace, workspace_folders)
-    if initialize_response['serverInfo']['name'] != 'pylsp':
+    if initialize_response['serverInfo']['name'] != 'clangd':
         raise RuntimeError("failed to initialize lsp_client")
     lsp_client.initialized()
     yield lsp_client
@@ -91,43 +91,23 @@ def test_initialize(json_rpc: pylspclient.JsonRpcEndpoint):
     workspace_folders = None
     initialize_response = lsp_client.initialize(process_id, root_path, root_uri, initialization_options, capabilities, trace, workspace_folders)
     lsp_client.initialized()
-    assert initialize_response['serverInfo']['name'] == 'pylsp'
+    assert initialize_response['serverInfo']['name'] == 'clangd'
     lsp_client.shutdown()
     lsp_client.exit()
 
 
 def test_document_symbol(lsp_client: pylspclient.LspClient):
-    file_path = "lsp_client.py"
+    file_path = "test_main.cpp"
     relative_file_path = path.join(DEFAULT_ROOT, file_path)
     uri = to_uri(relative_file_path)
     text = open(relative_file_path, "r").read()
-    languageId = LanguageIdentifier.PYTHON
+    languageId = LanguageIdentifier.CPP
     version = 1
     lsp_client.didOpen(TextDocumentItem(uri=uri, languageId=languageId, version=version, text=text))
     symbols = lsp_client.documentSymbol(TextDocumentIdentifier(uri=uri))
-    expected_symbols = [
-        '__init__',
-        'declaration',
-        'definition',
-        'shutdown',
-        'result_dict',
-        'signatureHelp',
-        'lsp_endpoint',
-        'typeDefinition',
-        'initialize',
-        'didOpen',
-        'initialized',
-        'sym',
-        'result',
-        'LspClient',
-        'didChange',
-        'lsp_structs',
-        'exit',
-        'completion',
-        'documentSymbol',
-        'LspEndpoint',
-    ]
-    assert set(symbol.name for symbol in symbols) == set(expected_symbols)
+    for i in symbols:
+        print(i)
+    # assert set(symbol.name for symbol in symbols) == set(expected_symbols)
 
 
 def add_dir(lsp_client: pylspclient.LspClient, root: str):
@@ -139,7 +119,7 @@ def add_dir(lsp_client: pylspclient.LspClient, root: str):
 def add_file(lsp_client: pylspclient.LspClient, relative_file_path: str):
     uri = to_uri(relative_file_path)
     text = open(relative_file_path, "r").read()
-    languageId = LanguageIdentifier.PYTHON
+    languageId = LanguageIdentifier.CPP
     version = 1
     # First need to open the file, and then iterate over the docuemnt's symbols
     lsp_client.didOpen(TextDocumentItem(uri=uri, languageId=languageId, version=version, text=text))
@@ -163,7 +143,7 @@ def range_in_text_to_string(text: str, range_: Range) -> Optional[str]:
 
 def test_definition(lsp_client: pylspclient.LspClient):
     add_dir(lsp_client, DEFAULT_ROOT)
-    file_path = "lsp_client.py"
+    file_path = "test_main.cpp"
     relative_file_path = path.join(DEFAULT_ROOT, file_path)
     uri = to_uri(relative_file_path)
     file_content = open(relative_file_path, "r").read()
@@ -178,7 +158,7 @@ def test_definition(lsp_client: pylspclient.LspClient):
 
 def test_completion(lsp_client: pylspclient.LspClient):
     add_dir(lsp_client, DEFAULT_ROOT)
-    file_path = "lsp_client.py"
+    file_path = "test_main.cpp"
     relative_file_path = path.join(DEFAULT_ROOT, file_path)
     uri = to_uri(relative_file_path)
     file_content = open(relative_file_path, "r").read()

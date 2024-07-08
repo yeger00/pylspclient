@@ -103,3 +103,7 @@ venv.bak/
 # mypy
 .mypy_cache/
 .ccls-cache/**
+tests/cpp/CMakeFiles/**
+tests/cpp/CMakeCache.txt
+tests/cpp/Makefile
+tests/cpp/cmake_install.cmake

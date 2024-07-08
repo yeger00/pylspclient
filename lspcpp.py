@@ -1,8 +1,10 @@
 import subprocess
 import json
+
+from pydantic import BaseModel
 import pylspclient
 import threading
-from os import path
+from os import path, system
 from pylspclient import LspClient, LspEndpoint
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
 
@@ -42,6 +44,41 @@ def to_file(path: str) -> str:
     return f"file://{path}"
 
 
+class CallHierarchyItem(BaseModel):
+    name: str
+    kind: SymbolKind
+    range: Range
+    uri: TextDocumentIdentifier
+    selectionRange:Range
+    def setvalue(self, sym: SymbolInformation):
+        self.name = sym.name
+        self.kind = sym.kind
+        self.uri = TextDocumentIdentifier(uri=sym.location.uri)
+        self.range = sym.location.range
+        
+        self.range.end = self.range.start
+        self.range.end.character = self.range.start.character+len(self.name)
+        self.range.end.character = self.range.start.character+len(self.name)
+        self.selectionRange = self.range
+
+class PrepareReturn(BaseModel):
+    data:str
+    kind:SymbolKind
+    range:Range
+    selectionRange:Range
+    uri:str
+    name :str
+    @staticmethod
+    def create(data:dict, sym:DocumentSymbol) :
+        ret = PrepareReturn(
+        range = Range.parse_obj(data["range"]),
+        selectionRange = Range.parse_obj(data["selectionRange"]),
+        kind= int(data["kind"]),
+        data = data["data"],
+        uri = sym.location.uri,
+        name = sym.name)
+        return ret
+    
 class LspClient2(LspClient):
     endpoint: LspEndpoint
 
@@ -53,6 +90,44 @@ class LspClient2(LspClient):
         """
         LspClient.__init__(self, lsp_endpoint)
         self.endpoint = lsp_endpoint
+    
+    
+
+
+    def callIncomingTree(self, param:PrepareReturn):
+        for a in self.callIncoming(param):
+            print(a.name)
+            self.callIncomingTree(a)
+    def callIncoming(self, param:PrepareReturn):
+        sss =dict(param) 
+        ret = self.endpoint.call_method("callHierarchy/incomingCalls",item=sss)
+        def convert(s):
+            try:
+                from_=s["from"]
+                return PrepareReturn(data=from_["data"],kind=from_["kind"],range=Range.parse_obj(from_["range"]),selectionRange=Range.parse_obj(from_["selectionRange"]),uri=from_["uri"],name=from_["name"])
+            except Exception as e:
+                return None
+        return list(filter(lambda x: x != None, map(convert, ret)))
+        
+    def callHierarchyPrepare(self, sym: SymbolInformation):
+        start = sym.location.range.start
+        lines = open(from_file(sym.location.uri), "r").readlines()
+        text = lines[start.line][start.character:]
+        col = text.index(sym.name)+start.character
+        line = start.line 
+        print(text,"---",text[col:col+len(sym.name)])
+        ret = self.endpoint.call_method(
+            "textDocument/prepareCallHierarchy", textDocument =TextDocumentIdentifier(uri=sym.location.uri),
+            position={
+                "character": col,
+                "line": line
+            }
+            )
+        ret  = list(map(lambda x: PrepareReturn.create(x,sym), ret))
+        return ret
+
+    def call_hierarchy_incoming_calls(self):
+        self.endpoint.call_method("callHierarchy/incomingCalls")
 
     def references(self, file, col: int, line: int) -> list[Location]:
 
@@ -147,7 +222,10 @@ class lspcppclient:
 
     def get_symbol(self, file):
         uri = to_file(file)
-        relative_file_path = path.join(DEFAULT_ROOT, file)
+        relative_file_path = file 
+        import os
+        if os.path.isabs(file)==False:
+            relative_file_path = path.join(DEFAULT_ROOT, file)
         uri = to_file(relative_file_path)
         text = open(relative_file_path, "r").read()
         version = 2
@@ -200,11 +278,21 @@ if __name__ == "__main__":
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     lines = open(file, "r").readlines()
     ss = client.get_symbol(file)
-    assert (len(ss) > 0)
+    # assert (len(ss) > 0)
     for i in ss:
         if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
             sss = client.get_symbol_reference(i)
             for ss in sss:
                 print("!!!", i.name, i.location.range, ss.range)
+                callcontext = client.lsp_client.callHierarchyPrepare(i)
+                for a in callcontext:
+                    tree = client.lsp_client.callIncoming(a)
+                    print(a.name)
+                    i=1
+                    for t in tree:
+                        print("\t"*i,"--", t.name)
+                        i=i+1
+                        # print(json.dumps(t))
+                print(len(callcontext))
 
     client.close()

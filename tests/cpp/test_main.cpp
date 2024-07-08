@@ -1,5 +1,9 @@
 #include <stdlib.h>
-#include <stdio.h>
+/**
+ * @class a
+ * @brief 
+ *
+ */
 class a
 {
 public:
@@ -18,10 +22,11 @@ public:
     }
     int run()
     {
-        return run();
+        return a::run();
     }
 };
 int main()
 {
+    send_notification();
     b().run();
 }

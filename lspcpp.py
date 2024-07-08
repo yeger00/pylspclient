@@ -4,7 +4,7 @@ import pylspclient
 import threading
 from os import path
 from pylspclient import LspClient, LspEndpoint
-from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation
+from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
 
 DEFAULT_CAPABILITIES = {
     'textDocument': {
@@ -32,6 +32,10 @@ class ReadPipe(threading.Thread):
             line = self.pipe.readline().decode('utf-8')
 
 
+def from_file(path: str) -> str:
+    return path.replace("file://", "").replace("file:", "")
+
+
 def to_file(path: str) -> str:
     if path.startswith("file://"):
         return path
@@ -39,14 +43,34 @@ def to_file(path: str) -> str:
 
 
 class LspClient2(LspClient):
+    endpoint: LspEndpoint
 
     def __init__(self, lsp_endpoint: LspEndpoint):
         """
 
         Args:
-            lsp_endpoint: 
+            lsp_endpoint:
         """
         LspClient.__init__(self, lsp_endpoint)
+        self.endpoint = lsp_endpoint
+
+    def references(self, file, col, line):
+        def convert(s):
+            try:
+                return Location.parse_obj(s)
+            except:
+                return None
+        ret = self.endpoint.call_method(
+            'textDocument/references',
+            textDocument=TextDocumentIdentifier(uri=to_file(file)),
+            context={"includeDeclaration": True},
+            position={
+                "character": col,
+                "line": line
+            })
+        return list(
+            filter(lambda x: x != None and  x.range.start.line!= line,
+                   map(convert, ret)))
 
 
 class project_config:
@@ -73,7 +97,17 @@ class lspcppclient:
         initialization_options = {
             "compilationDatabasePath": data_path
         } if data_path != None else None
-        capabilities = DEFAULT_CAPABILITIES
+        capabilities = {
+            'textDocument': {
+                'completion': {
+                    'completionItem': {
+                        'commitCharactersSupport': True,
+                        'snippetSupport': True
+                    }
+                }
+            }
+        }
+
         trace = "off"
         workspace_folders = None
         initialize_response = lsp_client.initialize(process_id, root_path,
@@ -97,12 +131,22 @@ class lspcppclient:
         symbol = self.lsp_client.documentSymbol(x)
         return symbol
 
+    def get_symbol_reference(self, symbol: SymbolInformation):
+        lines = open(from_file(symbol.location.uri), "r").readlines()
+        rets = self.get_reference(
+            symbol.location.uri,
+            lines[symbol.location.range.start.line].index(symbol.name),
+            symbol.location.range.start.line)
+        return rets
+
+    def get_reference(self, file, col, line):
+        return self.lsp_client.references(file,col,line)
     def get_symbol(self, file):
         uri = to_file(file)
         relative_file_path = path.join(DEFAULT_ROOT, file)
         uri = to_file(relative_file_path)
         text = open(relative_file_path, "r").read()
-        version = 1
+        version = 2
         self.lsp_client.didOpen(
             TextDocumentItem(uri=uri,
                              languageId=LanguageIdentifier.CPP,
@@ -143,21 +187,28 @@ class lspcpp:
         pass
 
 
-DEFAULT_ROOT = "/home/z/dev/lsp/pylspclient/tests/cpp/test-workspace"
 if __name__ == "__main__":
     srv = lspcppserver()
     cfg = project_config()
-    cfg.DEFAULT_ROOT = DEFAULT_ROOT
-    cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
+    cfg.DEFAULT_ROOT = "/home/z/dev/lsp/pylspclient/tests/cpp/"
+    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
+    lines = open(file, "r").readlines()
     ss = client.get_symbol(file)
     assert (len(ss) > 0)
     for i in ss:
-        print(i.name, i.kind)
+        # print(i.name, i.kind)
 
-    ss = client.get_document_symbol(file)
-    assert (len(ss) > 0)
-    for i in ss:
-        print(i.name, i.kind)
+        # ss = client.get_document_symbol(file)
+        # assert (len(ss) > 0)
+        # for i in ss:
+        # print(i.name, i.kind)
+        if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
+            sss = client.get_symbol_reference(i)
+            # old=i.location.range
+            # old.start.character = begin
+            for ss in sss:
+                print("!!!", i.name, i.location.range, ss.range)
+
     client.close()

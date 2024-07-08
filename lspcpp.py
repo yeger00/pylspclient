@@ -54,12 +54,14 @@ class LspClient2(LspClient):
         LspClient.__init__(self, lsp_endpoint)
         self.endpoint = lsp_endpoint
 
-    def references(self, file, col, line):
+    def references(self, file, col: int, line: int) -> list[Location]:
+
         def convert(s):
             try:
                 return Location.parse_obj(s)
             except:
                 return None
+
         ret = self.endpoint.call_method(
             'textDocument/references',
             textDocument=TextDocumentIdentifier(uri=to_file(file)),
@@ -69,7 +71,7 @@ class LspClient2(LspClient):
                 "line": line
             })
         return list(
-            filter(lambda x: x != None and  x.range.start.line!= line,
+            filter(lambda x: x != None and x.range.start.line != line,
                    map(convert, ret)))
 
 
@@ -131,7 +133,8 @@ class lspcppclient:
         symbol = self.lsp_client.documentSymbol(x)
         return symbol
 
-    def get_symbol_reference(self, symbol: SymbolInformation):
+    def get_symbol_reference(self,
+                             symbol: SymbolInformation) -> list[Location]:
         lines = open(from_file(symbol.location.uri), "r").readlines()
         rets = self.get_reference(
             symbol.location.uri,
@@ -139,8 +142,9 @@ class lspcppclient:
             symbol.location.range.start.line)
         return rets
 
-    def get_reference(self, file, col, line):
-        return self.lsp_client.references(file,col,line)
+    def get_reference(self, file, col: int, line: int) -> list[Location]:
+        return self.lsp_client.references(file, col, line)
+
     def get_symbol(self, file):
         uri = to_file(file)
         relative_file_path = path.join(DEFAULT_ROOT, file)
@@ -198,16 +202,8 @@ if __name__ == "__main__":
     ss = client.get_symbol(file)
     assert (len(ss) > 0)
     for i in ss:
-        # print(i.name, i.kind)
-
-        # ss = client.get_document_symbol(file)
-        # assert (len(ss) > 0)
-        # for i in ss:
-        # print(i.name, i.kind)
         if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
             sss = client.get_symbol_reference(i)
-            # old=i.location.range
-            # old.start.character = begin
             for ss in sss:
                 print("!!!", i.name, i.location.range, ss.range)
 

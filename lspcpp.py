@@ -72,10 +72,12 @@ class Token:
 class Symbol:
     sym: SymbolInformation
     members: list['Symbol']
+
     def all_call_symbol(self):
         ret = [self]
-        ret.extend(self.members) 
+        ret.extend(self.members)
         return ret
+
     def __init__(self, sym: SymbolInformation) -> None:
         self.sym = sym
         self.name = sym.name
@@ -265,10 +267,14 @@ class project_config:
     compile_database: None | str
     workspace_root: None | str
 
-    def __init__(self, workspace_root: None | str,
-                 compile_database: None | str) -> None:
+    def __init__(self,
+                 workspace_root: None | str,
+                 compile_database: None | str = None) -> None:
         self.workspace_root = workspace_root
         self.compile_database = compile_database
+        if compile_database is None:
+            self.compile_database = os.path.join(self.workspace_root,
+                                                 "compile_commands.json")
 
     def create_workspace(self, client: 'lspcppclient') -> 'WorkSpaceSymbol':
         wk = WorkSpaceSymbol(self.workspace_root)
@@ -315,7 +321,7 @@ class lspcppclient:
                                                     initialization_options,
                                                     capabilities, trace,
                                                     workspace_folders)
-        print(json.dumps(initialize_response, indent=4))
+        # print(json.dumps(initialize_response, indent=4))
         if initialize_response['serverInfo']['name'] != 'clangd':
             raise RuntimeError("failed to initialize lsp_client")
         lsp_client.initialized()
@@ -559,44 +565,57 @@ class WorkSpaceSymbol:
         return None
 
 
-if __name__ == "__main__":
+import argparse
+import os
+import sys
+
+def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
+         file="/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp",
+         method="class_c::run_class_c"):
+    if file!=None and os.path.isabs(file)==False:
+        file = os.path.join(root,file)  
+    print(root,file)
     srv = lspcppserver()
-    cfg = project_config()
-    cfg.workspace_root = "/home/z/dev/lsp/pylspclient/tests/cpp/"
-    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
+    cfg = project_config(workspace_root=root)
     client = srv.newclient(cfg)
-    file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
-    source_file = client.open_file(file)
-    wk = WorkSpaceSymbol(cfg.workspace_root)
-    wk.add(source_file)
-    for a in source_file.class_symbol:
-        walk = CallerWalker(client, wk)
-        members = [a]
-        members.extend(a.members)
-        for m in members:
-            ret = walk.get_caller(m)
-            if len(ret) != 0:
-                print("\t", m)
-                for a in ret:
-                    a.resolve_all(wk)
-                    stack = a.callstack()
-                    print(a.uml(stack))
-                    a.print()
 
-    # for i in ss:
-    #     if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
-    #         sss = client.get_symbol_reference(i)
-    #         for ss in sss:
-    #             print("!!!", i.name, i.location.range, ss.range)
-    #             callcontext = client.lsp_client.callHierarchyPrepare(i)
-    #             for a in callcontext:
-    #                 tree = client.lsp_client.callIncoming(a)
-    #                 print(a.name)
-    #                 i = 1
-    #                 for t in tree:
-    #                     print("\t" * i, "--", t.name)
-    #                     i = i + 1
-    #                     # print(json.dumps(t))
-    #             print(len(callcontext))
+    wk = cfg.create_workspace(client=client)
 
+    symbols_list = client.get_document_symbol(file)
+
+    def find_fn(x: SymbolInformation):
+        if method is None:
+            return True
+        if x.name == method:
+            return True
+        return False
+
+    symbo = list(filter(find_fn, symbols_list))
+    if method is None:
+        print(file)
+        print("\n".join(map(lambda x:x.name,symbo)))
+        client.close()
+        return
+
+    walk = CallerWalker(client, wk)
+    ret = walk.get_caller(Symbol(symbo[0]))
+    for a in ret:
+        a.resolve_all(wk)
+        a.print()
     client.close()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--root", help="root path")
+    parser.add_argument("-f", "--file", help="root path")
+    parser.add_argument("-m", "--method", help="root path")
+    args = parser.parse_args()
+
+    root = args.root
+    if root!=None and root[0]!="/":
+        root = os.path.join(os.getcwd(), root)
+    print("-"*5,args.method)
+    print(args.root,args.file,args.method)
+    # main(root=root, file=args.file, method=None)
+    main(root=args.root,file=args.file, method=args.method)

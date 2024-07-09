@@ -128,3 +128,27 @@ def test_client_prepare():
                 print("!!!", i.name, i.location.range, ss.range)
 
     client.close()
+
+def test_args():
+    root ="/home/z/dev/lsp/pylspclient/tests/cpp/"
+    file = "/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp" 
+    method = "class_c::run_class_c"
+    
+    
+    srv = lspcppserver()
+    cfg = project_config(workspace_root=root)
+    client = srv.newclient(cfg)
+    
+    wk = cfg.create_workspace(client=client)
+    
+    symbols_list = client.get_document_symbol(file)
+    def find_fn(x:SymbolInformation):
+        if x.name==method :
+            return True
+        return False
+    symbo = list(filter(find_fn,symbols_list))
+    walk = lspcpp.CallerWalker(client, wk)
+    ret=walk.get_caller(lspcpp.Symbol(symbo[0]))
+    for a in ret:
+        a.resolve_all(wk)
+        a.print()

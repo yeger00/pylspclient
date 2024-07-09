@@ -68,21 +68,22 @@ class Token:
                         location.range.end.line][:location.range.end.character]
         pass
 
-
+otherscls=[]
 class Symbol:
     sym: SymbolInformation
     members: list['Symbol']
-
     def all_call_symbol(self):
         ret = [self]
         ret.extend(self.members)
         return ret
-
     def __init__(self, sym: SymbolInformation) -> None:
         self.sym = sym
+        self.begin= sym.location.range.start
+        self.end= sym.location.range.end
         self.name = sym.name
         self.members = []
         self.cls = None
+        # self.othercls = []
 
     def find(self, node: 'CallNode') -> 'Symbol':
         if node.sym.in_range(self.sym):
@@ -110,18 +111,20 @@ class Symbol:
             return syms
         while len(syms):
             s = syms[0]
-            if s.kind == SymbolKind.Method or s.kind == SymbolKind.Constructor:
-                s1 = Symbol(s)
+            s1 = Symbol(s)
+            if s1.end.line>self.end.line:
+                return syms
+            elif s.kind == SymbolKind.Method or s.kind == SymbolKind.Constructor:
                 s1.cls = self
                 self.members.append(s1)
-                syms = syms[1:]
             elif s.kind == SymbolKind.Field:
-                s1 = Symbol(s)
                 self.members.append(s1)
                 self.cls = self
+            elif s1.sym.kind == SymbolKind.Class or s1.sym.kind == SymbolKind.Struct:
+                otherscls.append(s1)
                 syms = s1.find_members(syms[1:])
-            else:
-                return syms
+                continue
+            syms = syms[1:]
         return syms
 
 
@@ -344,10 +347,12 @@ class lspcppclient:
                 s1 = Symbol(s)
                 symbols = s1.find_members(symbols[1:])
                 ret.append(s1)
-            else:
+                continue
+            elif s.kind==SymbolKind.Function:
                 s1 = Symbol(s)
                 ret.append(s1)
-                symbols = symbols[1:]
+            symbols = symbols[1:]
+        ret.extend(otherscls)
         return ret
 
     def get_document_symbol(self, file: str) -> list[SymbolInformation]:
@@ -591,7 +596,8 @@ def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
 
     if method is None:
         for m in symbols_list:
-            print(m.name)
+            s = Token(m.location)
+            print("%2d %s "%(m.kind,m.name),m.location.range.start.line,m.location.range.end.line)
         for sym in client.get_class_symbol(file=file):
             if len(sym.members):
                 for s in sym.members:

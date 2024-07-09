@@ -11,7 +11,12 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": [ "--root", "/chrome/buildcef/chromium/src", "-f" ,"/chrome/buildcef/chromium/src/services/network/url_loader.h"]
+            "args": [
+                "--root",
+                "/chrome/buildcef/chromium/src",
+                "-f",
+                "/chrome/buildcef/chromium/src/content/browser/renderer_host/navigation_throttle_runner.h"
+            ]
         }
     ]
 }

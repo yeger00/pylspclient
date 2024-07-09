@@ -3,11 +3,12 @@ import json
 from typing import List
 
 from annotated_types import LowerCase
-from pydantic import BaseModel
+from pydantic import BaseModel, FailFast
 import pylspclient
 import threading
 from os import path, system
 from pylspclient import LspClient, LspEndpoint
+from pylspclient import lsp_client
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
 
 DEFAULT_CAPABILITIES = {
@@ -23,26 +24,40 @@ DEFAULT_CAPABILITIES = {
 }
 
 
-class SymbolClass:
+class Symbol:
     sym: SymbolInformation
-    members: list['SymbolClass']
+    members: list['Symbol']
 
     def __init__(self, sym: SymbolInformation) -> None:
         self.sym = sym
         self.members = []
+        self.cls = None
+
+    def __str__(self) -> str:
+        cls = self.cls.sym.name + "::" if self.cls != None else ""
+        return cls + self.sym.name
+
+    def is_call(self):
+        return self.sym.kind == SymbolKind.Method or self.sym.kind == SymbolKind.Function
+
+    def is_method(self):
+        return self.sym.kind == SymbolKind.Method
 
     def find_members(self, syms: list[SymbolInformation]):
         yes = self.sym.kind == SymbolKind.Class or self.sym.kind == SymbolKind.Struct
-        if yes==False:
-            return syms 
+        if yes == False:
+            return syms
         while len(syms):
             s = syms[0]
-            if s.kind == SymbolKind.Method or s.kind==SymbolKind.Constructor:
-                self.members.append(SymbolClass(s))
-                syms=syms[1:]
-            elif s.kind == SymbolKind.Field:
-                s1 = SymbolClass(s)
+            if s.kind == SymbolKind.Method or s.kind == SymbolKind.Constructor:
+                s1 = Symbol(s)
+                s1.cls = self
                 self.members.append(s1)
+                syms = syms[1:]
+            elif s.kind == SymbolKind.Field:
+                s1 = Symbol(s)
+                self.members.append(s1)
+                self.cls = self
                 syms = s1.find_members(syms[1:])
             else:
                 return syms
@@ -256,18 +271,18 @@ class lspcppclient:
         self.lsp_client.exit()
 
     def get_class_symbol(self, file):
-        ret=[]
+        ret = []
         symbols = self.get_document_symbol(file)
         while len(symbols):
             s = symbols[0]
-            if s.kind == SymbolKind.Class or s.kind==SymbolKind.Struct:
-                s1 = SymbolClass(s)
+            if s.kind == SymbolKind.Class or s.kind == SymbolKind.Struct:
+                s1 = Symbol(s)
                 symbols = s1.find_members(symbols[1:])
                 ret.append(s1)
             else:
-                s1 = SymbolClass(s)
+                s1 = Symbol(s)
                 ret.append(s1)
-                symbols=symbols[1:]
+                symbols = symbols[1:]
         return ret
 
     def get_document_symbol(self, file: str) -> list[SymbolInformation]:
@@ -331,6 +346,56 @@ class lspcpp:
         pass
 
 
+class CallNode:
+
+    def __init__(self, sym: PrepareReturn) -> None:
+        self.sym = sym
+        self.callee = None
+
+    def print(self, level=0):
+        print(" " * level + "->" + self.sym.name)
+        if self.callee != None:
+            self.callee.print(level + 1)
+
+
+class CallerWalker:
+
+    def __init__(self, client: lspcppclient, callset=[]) -> None:
+        self.caller_set = callset
+        self.client = client
+        pass
+
+    def __get_caller_next(self, node: CallNode) -> list[CallNode]:
+        param = node.sym
+        has = list(filter(lambda x: x.range == param.range, self.caller_set))
+        if len(has) == True:
+            return []
+        self.caller_set.append(param)
+        parent = self.client.lsp_client.callIncoming(param)
+        caller = list(map(lambda x: CallNode(x), parent))
+        for a in caller:
+            a.callee = node
+        if len(caller) == 0:
+            return [node]
+        ret = []
+        for a in caller:
+            ret.extend(self.__get_caller_next(a))
+        return ret
+
+    def get_caller(self, sym: Symbol):
+        if sym.is_call():
+            ctx = client.lsp_client.callHierarchyPrepare(sym.sym)
+            callser = []
+            for a in ctx:
+                c = CallNode(a)
+                callser.extend(self.__get_caller_next(c))
+            return callser
+        return []
+
+    def walk(self, node: CallNode):
+        pass
+
+
 if __name__ == "__main__":
     srv = lspcppserver()
     cfg = project_config()
@@ -340,7 +405,15 @@ if __name__ == "__main__":
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     client.open_file(file)
     ss = client.get_document_symbol(file)
-    sssss=client.get_class_symbol(file)
+    sssss = client.get_class_symbol(file)
+    for a in sssss:
+        walk = CallerWalker(client)
+        walk.get_caller(a)
+        for m in a.members:
+            print("\t", m)
+            for a in walk.get_caller(m):
+                a.print()
+
     for i in ss:
         if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
             sss = client.get_symbol_reference(i)

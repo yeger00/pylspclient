@@ -1,3 +1,8 @@
+"""
+
+
+"""
+
 import subprocess
 import json
 
@@ -68,18 +73,23 @@ class Token:
                         location.range.end.line][:location.range.end.character]
         pass
 
-otherscls=[]
+
+otherscls = []
+
+
 class Symbol:
     sym: SymbolInformation
     members: list['Symbol']
+
     def all_call_symbol(self):
         ret = [self]
         ret.extend(self.members)
         return ret
+
     def __init__(self, sym: SymbolInformation) -> None:
         self.sym = sym
-        self.begin= sym.location.range.start
-        self.end= sym.location.range.end
+        self.begin = sym.location.range.start
+        self.end = sym.location.range.end
         self.name = sym.name
         self.members = []
         self.cls = None
@@ -112,7 +122,7 @@ class Symbol:
         while len(syms):
             s = syms[0]
             s1 = Symbol(s)
-            if s1.end.line>self.end.line:
+            if s1.end.line > self.end.line:
                 return syms
             elif s.kind == SymbolKind.Method or s.kind == SymbolKind.Constructor:
                 s1.cls = self
@@ -202,12 +212,41 @@ class LspClient2(LspClient):
         LspClient.__init__(self, lsp_endpoint)
         self.endpoint = lsp_endpoint
 
-    def code_action(self,file):
-        return self.endpoint.call_method("textDocument/codeAction", 
-                                         textDocument =TextDocumentIdentifier(uri=to_file(file),
-                                         range=Range(start=Position(line=0,character=0),end=Position(line=0,character=0))))
+    def did_file_change(self, file):
+
+        class TextDocumentContentChangeEvent(BaseModel):
+            range: Range
+            text: str
+
+        class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
+            version: int
+
+        self.endpoint.call_method(
+            "textDocument/didChange",
+            textDocument=VersionedTextDocumentIdentifier(uri=to_file(file),
+                                                         version=1),
+            contentChanges=[
+                TextDocumentContentChangeEvent(text="",
+                                               range=Range(
+                                                   start=Position(line=0,
+                                                                  character=0),
+                                                   end=Position(line=0,
+                                                                character=0)))
+            ])
+
+    def code_action(self, file):
+        return self.endpoint.call_method("textDocument/codeAction",
+                                         textDocument=TextDocumentIdentifier(
+                                             uri=to_file(file),
+                                             range=Range(
+                                                 start=Position(line=0,
+                                                                character=0),
+                                                 end=Position(line=0,
+                                                              character=0))))
+
     def workspace_symbol(self):
         return self.endpoint.call_method("workspace/symbol", query="run")
+
     def callIncoming(self, param: PrepareReturn) -> list[PrepareReturn]:
         sss = dict(param)
         ret = self.endpoint.call_method("callHierarchy/incomingCalls",
@@ -280,9 +319,11 @@ class project_config:
             self.compile_database = os.path.join(self.workspace_root,
                                                  "compile_commands.json")
 
-    def create_workspace(self, client: 'lspcppclient',add:bool=True) -> 'WorkSpaceSymbol':
+    def create_workspace(self,
+                         client: 'lspcppclient',
+                         add: bool = True) -> 'WorkSpaceSymbol':
         wk = WorkSpaceSymbol(self.workspace_root)
-        if add==False:
+        if add == False:
             return wk
         fp = open(self.compile_database, "r")
         if fp != None:
@@ -309,7 +350,7 @@ class lspcppclient:
         # initialization_options = {
         #     "compilationDatabasePath": data_path
         # } if data_path != None else None
-        initialization_options={}
+        initialization_options = {}
         capabilities = {
             'textDocument': {
                 'completion': {
@@ -348,7 +389,7 @@ class lspcppclient:
                 symbols = s1.find_members(symbols[1:])
                 ret.append(s1)
                 continue
-            elif s.kind==SymbolKind.Function:
+            elif s.kind == SymbolKind.Function:
                 s1 = Symbol(s)
                 ret.append(s1)
             symbols = symbols[1:]
@@ -397,6 +438,9 @@ class lspcppclient:
     def get_reference(self, file, col: int, line: int) -> list[Location]:
         return self.lsp_client.references(file, col, line)
 
+    def did_change_file(self, file):
+        pass
+
     def open_file(self, file):
         uri = to_file(file)
         relative_file_path = file
@@ -417,8 +461,11 @@ class lspcppclient:
 class lspcppserver:
     process = None
 
-    def __init__(self,root):
-        cmd = ["/home/z/.local/share/nvim/mason/bin/clangd","--compile-commands-dir",root]
+    def __init__(self, root):
+        cmd = [
+            "/home/z/.local/share/nvim/mason/bin/clangd",
+            "--compile-commands-dir", root
+        ]
         p = subprocess.Popen(cmd,
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
@@ -453,7 +500,8 @@ class CallNode:
         self.callee = None
 
     def print(self, level=0):
-        print(" " * level + "->", self.sym.name," ::",self.sym.range.start.line)
+        print(" " * level + "->", self.sym.name, " ::",
+              self.sym.range.start.line)
         if self.callee != None:
             self.callee.print(level + 1)
 
@@ -578,17 +626,18 @@ import argparse
 import os
 import sys
 
+
 def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
          file="/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp",
          method="class_c::run_class_c"):
-    if file!=None and os.path.isabs(file)==False:
-        file = os.path.join(root,file)  
-    print(root,file)
+    if file != None and os.path.isabs(file) == False:
+        file = os.path.join(root, file)
+    print(root, file)
     cfg = project_config(workspace_root=root)
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
 
-    wk = cfg.create_workspace(client,add=False)
+    wk = cfg.create_workspace(client, add=False)
     # source = SourceCode(file, client)
     source = client.open_file(file)
     wk.add(source)
@@ -597,19 +646,22 @@ def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
     if method is None:
         for m in symbols_list:
             s = Token(m.location)
-            print("%2d %s "%(m.kind,m.name),m.location.range.start.line,m.location.range.end.line)
+            print("%2d %s " % (m.kind, m.name), m.location.range.start.line,
+                  m.location.range.end.line)
         for sym in client.get_class_symbol(file=file):
             if len(sym.members):
                 for s in sym.members:
-                    print("%s %s::%s"%("Method" if s.is_call() else "Member", sym.name ,s.name))
+                    print("%s %s::%s" % ("Method" if s.is_call() else "Member",
+                                         sym.name, s.name))
             else:
                 print(sym.name)
         client.close()
         return
+
     def find_fn(x: SymbolInformation):
         if x.name == method:
             return True
-        return method.find("::"+x.name)>0
+        return method.find("::" + x.name) > 0
 
     symbo = list(filter(find_fn, symbols_list))
     walk = CallerWalker(client, wk)
@@ -621,7 +673,7 @@ def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
 
 
 #python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp -m a::run
-#python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp 
+#python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--root", help="root path")
@@ -630,9 +682,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     root = args.root
-    if root!=None and root[0]!="/":
+    if root != None and root[0] != "/":
         root = os.path.join(os.getcwd(), root)
-    print("-"*5,args.method)
-    print(args.root,args.file,args.method)
+    print("-" * 5, args.method)
+    print(args.root, args.file, args.method)
     # main(root=root, file=args.file, method=None)
-    main(root=args.root,file=args.file, method=args.method)
+    main(root=args.root, file=args.file, method=args.method)

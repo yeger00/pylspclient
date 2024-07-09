@@ -109,6 +109,29 @@ def test_client_call_extern():
                 a.resolve_all(wk)
                 a.print()
     client.close()
+def test_client_code_action():
+    srv = lspcppserver()
+    cfg = project_config(
+        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
+        compile_database=None)
+    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
+    client = srv.newclient(cfg)
+    file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
+    ret = client.lsp_client.code_action(file)
+    client.close()
+
+
+def test_client_workspacesymbol():
+    srv = lspcppserver()
+    cfg = project_config(
+        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
+        compile_database=None)
+    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
+    client = srv.newclient(cfg)
+    file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
+    ss = client.open_file(file).symbols
+    ret = client.lsp_client.workspace_symbol();
+    client.close()
 
 
 def test_client_prepare():

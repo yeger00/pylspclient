@@ -199,11 +199,12 @@ class LspClient2(LspClient):
         LspClient.__init__(self, lsp_endpoint)
         self.endpoint = lsp_endpoint
 
-    def callIncomingTree(self, param: PrepareReturn):
-        for a in self.callIncoming(param):
-            print(a.name)
-            self.callIncomingTree(a)
-
+    def code_action(self,file):
+        return self.endpoint.call_method("textDocument/codeAction", 
+                                         textDocument =TextDocumentIdentifier(uri=to_file(file),
+                                         range=Range(start=Position(line=0,character=0),end=Position(line=0,character=0))))
+    def workspace_symbol(self):
+        return self.endpoint.call_method("workspace/symbol", query="run")
     def callIncoming(self, param: PrepareReturn) -> list[PrepareReturn]:
         sss = dict(param)
         ret = self.endpoint.call_method("callHierarchy/incomingCalls",
@@ -302,9 +303,10 @@ class lspcppclient:
         assert (config.workspace_root != None)
         root_uri = to_file(config.workspace_root)
         data_path = config.compile_database
-        initialization_options = {
-            "compilationDatabasePath": data_path
-        } if data_path != None else None
+        # initialization_options = {
+        #     "compilationDatabasePath": data_path
+        # } if data_path != None else None
+        initialization_options={}
         capabilities = {
             'textDocument': {
                 'completion': {
@@ -410,8 +412,8 @@ class lspcppclient:
 class lspcppserver:
     process = None
 
-    def __init__(self):
-        cmd = ["/home/z/.local/share/nvim/mason/bin/clangd"]
+    def __init__(self,root):
+        cmd = ["/home/z/.local/share/nvim/mason/bin/clangd","--compile-commands-dir",root]
         p = subprocess.Popen(cmd,
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
@@ -577,8 +579,8 @@ def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
     if file!=None and os.path.isabs(file)==False:
         file = os.path.join(root,file)  
     print(root,file)
-    srv = lspcppserver()
     cfg = project_config(workspace_root=root)
+    srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
 
     wk = cfg.create_workspace(client,add=False)

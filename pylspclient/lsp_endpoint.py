@@ -18,7 +18,8 @@ class LspEndpoint(threading.Thread):
             json_rpc_endpoint: JsonRpcEndpoint,
             method_callbacks: Dict[str, Callable[[Any], Any]] = {},
             notify_callbacks: Dict[str, Callable[[Any], Any]] = {},
-            timeout: int = 2
+            timeout: int = 100,
+            name: str = "LspEndpoint"
         ):
         threading.Thread.__init__(self)
         self.json_rpc_endpoint = json_rpc_endpoint
@@ -66,8 +67,13 @@ class LspEndpoint(threading.Thread):
                     else:
                         # a call for notify
                         if method not in self.notify_callbacks:
+                            if method=='textDocument/publishDiagnostics':
+                                import json
+                                if len(params["diagnostics"])>0:
+                                    print(json.dumps(params,indent=4))
+                            else:
                             # Have nothing to do with this.
-                            print("Notify method not found: {method}.".format(method=method))
+                                print("Notify method not found: {method}.".format(method=method))
                         else:
                             self.notify_callbacks[method](params)
                 else:

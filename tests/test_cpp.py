@@ -23,7 +23,8 @@ def test_client_symbol():
     cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = lspcppserver.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
-    ss = client.open_file(file)
+    source=client.open_file(file)
+    ss = source.symbols
     assert (len(ss) > 0)
     for i in ss:
         print(i)
@@ -42,7 +43,7 @@ def test_client_reference():
     # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
-    ss = client.open_file(file)
+    ss = client.open_file(file).symbols
     assert (len(ss) > 0)
     for i in ss:
         if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
@@ -60,12 +61,11 @@ def test_client_prepare():
     # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
-    ss = client.open_file(file)
+    ss = client.open_file(file).symbols
     assert (len(ss) > 0)
     for i in ss:
         if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
-            para = lspcpp.CallHierarchyItem(i)
-            sss = client.lsp_client.callHierarchyPrepare(para)
+            sss = client.lsp_client.callHierarchyPrepare(i)
             for ss in sss:
                 print("!!!", i.name, i.location.range, ss.range)
 

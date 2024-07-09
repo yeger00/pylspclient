@@ -56,7 +56,7 @@ def test_client_reference():
         workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
         compile_database=None)
     # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
-    srv =  lspcppserver(cfg.workspace_root)
+    srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     ss = client.open_file(file).symbols
@@ -109,6 +109,8 @@ def test_client_call_extern():
                 a.resolve_all(wk)
                 a.print()
     client.close()
+
+
 def test_client_code_action():
     cfg = project_config(
         workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
@@ -119,6 +121,8 @@ def test_client_code_action():
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     ret = client.lsp_client.code_action(file)
     client.close()
+
+
 def test_client_did_changed():
     cfg = project_config(
         workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
@@ -132,7 +136,6 @@ def test_client_did_changed():
     client.close()
 
 
-
 def test_client_workspacesymbol():
     cfg = project_config(
         workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
@@ -142,7 +145,7 @@ def test_client_workspacesymbol():
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     ss = client.open_file(file).symbols
-    ret = client.lsp_client.workspace_symbol();
+    ret = client.lsp_client.workspace_symbol()
     client.close()
 
 
@@ -164,26 +167,28 @@ def test_client_prepare():
 
     client.close()
 
+
 def test_args():
-    root ="/home/z/dev/lsp/pylspclient/tests/cpp/"
-    file = "/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp" 
+    root = "/home/z/dev/lsp/pylspclient/tests/cpp/"
+    file = "/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp"
     method = "class_c::run_class_c"
-    
-    
+
     cfg = project_config(workspace_root=root)
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
-    
+
     wk = cfg.create_workspace(client=client)
-    
+
     symbols_list = client.get_document_symbol(file)
-    def find_fn(x:SymbolInformation):
-        if x.name==method :
+
+    def find_fn(x: SymbolInformation):
+        if x.name == method:
             return True
         return False
-    symbo = list(filter(find_fn,symbols_list))
+
+    symbo = list(filter(find_fn, symbols_list))
     walk = lspcpp.CallerWalker(client, wk)
-    ret=walk.get_caller(lspcpp.Symbol(symbo[0]))
+    ret = walk.get_caller(lspcpp.Symbol(symbo[0]))
     for a in ret:
         a.resolve_all(wk)
         a.print()

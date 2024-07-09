@@ -4,7 +4,7 @@ import json
 from pydantic import BaseModel
 import pylspclient
 import threading
-from os import path
+from os import link, path
 from pylspclient import LspClient, LspEndpoint
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
 
@@ -61,7 +61,7 @@ class Symbol:
         self.members = []
         self.cls = None
 
-    def find(self, node: 'CallNode'):
+    def find(self, node: 'CallNode') -> 'Symbol':
         if node.sym.in_range(self.sym):
             return self
         for a in self.members:
@@ -366,21 +366,40 @@ class lspcpp:
 
 
 class CallNode:
+    symboldefine: Symbol | None = None
+    detail: str = ""
 
     def __init__(self, sym: PrepareReturn) -> None:
         self.sym = sym
         self.callee = None
-        self.detail = ""
 
     def print(self, level=0):
         print(" " * level + "->", self.detail)
         if self.callee != None:
             self.callee.print(level + 1)
 
+    def resolve_all(self, wk: 'WorkSpaceSymbol'):
+        for s in self.callstack():
+            s.resolve(wk)
+
+    def resolve(self, wk: 'WorkSpaceSymbol'):
+        self.symboldefine = wk.find(self)
+        if self.symboldefine != None:
+            self.detail = str(self.symboldefine)
+
+    def callstack(self):
+        ret = [self]
+        next = self.callee
+        while next != None:
+            ret.append(next)
+            next = next.callee
+        return ret
+
 
 class CallerWalker:
 
-    def __init__(self, client: lspcppclient, workspaceSymbol) -> None:
+    def __init__(self, client: lspcppclient,
+                 workspaceSymbol: 'WorkSpaceSymbol') -> None:
         self.caller_set = []
         self.client = client
         self.workspaceSymbol = workspaceSymbol
@@ -399,9 +418,6 @@ class CallerWalker:
             a.callee = node
         if len(caller) == 0:
             return [node]
-        resolv = self.workspaceSymbol.find(node)
-        if resolv != None:
-            node.detail = str(resolv)
         ret = []
         for a in caller:
             next = self.__get_caller_next(a)
@@ -411,14 +427,10 @@ class CallerWalker:
     def get_caller(self, sym: Symbol):
         if sym.is_call():
             ctx = client.lsp_client.callHierarchyPrepare(sym.sym)
-            callser = []
+            callser: list[CallNode] = []
             for a in ctx:
                 c = CallNode(a)
                 callser.extend(self.__get_caller_next(c))
-            for s in callser:
-                r = self.workspaceSymbol.find(s)
-                if r != None:
-                    s.detail = str(r)
             return callser
         return []
 
@@ -434,7 +446,7 @@ class SourceCode:
         self.symbols = client.get_document_symbol(file)
         self.class_symbol = client.get_class_symbol(file)
 
-    def find(self, node: CallNode):
+    def find(self, node: CallNode) -> Symbol | None:
         for a in self.class_symbol:
             r = a.find(node)
             if r != None:
@@ -445,14 +457,15 @@ class SourceCode:
 
 class WorkSpaceSymbol:
 
-    def __init__(self) -> None:
+    def __init__(self, root: str) -> None:
         self.source_list = {}
+        self.root = root
         pass
 
     def add(self, s: SourceCode):
         self.source_list[s.file] = s
 
-    def find(self, node: CallNode):
+    def find(self, node: CallNode) -> Symbol | None:
         key = from_file(node.sym.uri)
         try:
             code = self.source_list[key]
@@ -470,17 +483,19 @@ if __name__ == "__main__":
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     source_file = client.open_file(file)
-    wk = WorkSpaceSymbol()
+    wk = WorkSpaceSymbol(cfg.DEFAULT_ROOT)
     wk.add(source_file)
     for a in source_file.class_symbol:
         walk = CallerWalker(client, wk)
         for s in walk.get_caller(a):
+            s.resolve_all(wk)
             s.print()
         for m in a.members:
             ret = walk.get_caller(m)
             if len(ret) != 0:
                 print("\t", m)
                 for a in ret:
+                    a.resolve_all(wk)
                     a.print()
 
     # for i in ss:

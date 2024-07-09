@@ -68,6 +68,8 @@ def test_client_reference():
                 print("!!!", i.name, i.location.range, ss.range)
 
     client.close()
+
+
 def test_client_reference_extern():
     srv = lspcppserver()
     cfg = project_config(
@@ -83,11 +85,30 @@ def test_client_reference_extern():
             sss = client.get_symbol_reference(i)
             for a in sss:
                 t = lspcpp.Token(a)
-                print("!!!", t.data, a.range,t,a.uri)
-            assert(len(sss)>0)
+                print("!!!", t.data, a.range, t, a.uri)
+            assert (len(sss) > 0)
 
     client.close()
 
+
+def test_client_call_extern():
+    srv = lspcppserver()
+    cfg = project_config(
+        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
+        compile_database=
+        "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json")
+    client = srv.newclient(cfg)
+    wk = cfg.create_workspace(client=client)
+    file = "/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp"
+    source_file = client.open_file(file)
+    for a in source_file.class_symbol:
+        walk = lspcpp.CallerWalker(client, wk)
+        for m in a.all_call_symbol():
+            ret = walk.get_caller(m)
+            for a in ret:
+                a.resolve_all(wk)
+                a.print()
+    client.close()
 
 
 def test_client_prepare():

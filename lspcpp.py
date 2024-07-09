@@ -72,7 +72,10 @@ class Token:
 class Symbol:
     sym: SymbolInformation
     members: list['Symbol']
-
+    def all_call_symbol(self):
+        ret = [self]
+        ret.extend(self.members) 
+        return ret
     def __init__(self, sym: SymbolInformation) -> None:
         self.sym = sym
         self.name = sym.name
@@ -507,7 +510,7 @@ class CallerWalker:
 
     def get_caller(self, sym: Symbol):
         if sym.is_call():
-            ctx = client.lsp_client.callHierarchyPrepare(sym.sym)
+            ctx = self.client.lsp_client.callHierarchyPrepare(sym.sym)
             callser: list[CallNode] = []
             for a in ctx:
                 c = CallNode(a)

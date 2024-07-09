@@ -276,13 +276,15 @@ class project_config:
             self.compile_database = os.path.join(self.workspace_root,
                                                  "compile_commands.json")
 
-    def create_workspace(self, client: 'lspcppclient') -> 'WorkSpaceSymbol':
+    def create_workspace(self, client: 'lspcppclient',add:bool=True) -> 'WorkSpaceSymbol':
         wk = WorkSpaceSymbol(self.workspace_root)
+        if add==False:
+            return wk
         fp = open(self.compile_database, "r")
         if fp != None:
             dd = json.load(fp)
             for a in dd:
-                print(a)
+                # print(a)
                 code = client.open_file(a["file"])
                 wk.add(code)
         return wk
@@ -579,19 +581,23 @@ def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
     cfg = project_config(workspace_root=root)
     client = srv.newclient(cfg)
 
-    wk = cfg.create_workspace(client=client)
-
+    wk = cfg.create_workspace(client,add=False)
+    # source = SourceCode(file, client)
+    source = client.open_file(file)
+    wk.add(source)
     symbols_list = client.get_document_symbol(file)
 
     if method is None:
+        for m in symbols_list:
+            print(m.name)
         for sym in client.get_class_symbol(file=file):
             if len(sym.members):
                 for s in sym.members:
-                    print("%s::%s"%(sym.name ,s.name))
+                    print("%s %s::%s"%("Method" if s.is_call() else "Member", sym.name ,s.name))
             else:
                 print(sym.name)
-            client.close()
-            return
+        client.close()
+        return
     def find_fn(x: SymbolInformation):
         if x.name == method:
             return True

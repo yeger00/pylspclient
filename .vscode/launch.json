@@ -2,6 +2,7 @@
     // 使用 IntelliSense 了解相关属性。 
     // 悬停以查看现有属性的描述。
     // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    // /chrome/buildcef/chromium/src /chrome/buildcef/chromium/src/services/network/url_loader.cc
     "version": "0.2.0",
     "configurations": [
         {
@@ -10,7 +11,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": [ "--root", "tests/cpp", "-f" ,"tests/cpp/d.cpp"]
+            "args": [ "--root", "/chrome/buildcef/chromium/src", "-f" ,"/chrome/buildcef/chromium/src/services/network/url_loader.h"]
         }
     ]
 }

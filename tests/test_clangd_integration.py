@@ -33,7 +33,7 @@ class ReadPipe(threading.Thread):
     def run(self):
         line = self.pipe.readline().decode('utf-8')
         while line:
-            print(line)
+            # print(line)
             line = self.pipe.readline().decode('utf-8')
 
 

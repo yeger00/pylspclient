@@ -221,7 +221,7 @@ class LspClient2(LspClient):
         class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
             version: int
 
-        self.endpoint.call_method(
+        ret = self.endpoint.call_method(
             "textDocument/didChange",
             textDocument=VersionedTextDocumentIdentifier(uri=to_file(file),
                                                          version=1),
@@ -233,6 +233,7 @@ class LspClient2(LspClient):
                                                    end=Position(line=0,
                                                                 character=0)))
             ])
+        return ret
 
     def code_action(self, file):
         return self.endpoint.call_method("textDocument/codeAction",

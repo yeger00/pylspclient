@@ -1,14 +1,11 @@
 import subprocess
 import json
-from typing import List
 
-from annotated_types import LowerCase
-from pydantic import BaseModel, FailFast
+from pydantic import BaseModel
 import pylspclient
 import threading
-from os import path, system
+from os import path
 from pylspclient import LspClient, LspEndpoint
-from pylspclient import lsp_client
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
 
 DEFAULT_CAPABILITIES = {
@@ -24,6 +21,37 @@ DEFAULT_CAPABILITIES = {
 }
 
 
+class PrepareReturn(BaseModel):
+    data: str
+    kind: SymbolKind
+    range: Range
+    selectionRange: Range
+    uri: str
+    name: str
+
+    @staticmethod
+    def create(data: dict, sym: SymbolInformation):
+        ret = PrepareReturn(range=Range.parse_obj(data["range"]),
+                            selectionRange=Range.parse_obj(
+                                data["selectionRange"]),
+                            kind=SymbolKind(data["kind"]),
+                            data=data["data"],
+                            uri=sym.location.uri,
+                            name=sym.name)
+        return ret
+
+    def in_range(self, sym: SymbolInformation):
+        if sym.location.uri != self.uri:
+            return False
+        if sym.kind != self.kind:
+            return False
+        if self.range.start.line != sym.location.range.start.line:
+            return False
+        if sym.name != self.name:
+            return False
+        return True
+
+
 class Symbol:
     sym: SymbolInformation
     members: list['Symbol']
@@ -33,9 +61,19 @@ class Symbol:
         self.members = []
         self.cls = None
 
+    def find(self, node: 'CallNode'):
+        if node.sym.in_range(self.sym):
+            return self
+        for a in self.members:
+            yes = node.sym.in_range(a.sym)
+            if yes:
+                return a
+        return None
+
     def __str__(self) -> str:
         cls = self.cls.sym.name + "::" if self.cls != None else ""
-        return cls + self.sym.name
+        return cls + self.sym.name + " %s::%d" % (from_file(
+            self.sym.location.uri), self.sym.location.range.start.line)
 
     def is_call(self):
         return self.sym.kind == SymbolKind.Method or self.sym.kind == SymbolKind.Function
@@ -106,26 +144,6 @@ class CallHierarchyItem(BaseModel):
         self.selectionRange = self.range
 
 
-class PrepareReturn(BaseModel):
-    data: str
-    kind: SymbolKind
-    range: Range
-    selectionRange: Range
-    uri: str
-    name: str
-
-    @staticmethod
-    def create(data: dict, sym: SymbolInformation):
-        ret = PrepareReturn(range=Range.parse_obj(data["range"]),
-                            selectionRange=Range.parse_obj(
-                                data["selectionRange"]),
-                            kind=SymbolKind(data["kind"]),
-                            data=data["data"],
-                            uri=sym.location.uri,
-                            name=sym.name)
-        return ret
-
-
 class SymbolParser:
     symbol_col: int = -1
     location: Location
@@ -182,7 +200,7 @@ class LspClient2(LspClient):
 
     def callHierarchyPrepare(self, sym: SymbolInformation):
         s = SymbolParser(sym)
-        col = s.symbol_line
+        col = s.symbol_col
         line = s.symbol_line
         ret = self.endpoint.call_method(
             "textDocument/prepareCallHierarchy",
@@ -270,7 +288,7 @@ class lspcppclient:
     def close(self):
         self.lsp_client.exit()
 
-    def get_class_symbol(self, file):
+    def get_class_symbol(self, file) -> list[Symbol]:
         ret = []
         symbols = self.get_document_symbol(file)
         while len(symbols):
@@ -314,6 +332,7 @@ class lspcppclient:
                              languageId=LanguageIdentifier.CPP,
                              version=version,
                              text=text))
+        return SourceCode(relative_file_path, self)
 
 
 class lspcppserver:
@@ -351,35 +370,41 @@ class CallNode:
     def __init__(self, sym: PrepareReturn) -> None:
         self.sym = sym
         self.callee = None
+        self.detail = ""
 
     def print(self, level=0):
-        print(" " * level + "->" + self.sym.name)
+        print(" " * level + "->", self.detail)
         if self.callee != None:
             self.callee.print(level + 1)
 
 
 class CallerWalker:
 
-    def __init__(self, client: lspcppclient, callset=[]) -> None:
-        self.caller_set = callset
+    def __init__(self, client: lspcppclient, workspaceSymbol) -> None:
+        self.caller_set = []
         self.client = client
+        self.workspaceSymbol = workspaceSymbol
         pass
 
     def __get_caller_next(self, node: CallNode) -> list[CallNode]:
         param = node.sym
+
         has = list(filter(lambda x: x.range == param.range, self.caller_set))
-        # if len(has) == True:
-            # return []
         self.caller_set.append(param)
         parent = self.client.lsp_client.callIncoming(param)
         caller = list(map(lambda x: CallNode(x), parent))
+        if len(has) == True and len(caller):
+            return []
         for a in caller:
             a.callee = node
         if len(caller) == 0:
             return [node]
+        resolv = self.workspaceSymbol.find(node)
+        if resolv != None:
+            node.detail = str(resolv)
         ret = []
         for a in caller:
-            next =self.__get_caller_next(a)
+            next = self.__get_caller_next(a)
             ret.extend(next)
         return ret
 
@@ -390,11 +415,51 @@ class CallerWalker:
             for a in ctx:
                 c = CallNode(a)
                 callser.extend(self.__get_caller_next(c))
+            for s in callser:
+                r = self.workspaceSymbol.find(s)
+                if r != None:
+                    s.detail = str(r)
             return callser
         return []
 
     def walk(self, node: CallNode):
         pass
+
+
+class SourceCode:
+
+    def __init__(self, file, client: lspcppclient) -> None:
+        self.file = file
+        self.lines = open(file, 'r').readlines()
+        self.symbols = client.get_document_symbol(file)
+        self.class_symbol = client.get_class_symbol(file)
+
+    def find(self, node: CallNode):
+        for a in self.class_symbol:
+            r = a.find(node)
+            if r != None:
+                return r
+            pass
+        return None
+
+
+class WorkSpaceSymbol:
+
+    def __init__(self) -> None:
+        self.source_list = {}
+        pass
+
+    def add(self, s: SourceCode):
+        self.source_list[s.file] = s
+
+    def find(self, node: CallNode):
+        key = from_file(node.sym.uri)
+        try:
+            code = self.source_list[key]
+            return code.find(node)
+        except Exception as e:
+            print(e)
+        return None
 
 
 if __name__ == "__main__":
@@ -404,16 +469,16 @@ if __name__ == "__main__":
     # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
-    client.open_file(file)
-    ss = client.get_document_symbol(file)
-    sssss = client.get_class_symbol(file)
-    for a in sssss:
-        walk = CallerWalker(client)
+    source_file = client.open_file(file)
+    wk = WorkSpaceSymbol()
+    wk.add(source_file)
+    for a in source_file.class_symbol:
+        walk = CallerWalker(client, wk)
         for s in walk.get_caller(a):
             s.print()
         for m in a.members:
-            ret=walk.get_caller(m)
-            if len(ret)!=0:
+            ret = walk.get_caller(m)
+            if len(ret) != 0:
                 print("\t", m)
                 for a in ret:
                     a.print()

@@ -368,8 +368,8 @@ class CallerWalker:
     def __get_caller_next(self, node: CallNode) -> list[CallNode]:
         param = node.sym
         has = list(filter(lambda x: x.range == param.range, self.caller_set))
-        if len(has) == True:
-            return []
+        # if len(has) == True:
+            # return []
         self.caller_set.append(param)
         parent = self.client.lsp_client.callIncoming(param)
         caller = list(map(lambda x: CallNode(x), parent))
@@ -379,7 +379,8 @@ class CallerWalker:
             return [node]
         ret = []
         for a in caller:
-            ret.extend(self.__get_caller_next(a))
+            next =self.__get_caller_next(a)
+            ret.extend(next)
         return ret
 
     def get_caller(self, sym: Symbol):
@@ -408,26 +409,29 @@ if __name__ == "__main__":
     sssss = client.get_class_symbol(file)
     for a in sssss:
         walk = CallerWalker(client)
-        walk.get_caller(a)
+        for s in walk.get_caller(a):
+            s.print()
         for m in a.members:
-            print("\t", m)
-            for a in walk.get_caller(m):
-                a.print()
+            ret=walk.get_caller(m)
+            if len(ret)!=0:
+                print("\t", m)
+                for a in ret:
+                    a.print()
 
-    for i in ss:
-        if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
-            sss = client.get_symbol_reference(i)
-            for ss in sss:
-                print("!!!", i.name, i.location.range, ss.range)
-                callcontext = client.lsp_client.callHierarchyPrepare(i)
-                for a in callcontext:
-                    tree = client.lsp_client.callIncoming(a)
-                    print(a.name)
-                    i = 1
-                    for t in tree:
-                        print("\t" * i, "--", t.name)
-                        i = i + 1
-                        # print(json.dumps(t))
-                print(len(callcontext))
+    # for i in ss:
+    #     if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
+    #         sss = client.get_symbol_reference(i)
+    #         for ss in sss:
+    #             print("!!!", i.name, i.location.range, ss.range)
+    #             callcontext = client.lsp_client.callHierarchyPrepare(i)
+    #             for a in callcontext:
+    #                 tree = client.lsp_client.callIncoming(a)
+    #                 print(a.name)
+    #                 i = 1
+    #                 for t in tree:
+    #                     print("\t" * i, "--", t.name)
+    #                     i = i + 1
+    #                     # print(json.dumps(t))
+    #             print(len(callcontext))
 
     client.close()

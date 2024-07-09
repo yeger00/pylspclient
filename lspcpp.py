@@ -58,6 +58,7 @@ class Symbol:
 
     def __init__(self, sym: SymbolInformation) -> None:
         self.sym = sym
+        self.name = sym.name
         self.members = []
         self.cls = None
 
@@ -387,6 +388,26 @@ class CallNode:
         if self.symboldefine != None:
             self.detail = str(self.symboldefine)
 
+    def uml(self, stack: list['CallNode'])->str:
+        ret = []
+        while len(stack) > 1:
+            caller = stack[0]
+            callee = stack[1]
+            cls = caller.symboldefine.cls
+            left = caller.symboldefine.sym.name
+            if cls != None:
+                left = cls.name
+            right = callee.symboldefine.sym.name
+            cls = callee.symboldefine.cls
+            if cls != None:
+                right = "%s:%s" % (cls.name, right)
+            ret.append("%s -> %s" % (left, right))
+            stack = stack[1:]
+        sss = ["\n"*3,"@startuml", "autoactivate on"]
+        sss.extend(ret)
+        sss.extend(["@enduml","\n"*3])
+        return "\n".join(sss)
+
     def callstack(self):
         ret = [self]
         next = self.callee
@@ -487,15 +508,16 @@ if __name__ == "__main__":
     wk.add(source_file)
     for a in source_file.class_symbol:
         walk = CallerWalker(client, wk)
-        for s in walk.get_caller(a):
-            s.resolve_all(wk)
-            s.print()
-        for m in a.members:
+        members=[a]
+        members.extend(a.members)
+        for m in members:
             ret = walk.get_caller(m)
             if len(ret) != 0:
                 print("\t", m)
                 for a in ret:
                     a.resolve_all(wk)
+                    stack = a.callstack()
+                    print(a.uml(stack))
                     a.print()
 
     # for i in ss:

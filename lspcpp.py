@@ -246,11 +246,16 @@ class project_config:
         self.workspace_root = workspace_root
         self.compile_database = compile_database
     def create_workspace(self,client:'lspcppclient')->'WorkSpaceSymbol':
-        fp = open(self.compile_database,"r")
-        dd = json.load(fp)
-        for a in dd:
-            print(a)
-            client.open_file(a["file"])
+        wk = WorkSpaceSymbol(self.workspace_root)
+        fp = open(self.compile_database,"r") 
+        if fp!=None:
+            dd = json.load(fp)
+            for a in dd:
+                print(a)
+                code = client.open_file(a["file"])
+                wk.add(code)
+        return wk
+            
 
 
 

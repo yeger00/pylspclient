@@ -238,12 +238,20 @@ class LspClient2(LspClient):
 
 
 class project_config:
-    data_path: None | str
-    DEFAULT_ROOT: None | str
+    compile_database: None | str
+    workspace_root: None | str
 
-    def __init__(self) -> None:
-        self.DEFAULT_ROOT = None
-        self.data_path = None
+    def __init__(self, workspace_root: None | str,
+                 compile_database: None | str) -> None:
+        self.workspace_root = workspace_root
+        self.compile_database = compile_database
+    def create_workspace(self,client:'lspcppclient')->'WorkSpaceSymbol':
+        fp = open(self.compile_database,"r")
+        dd = json.load(fp)
+        for a in dd:
+            print(a)
+            client.open_file(a["file"])
+
 
 
 class lspcppclient:
@@ -255,9 +263,9 @@ class lspcppclient:
         lsp_client = LspClient2(lsp_endpoint)
         process_id = None
         root_path = None
-        assert (config.DEFAULT_ROOT != None)
-        root_uri = to_file(config.DEFAULT_ROOT)
-        data_path = config.data_path
+        assert (config.workspace_root != None)
+        root_uri = to_file(config.workspace_root)
+        data_path = config.compile_database
         initialization_options = {
             "compilationDatabasePath": data_path
         } if data_path != None else None
@@ -361,7 +369,7 @@ class lspcpp:
     def __init__(self, default_root) -> None:
         self.serv = lspcppserver()
         config = project_config()
-        config.DEFAULT_ROOT = default_root
+        config.workspace_root = default_root
         self.client = self.serv.newclient(config)
         pass
 
@@ -388,7 +396,7 @@ class CallNode:
         if self.symboldefine != None:
             self.detail = str(self.symboldefine)
 
-    def uml(self, stack: list['CallNode'])->str:
+    def uml(self, stack: list['CallNode']) -> str:
         ret = []
         while len(stack) > 1:
             caller = stack[0]
@@ -403,9 +411,9 @@ class CallNode:
                 right = "%s:%s" % (cls.name, right)
             ret.append("%s -> %s" % (left, right))
             stack = stack[1:]
-        sss = ["\n"*3,"@startuml", "autoactivate on"]
+        sss = ["\n" * 3, "@startuml", "autoactivate on"]
         sss.extend(ret)
-        sss.extend(["@enduml","\n"*3])
+        sss.extend(["@enduml", "\n" * 3])
         return "\n".join(sss)
 
     def callstack(self):
@@ -499,16 +507,16 @@ class WorkSpaceSymbol:
 if __name__ == "__main__":
     srv = lspcppserver()
     cfg = project_config()
-    cfg.DEFAULT_ROOT = "/home/z/dev/lsp/pylspclient/tests/cpp/"
+    cfg.workspace_root = "/home/z/dev/lsp/pylspclient/tests/cpp/"
     # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     source_file = client.open_file(file)
-    wk = WorkSpaceSymbol(cfg.DEFAULT_ROOT)
+    wk = WorkSpaceSymbol(cfg.workspace_root)
     wk.add(source_file)
     for a in source_file.class_symbol:
         walk = CallerWalker(client, wk)
-        members=[a]
+        members = [a]
         members.extend(a.members)
         for m in members:
             ret = walk.get_caller(m)

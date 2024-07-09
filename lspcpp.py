@@ -50,16 +50,24 @@ class PrepareReturn(BaseModel):
         if sym.name != self.name:
             return False
         return True
+
+
 class Token:
-    def __init__(self,location:Location) -> None:
-        self.data=""
-        with open(from_file(location.uri),"r") as fp:
+
+    def __init__(self, location: Location) -> None:
+        self.data = ""
+        with open(from_file(location.uri), "r") as fp:
             lines = fp.readlines()
             if location.range.start.line == location.range.end.line:
-                self.data=lines[location.range.start.line][location.range.start.character:location.range.end.character]
+                self.data = lines[location.range.start.
+                                  line][location.range.start.
+                                        character:location.range.end.character]
             else:
-                self.data = lines[location.range.start.line][location.range.start.character:]+lines[location.range.end.line][:location.range.end.character]
+                self.data = lines[location.range.start.line][
+                    location.range.start.character:] + lines[
+                        location.range.end.line][:location.range.end.character]
         pass
+
 
 class Symbol:
     sym: SymbolInformation
@@ -167,9 +175,9 @@ class SymbolParser:
             lines = fp.readlines()
             line = lines[self.location.range.start.line]
             name = self.name
-            index= name.rfind("::")
-            if index>0:
-                name = name[index+2:]
+            index = name.rfind("::")
+            if index > 0:
+                name = name[index + 2:]
             self.symbol_col = line[self.location.range.start.character:].index(
                 name) + self.location.range.start.character
 
@@ -258,18 +266,17 @@ class project_config:
                  compile_database: None | str) -> None:
         self.workspace_root = workspace_root
         self.compile_database = compile_database
-    def create_workspace(self,client:'lspcppclient')->'WorkSpaceSymbol':
+
+    def create_workspace(self, client: 'lspcppclient') -> 'WorkSpaceSymbol':
         wk = WorkSpaceSymbol(self.workspace_root)
-        fp = open(self.compile_database,"r") 
-        if fp!=None:
+        fp = open(self.compile_database, "r")
+        if fp != None:
             dd = json.load(fp)
             for a in dd:
                 print(a)
                 code = client.open_file(a["file"])
                 wk.add(code)
         return wk
-            
-
 
 
 class lspcppclient:
@@ -338,9 +345,36 @@ class lspcppclient:
     def get_symbol_reference(self,
                              symbol: SymbolInformation) -> list[Location]:
         s = SymbolParser(symbol)
+        is_cpp = False
+        try:
+            file = from_file(symbol.location.uri)
+            is_cpp = file.split(".")[-1].lower() in ["cc", "cpp", "cxx"]
+        except:
+            pass
+        decal = None
+        if is_cpp:
+            try:
+                decal = self.lsp_client.declaration(
+                    textDocument=TextDocumentIdentifier(
+                        uri=symbol.location.uri),
+                    position=Position(line=s.symbol_line,
+                                      character=s.symbol_col))[0]
+            except:
+                pass
+
         rets = self.get_reference(symbol.location.uri, s.symbol_col,
                                   s.symbol_line)
-        return rets
+
+        def filter_head(x: Location):
+            try:
+                if decal != None:
+                    if x.uri == decal.uri and x.range.start.line == decal.range.start.line:
+                        return False
+            except:
+                pass
+            return True
+
+        return list(filter(filter_head, rets))
 
     def get_reference(self, file, col: int, line: int) -> list[Location]:
         return self.lsp_client.references(file, col, line)

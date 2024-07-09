@@ -84,6 +84,7 @@ def test_client_reference_extern():
             for a in sss:
                 t = lspcpp.Token(a)
                 print("!!!", t.data, a.range,t,a.uri)
+            assert(len(sss)>0)
 
     client.close()
 

@@ -453,7 +453,7 @@ class CallNode:
         self.callee = None
 
     def print(self, level=0):
-        print(" " * level + "->", self.detail)
+        print(" " * level + "->", self.sym.name)
         if self.callee != None:
             self.callee.print(level + 1)
 

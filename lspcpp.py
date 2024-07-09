@@ -50,7 +50,16 @@ class PrepareReturn(BaseModel):
         if sym.name != self.name:
             return False
         return True
-
+class Token:
+    def __init__(self,location:Location) -> None:
+        self.data=""
+        with open(from_file(location.uri),"r") as fp:
+            lines = fp.readlines()
+            if location.range.start.line == location.range.end.line:
+                self.data=lines[location.range.start.line][location.range.start.character:location.range.end.character]
+            else:
+                self.data = lines[location.range.start.line][location.range.start.character:]+lines[location.range.end.line][:location.range.end.character]
+        pass
 
 class Symbol:
     sym: SymbolInformation
@@ -157,8 +166,12 @@ class SymbolParser:
         with open(from_file(self.location.uri), "r") as fp:
             lines = fp.readlines()
             line = lines[self.location.range.start.line]
+            name = self.name
+            index= name.rfind("::")
+            if index>0:
+                name = name[index+2:]
             self.symbol_col = line[self.location.range.start.character:].index(
-                self.name) + self.location.range.start.character
+                name) + self.location.range.start.character
 
 
 class LspClient2(LspClient):

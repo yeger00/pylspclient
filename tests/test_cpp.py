@@ -68,6 +68,25 @@ def test_client_reference():
                 print("!!!", i.name, i.location.range, ss.range)
 
     client.close()
+def test_client_reference_extern():
+    srv = lspcppserver()
+    cfg = project_config(
+        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
+        compile_database=None)
+    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
+    client = srv.newclient(cfg)
+    file = "/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp"
+    symbols = client.open_file(file).symbols
+    assert (len(symbols) > 0)
+    for i in symbols:
+        if i.kind == SymbolKind.Method or SymbolKind.Function == i.kind:
+            sss = client.get_symbol_reference(i)
+            for a in sss:
+                t = lspcpp.Token(a)
+                print("!!!", t.data, a.range,t,a.uri)
+
+    client.close()
+
 
 
 def test_client_prepare():

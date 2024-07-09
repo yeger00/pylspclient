@@ -583,20 +583,21 @@ def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
 
     symbols_list = client.get_document_symbol(file)
 
+    if method is None:
+        for sym in client.get_class_symbol(file=file):
+            if len(sym.members):
+                for s in sym.members:
+                    print("%s::%s"%(sym.name ,s.name))
+            else:
+                print(sym.name)
+            client.close()
+            return
     def find_fn(x: SymbolInformation):
-        if method is None:
-            return True
         if x.name == method:
             return True
-        return False
+        return method.find("::"+x.name)>0
 
     symbo = list(filter(find_fn, symbols_list))
-    if method is None:
-        print(file)
-        print("\n".join(map(lambda x:x.name,symbo)))
-        client.close()
-        return
-
     walk = CallerWalker(client, wk)
     ret = walk.get_caller(Symbol(symbo[0]))
     for a in ret:
@@ -605,6 +606,8 @@ def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
     client.close()
 
 
+#python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp -m a::run
+#python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--root", help="root path")

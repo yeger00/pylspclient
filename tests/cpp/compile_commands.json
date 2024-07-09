@@ -3,5 +3,10 @@
   "directory": "/home/z/dev/lsp/pylspclient/tests/cpp",
   "command": "/usr/bin/c++   -g -o CMakeFiles/xx.dir/test_main.cpp.o -c /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp",
   "file": "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
+},
+{
+  "directory": "/home/z/dev/lsp/pylspclient/tests/cpp",
+  "command": "/usr/bin/c++   -g -o CMakeFiles/xx.dir/d.cpp.o -c /home/z/dev/lsp/pylspclient/tests/cpp/d.cpp",
+  "file": "/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp"
 }
 ]

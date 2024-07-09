@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include  "d.h"
 /**
  * @class a
  * @brief
@@ -23,4 +24,6 @@ int main() {
   b().run_2();
   b().run_1();
   b().run_1_1();
+  class_c bb;
+  bb.run_class_c();
 }

@@ -30,8 +30,10 @@ from lspcpp import LspMain, Output, Symbol, lspcpp, OutputFile
 from textual.app import App, ComposeResult
 from textual.widgets import TextArea
 from textual.widgets import Input
+from textual.widgets import Footer, Label, Markdown, TabbedContent, TabPane
 
-countries = ["history", "symbol", "open", "refer", "callin"]
+input_command_options = ["history", "symbol", "open",
+                         "refer", "callin", "ctrl-c", "copy", "save", "log", "quit"]
 
 
 class UiOutput(OutputFile):
@@ -161,9 +163,9 @@ class CodeBrowser(App):
 
     def on_select_list(self, list: ListView):
         if list == self.symbol_listview:
-            if self.symbol_listview_type == HISTORY_LISTVIEW_TYPE:
+            if self.history_view ==list:
                 self.on_choose_file_from_event(self.history.list[list.index])
-            elif self.symbol_listview_type == SYMBOL_LISTVIEW_TYPE:
+            elif self.symbol_listview== list:
                 try:
                     sym: Symbol = self.lsp.currentfile.symbols_list[list.index]
                     y = sym.sym.location.range.start.line
@@ -228,17 +230,24 @@ class CodeBrowser(App):
             yield DirectoryTree(path, id="tree-view")
             with VerticalScroll(id="code-view"):
                 yield Static(id="code", expand=True)
-            self.symbol_listview = MyListView(id="symbol-list")
-            self.symbol_listview.mainui = self
-            yield self.symbol_listview
+            with TabbedContent(initial="jessica",id="symbol-list"):
+                with TabPane("Rencently", id="leto"):  # First tab
+                    self.history_view= MyListView(id="symbol-listx")
+                    self.history_view.mainui = self
+                    yield self.history_view
+                with TabPane("Symbol", id="jessica"):
+                    self.symbol_listview = MyListView(id="symbol-listx")
+                    self.symbol_listview.mainui = self
+                    yield self.symbol_listview
         yield Footer()
         # self.text = TextArea.code_editor("xxxx")
         # yield self.text
         self.logview = MyLogView(id="logview")
         self.logview.mainuui = self
         yield self.logview
-        suggester = SuggestFromList(countries, case_sensitive=False)
-        v = CommandInput(placeholder=" ".join(countries),
+        suggester = SuggestFromList(
+            input_command_options, case_sensitive=False)
+        v = CommandInput(placeholder=" ".join(input_command_options),
                          type="text",
                          suggester=suggester)
         v.mainui = self
@@ -251,13 +260,11 @@ class CodeBrowser(App):
         self.refresh_symbol_view()
 
     def refresh_history_view(self):
-        self.symbol_listview_type = HISTORY_LISTVIEW_TYPE
         aa = map(lambda x: ListItem(Label(x)), list(self.history.list))
-        self.symbol_listview.clear()
-        self.symbol_listview.extend(aa)
+        self.history_view.clear()
+        self.history_view.extend(aa)
 
     def refresh_symbol_view(self):
-        self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE
         aa = map(lambda x: ListItem(Label(x)),
                  self.lsp.currentfile.symbol_list_string())
         self.symbol_listview.clear()
@@ -290,8 +297,7 @@ class CodeBrowser(App):
             self.codeview_file = self.sub_title
             self.logview.write_line("tree open %s" % (self.sub_title))
             self.history.add(self.codeview_file)
-            if self.symbol_listview_type == HISTORY_LISTVIEW_TYPE:
-                self.refresh_history_view()
+            self.refresh_history_view()
             self.change_lsp_file(self.codeview_file)
 
     def action_open_file(self) -> None:

@@ -474,6 +474,9 @@ class lspcppclient:
             elif s.kind == SymbolKind.Function:
                 s1 = Symbol(s)
                 ret.append(s1)
+            elif s.kind == SymbolKind.Method:
+                s1 = Symbol(s)
+                ret.append(s1)
             symbols = symbols[1:]
         ret.extend(otherscls)
         return ret

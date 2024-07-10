@@ -500,8 +500,10 @@ class CallNode:
         self.callee = None
 
     def print(self, level=0):
-        print(" " * level + "->", self.sym.name, " ::",
-              self.sym.range.start.line)
+        print(" " * level + "->", self.sym.name,
+              "%s:%d"%(
+                  from_file(self.sym.uri),
+                  self.sym.range.start.line))
         if self.callee != None:
             self.callee.print(level + 1)
 
@@ -552,13 +554,15 @@ class CallerWalker:
         self.workspaceSymbol = workspaceSymbol
         pass
 
-    def __get_caller_next(self, node: CallNode) -> list[CallNode]:
+    def __get_caller_next(self, node: CallNode, once=False) -> list[CallNode]:
         param = node.sym
 
         has = list(filter(lambda x: x.range == param.range, self.caller_set))
         self.caller_set.append(param)
         parent = self.client.lsp_client.callIncoming(param)
         caller = list(map(lambda x: CallNode(x), parent))
+        if once:
+            return caller
         if len(has) == True and len(caller):
             return []
         for a in caller:
@@ -571,13 +575,13 @@ class CallerWalker:
             ret.extend(next)
         return ret
 
-    def get_caller(self, sym: Symbol):
+    def get_caller(self, sym: Symbol, once=False):
         if sym.is_call():
             ctx = self.client.lsp_client.callHierarchyPrepare(sym.sym)
             callser: list[CallNode] = []
             for a in ctx:
                 c = CallNode(a)
-                callser.extend(self.__get_caller_next(c))
+                callser.extend(self.__get_caller_next(c, once))
             return callser
         return []
 
@@ -633,15 +637,22 @@ class run:
         wk = cfg.create_workspace(client, add=False)
         s = client.lsp_client.process()
         print(s)
-        source = client.open_file(file)
-        wk.add(source)
-        self.symbols_list = client.get_document_symbol(file)
         self.wk = wk
         self.client = client
         self.file = file
         self.root = root
+        self.changefile(self.file)
+
+    def changefile(self, file):
+        try:
+            self.file = file
+            source = self.client.open_file(file)
+            self.wk.add(source)
+        except:
+            pass
 
     def print(self):
+        self.symbols_list = self.client.get_document_symbol(self.file)
         for m in self.symbols_list:
             s = Token(m.location)
             print("%2d %s " % (m.kind, m.name), m.location.range.start.line,
@@ -657,14 +668,14 @@ class run:
     def close(self): self.client.close()
 
     def refer(self, method):
-        symbo = self.find(method,False)
-        print("Symbol number:",len(symbo))
+        symbo = self.find(method, False)
+        print("Symbol number:", len(symbo))
         for s in symbo:
             refs = self.client.get_symbol_reference(s)
-            print(refs)
+            # print(refs)
             for r in refs:
-                print("Reference ", s.name, r.uri,
-                      r.range.start.line, r.range.end.line)
+                print("Reference ", s.name, from_file(r.uri),
+                      r.range.start.line)
         pass
 
     def find(self, method, print=False) -> list[SymbolInformation]:
@@ -681,7 +692,7 @@ class run:
     def call(self, method):
         symbo = self.find(method)
         walk = CallerWalker(self.client, self.wk)
-        ret = walk.get_caller(Symbol(symbo[0]))
+        ret = walk.get_caller(Symbol(symbo[0]), once=True)
         for a in ret:
             a.resolve_all(self.wk)
             a.print()
@@ -696,23 +707,46 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--method", help="root path")
     parser.add_argument("-i", "--index", help="root path")
     parser.add_argument("-r", "--refer", help="root path")
-    parser.add_argument("-c", "--call", help="root path")
+    parser.add_argument("-c", "--callin", help="root path")
+    parser.add_argument("-q", "--exit", help="root path")
     args = parser.parse_args()
 
     root = args.root
     if root != None and root[0] != "/":
         root = os.path.join(os.getcwd(), root)
     print("-" * 5, args.method)
-    print(args.root, args.file, args.method,args.refer)
+    print(args.root, args.file, args.method, args.refer)
     _run = run(args.root, args.file)
     import time
     time.sleep(2)
-    if args.call!= None:
-        _run.call(args.call)
+    if args.callin != None:
+        _run.call(args.callin)
     elif args.refer != None:
         _run.refer(args.refer)
     else:
         _run.print()
+        history = []
+        from prompt_toolkit import prompt
+        from prompt_toolkit.completion import WordCompleter
+        from prompt_toolkit import prompt
+
+        colors = WordCompleter(['--file', '--callin', '--refer', '--exit'])
+        while True:
+            try:
+                cmd = prompt("Please input\n",completer=colors)
+                print("--%s-" % (cmd))
+                args = parser.parse_args(cmd.split(" "))
+                if args.file!=None:
+                    _run.changefile(args.file)
+                if args.callin!=None:
+                    _run.call(args.callin)
+                elif args.refer!=None:
+                    _run.refer(args.refer)
+                elif args.exit!=None:
+                    break
+            except:
+                pass
+            pass
     _run.close()
     # main(root=root, file=args.file, method=None)
     # main(root=args.root, file=args.file,

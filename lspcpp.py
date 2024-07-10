@@ -690,13 +690,15 @@ class run:
                 print(i)
         return symbo
 
-    def call(self, method):
+    def call(self, method,uml=False):
         symbo = self.find(method)
         walk = CallerWalker(self.client, self.wk)
         ret = walk.get_caller(Symbol(symbo[0]), once=True)
         for a in ret:
             a.resolve_all(self.wk)
+            stack = a.callstack()
             a.print()
+            a.uml(stack)
 
 
 # python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp -m a::run
@@ -707,6 +709,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--file", help="root path")
     parser.add_argument("-m", "--method", help="root path")
     parser.add_argument("-i", "--index", help="root path")
+    parser.add_argument("-u", "--uml", help="root path",action="store_true")
     parser.add_argument("-R", "--refer", help="root path")
     parser.add_argument("-C", "--callin", help="root path")
     parser.add_argument("-S", "--symbol", help="root path")
@@ -730,14 +733,14 @@ if __name__ == "__main__":
     colors = WordCompleter(['--file', '--callin', '--refer', '--exit',"--print"])
     while True:
         try:
-            cmd = prompt("Please input\n", completer=colors)
+            cmd = prompt("Please input PID=%d\n"%(os.getpid()), completer=colors)
             print("--%s-" % (cmd))
             args = parser.parse_args(cmd.split(" "))
             if args.file != None:
                 _run.changefile(args.file)
                 _run.print(args.file)
             if args.callin != None:
-                _run.call(args.callin)
+                _run.call(args.callin,True)
             elif args.refer != None:
                 _run.refer(args.refer)
             elif args.exit != None:

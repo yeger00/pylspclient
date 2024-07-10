@@ -856,14 +856,14 @@ class SymbolFile:
     save_uml_file: TextIOWrapper | None
     save_stack_file: TextIOWrapper | None
 
-    def __init__(self, file, wk) -> None:
+    def __init__(self, file, wk:WorkSpaceSymbol) -> None:
 
         self.save_stack_file = None
         self.save_uml_file = None
         self.wk = wk
         self.client = wk.client
         self.file = file
-        self.root = root
+        self.root = wk.root 
         try:
             self.file = file
             source = self.client.open_file(file)
@@ -943,7 +943,7 @@ class SymbolFile:
                 pass
 
 
-class Run:
+class LspMain:
 
     def __init__(self, root, file) -> None:
         if file != None and os.path.isabs(file) == False:
@@ -979,7 +979,7 @@ if __name__ == "__main__":
     root = args.root
     if root != None and root[0] != "/":
         root = os.path.join(os.getcwd(), root)
-    runMain = Run(args.root, args.file)
+    runMain = LspMain(args.root, args.file)
     import time
     time.sleep(2)
     runMain.currentfile.print()

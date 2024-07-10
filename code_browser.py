@@ -6,6 +6,8 @@ Run with:
     python code_browser.py PATH
 """
 
+import argparse
+from logging import root
 import sys
 
 from rich.syntax import Syntax
@@ -15,9 +17,16 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, VerticalScroll
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Static
+import lspcpp
+from lspcpp import LspMain
 
 
 class CodeBrowser(App):
+
+    def __init__(self, root, file):
+        App.__init__(self)
+        self.lsp = LspMain(root=root, file=file)
+
     """Textual code browser app."""
 
     CSS_PATH = "code_browser.tcss"
@@ -46,8 +55,7 @@ class CodeBrowser(App):
         self.query_one(DirectoryTree).focus()
 
     def on_directory_tree_file_selected(
-        self, event: DirectoryTree.FileSelected
-    ) -> None:
+            self, event: DirectoryTree.FileSelected) -> None:
         """Called when the user click a file in the directory tree."""
         event.stop()
         code_view = self.query_one("#code", Static)
@@ -73,4 +81,8 @@ class CodeBrowser(App):
 
 
 if __name__ == "__main__":
-    CodeBrowser().run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-w", "--root", help="root path")
+    parser.add_argument("-f", "--file", help="root path")
+    args = parser.parse_args()
+    CodeBrowser(root=args.root, file=args.file).run()

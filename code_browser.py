@@ -13,6 +13,7 @@ import argparse
 from logging import root
 import sys
 from textual.suggester import SuggestFromList
+from textual.validation import Failure
 from textual.widgets import Log
 
 from pydantic import NatsDsn
@@ -25,7 +26,7 @@ from textual.containers import Container, VerticalScroll
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
-from lspcpp import LspMain, Output, lspcpp, OutputFile
+from lspcpp import LspMain, Output, Symbol, lspcpp, OutputFile
 from textual.app import App, ComposeResult
 from textual.widgets import TextArea
 from textual.widgets import Input
@@ -160,6 +161,14 @@ class CodeBrowser(App):
         if list == self.symbol_listview:
             if self.symbol_listview_type == HISTORY_LISTVIEW_TYPE:
                 self.on_choose_file_from_event(self.history.list[list.index])
+            elif self.symbol_listview_type == SYMBOL_LISTVIEW_TYPE:
+                try:
+                    sym: Symbol = self.lsp.currentfile.symbols_list[list.index]
+                    y = sym.sym.location.range.start.line
+                    self.query_one("#code-view").scroll_to(y=y,animate=False)
+                    pass
+                except Exception as e:
+                    self.logview.write_line(str(e))
             pass
         pass
 
@@ -175,13 +184,12 @@ class CodeBrowser(App):
                 _self.refresh_symbol_view()
                 _self.logview.write_line("open %s finished" % (file))
             except Exception as e:
-                _self.logview.write_line("open %s error %s" % (file,str(e)))
-
+                _self.logview.write_line("open %s error %s" % (file, str(e)))
 
         self.symbol_listview.clear()
         # thread = threading.Thread(target=my_function, args=(self, file))
         # thread.start()
-        my_function(self,file)
+        my_function(self, file)
         self.logview.write_line("open %s" % (file))
 
     def on_command_input(self, value):
@@ -234,6 +242,7 @@ class CodeBrowser(App):
 
     def on_mount(self) -> None:
         self.query_one(DirectoryTree).focus()
+        self.changefile(self.codeview_file)
         self.refresh_symbol_view()
 
     def refresh_history_view(self):

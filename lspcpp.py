@@ -3,11 +3,13 @@
 
 """
 
+from io import TextIOWrapper
 import sys
 import os
 import argparse
 import subprocess
 import json
+from time import sleep
 
 from prompt_toolkit.filters import cli
 from pydantic import BaseModel
@@ -849,33 +851,32 @@ class WorkSpaceSymbol:
             return None
 
 
-class run:
+class SymbolFile:
+    save_uml_file: TextIOWrapper | None
+    save_stack_file: TextIOWrapper | None
 
-    def __init__(self, root, file, savefile=None) -> None:
-        if file != None and os.path.isabs(file) == False:
-            file = os.path.join(root, file)
-        print(root, file)
-        self.save_uml_file = savefile
-        self.save_stack_file = savefile
-        cfg = project_config(workspace_root=root)
-        srv = lspcppserver(cfg.workspace_root)
-        client = srv.newclient(cfg)
-        wk = cfg.create_workspace(client, add=False)
-        s = client.lsp_client.process()
-        print(s)
+    def __init__(self, file, wk) -> None:
+
+        self.save_stack_file = None
+        self.save_uml_file = None
         self.wk = wk
-        self.client = client
+        self.client = wk.client
         self.file = file
         self.root = root
-        self.changefile(self.file)
-
-    def changefile(self, file):
         try:
             self.file = file
             source = self.client.open_file(file)
             self.wk.add(source)
         except:
             pass
+
+    def reset(self):
+        if self.save_stack_file != None:
+            self.save_stack_file.close()
+        if self.save_uml_file != None:
+            self.save_uml_file.close()
+
+        self.save_stack_file = self.save_uml_file = None
 
     def print(self):
         self.symbols_list = self.client.get_document_symbol(self.file)
@@ -895,8 +896,6 @@ class run:
             else:
                 print(sym.name)
 
-    def close(self):
-        self.client.close()
 
     def refer(self, method):
         symbo = self.find(method, False)
@@ -909,7 +908,7 @@ class run:
                       "%s:%d" % (from_file(r.uri), r.range.start.line))
         pass
 
-    def find(self, method, print=False) -> list[SymbolInformation]:
+    def find(self, method, Print=False) -> list[SymbolInformation]:
 
         def find_fn(x: SymbolInformation):
             if x.name == method:
@@ -917,7 +916,7 @@ class run:
             return method.find("::" + x.name) > 0
 
         symbo = list(filter(find_fn, self.symbols_list))
-        if print:
+        if Print:
             for i in symbo:
                 print(i)
         return symbo
@@ -943,6 +942,30 @@ class run:
             except:
                 pass
 
+
+class Run:
+
+    def __init__(self, root, file) -> None:
+        if file != None and os.path.isabs(file) == False:
+            file = os.path.join(root, file)
+        print(root, file)
+        cfg = project_config(workspace_root=root)
+        srv = lspcppserver(cfg.workspace_root)
+        client = srv.newclient(cfg)
+        wk = cfg.create_workspace(client, add=False)
+        s = client.lsp_client.process()
+        print(s)
+        self.wk = wk
+        self.client = client
+        self.root = root
+        self.currentfile = SymbolFile(file=file, wk=wk)
+
+    def changefile(self, file):
+        self.currentfile = SymbolFile(file=file, wk=self.wk)
+        return self.currentfile
+
+    def close(self):
+        self.client.close()
 
 # python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp -m a::run
 # python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp
@@ -971,40 +994,38 @@ if __name__ == "__main__":
         root = os.path.join(os.getcwd(), root)
     print("-" * 5, args.method)
     print(args.root, args.file, args.method, args.refer)
-    _run = run(args.root, args.file)
+    runMain = Run(args.root, args.file)
     import time
     time.sleep(2)
-    _run.print()
+    runMain.currentfile.print()
     history = []
-    from prompt_toolkit import prompt
     from prompt_toolkit.completion import WordCompleter
-    from prompt_toolkit import prompt
 
-    colors = WordCompleter(
-        ['--file', '--callin', '--refer', '--exit', "--print", "--uml-output","--stack-output"])
+    colors = WordCompleter([
+        '--file', '--callin', '--refer', '--exit', "--print", "--uml-output",
+        "--stack-output"
+    ])
     while True:
         try:
             from prompt_toolkit import PromptSession
             from prompt_toolkit.history import FileHistory
             history = FileHistory('history.txt')
             session = PromptSession(history=history)
-
-            cmd = session.prompt("PID=%d >\n" % (os.getpid()),
-                                 completer=colors)
+            _run: SymbolFile = runMain.currentfile
+            cmd = session.prompt("%s >\n" % (_run.file), completer=colors)
             # session.history.save()
-            print("--%s-" % (cmd))
-            _run.save_uml_file = None
-            _run.save_stack_file= None
+            print("--%s- %s" % (cmd, _run.file))
+            _run.reset()
             try:
                 args = parser.parse_args(cmd.split(" "))
             except:
                 pass
             if args.file != None:
-                _run.changefile(args.file)
+                _run = runMain.changefile(args.file)
                 _run.print()
             if args.callin != None:
                 if args.stack_output:
-                    _run.save_stack_file= open(
+                    _run.save_stack_file = open(
                         args.callin.replace(":", "_") + "_callstack.txt", "w")
                 if args.uml_output:
                     _run.save_uml_file = open(

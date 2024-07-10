@@ -6,6 +6,7 @@ Run with:
     python code_browser.py PATH
 """
 
+from textual import on
 import argparse
 from logging import root
 import sys
@@ -24,6 +25,7 @@ from textual.widgets import Footer, Label, ListItem, ListView
 from lspcpp import LspMain, Output, lspcpp, OutputFile
 from textual.app import App, ComposeResult
 from textual.widgets import TextArea
+from textual.widgets import Input
 
 
 class UiOutput(OutputFile):
@@ -50,6 +52,7 @@ class UiOutput(OutputFile):
 
 
 class Query:
+
     def __init__(self, name) -> None:
         self.data = name
         pass
@@ -57,10 +60,16 @@ class Query:
     def __eq__(self, value: object) -> bool:
         return self.data == value.data
 
-
+class CommandInput(Input):
+    mainui:'CodeBrowser' 
+    def on_input_submitted(self) -> None:
+        if self.mainui!=None:
+            self.mainui.on_command_input(self.value)
+        pass
 class CodeBrowser(App):
     root: str
     symbol_query = Query("")
+    codeview_file: str
 
     def __init__(self, root, file):
         App.__init__(self)
@@ -69,6 +78,7 @@ class CodeBrowser(App):
         self.root = root
         self.tofile = None
         self.toUml = None
+        self.codeview_file = self.sub_title = file
         # self.lsp.currentfile.save_uml_file = self.print_recieved
         # self.lsp.currentfile.save_stack_file = self.print_recieved
 
@@ -79,10 +89,29 @@ class CodeBrowser(App):
         ("f", "toggle_files", "Toggle Files"),
         ("q", "quit", "Quit"),
         ("c", "callin", "CallIn"),
+        ("o", "open_file", "Open"),
         ("r", "refer", "Reference"),
     ]
 
     show_tree = var(True)
+    def changefile(self,file):
+        self.lsp.changefile(file)
+        self.refresh_symbol_view()
+        self.logview.write_line("open %s"%(file))
+
+    def on_command_input(self,value):
+        args = value.split(" ")
+        self.logview.write_line(value)
+        if len(args)==1:
+            if args[0]=="open":
+                self.changefile(self.codeview_file) 
+                return
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-o", "--file", help="root path")
+        parser.parse_args(args)
+        if args.file!=None:
+            self.changefile(args.file)
+            return
 
     def watch_show_tree(self, show_tree: bool) -> None:
         """Called when show_tree is modified."""
@@ -103,13 +132,20 @@ class CodeBrowser(App):
         self.logview = Log(id="logview")
         yield self.logview
         yield self.symbol_listview
+        v = CommandInput(placeholder="A number", type="text")
+        v.mainui = self
+        yield v
 
     def on_mount(self) -> None:
         self.query_one(DirectoryTree).focus()
+        self.refresh_symbol_view()
+        
+    def refresh_symbol_view(self):
         aa = map(lambda x: ListItem(Label(x)),
                  self.lsp.currentfile.symbol_list_string())
         self.symbol_listview.clear()
         self.symbol_listview.extend(aa)
+        self.logview.write_line("open %s"%(self.lsp.currentfile.file))
 
     def on_directory_tree_file_selected(
             self, event: DirectoryTree.FileSelected) -> None:
@@ -131,6 +167,14 @@ class CodeBrowser(App):
             code_view.update(syntax)
             self.query_one("#code-view").scroll_home(animate=False)
             self.sub_title = str(event.path)
+            self.codeview_file = self.sub_title
+            self.logview.write_line("tree open %s"%(self.sub_title))
+
+    def action_open_file(self) -> None:
+        if self.lsp.currentfile.file != self.codeview_file:
+            self.changefile(self.codeview_file)
+
+        pass
 
     def action_callin(self) -> None:
         # if self.thread!=None:
@@ -138,26 +182,30 @@ class CodeBrowser(App):
         #         self.logview.write_line("Wait for previous call finished")
         #         return
         def my_function(lsp, q: Query, toFile, toUml):
-            lsp.currentfile.call(q.data, once=False,
-                                 uml=True, toFile=toFile, toUml=toUml)
+            lsp.currentfile.call(q.data,
+                                 once=False,
+                                 uml=True,
+                                 toFile=toFile,
+                                 toUml=toUml)
             self.logview.write_line("Call Job finished")
+
         import threading
         sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
         q = Query(sym.symbol_display_name())
         if q != self.symbol_query:
-            if self.tofile!=None:
+            if self.tofile != None:
                 self.tofile.close()
-            self.tofile = UiOutput(q.data+".txt")
+            self.tofile = UiOutput(q.data + ".txt")
             self.tofile.ui = self.logview
-            
-            if self.toUml!=None:
+
+            if self.toUml != None:
                 self.toUml.close()
-            self.toUml= UiOutput(q.data+".qml")
+            self.toUml = UiOutput(q.data + ".qml")
             self.toUml.ui = self.logview
- 
-            
-            self.thread = threading.Thread(target=my_function, args=(
-                self.lsp, q, self.tofile, self.toUml))
+
+            self.thread = threading.Thread(target=my_function,
+                                           args=(self.lsp, q, self.tofile,
+                                                 self.toUml))
             self.thread.start()
 
     def action_toggle_files(self) -> None:

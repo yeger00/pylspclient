@@ -958,7 +958,12 @@ class SymbolFile:
                 print(i)
         return symbo
 
-    def call(self, method, uml=False, once=True,toFile:Output=None,toUml:Output=None):
+    def call(self,
+             method,
+             uml=False,
+             once=True,
+             toFile: Output = None,
+             toUml: Output = None):
         symbo = self.find(method)
         walk = CallerWalker(self.client, self.wk)
         ret = walk.get_caller(Symbol(symbo[0].sym), once=once)
@@ -981,6 +986,7 @@ class SymbolFile:
 
 
 class LspMain:
+    opened_files: list[SymbolFile] = []
 
     def __init__(self, root, file) -> None:
         if file != None and os.path.isabs(file) == False:
@@ -995,10 +1001,15 @@ class LspMain:
         self.wk = wk
         self.client = client
         self.root = root
-        self.currentfile = SymbolFile(file=file, wk=wk)
+        self.changefile(file)
 
     def changefile(self, file):
+        for f in self.opened_files:
+            if f.file == file:
+                self.currentfile = file
+                return file
         self.currentfile = SymbolFile(file=file, wk=self.wk)
+        self.opened_files.append(self.currentfile)
         return self.currentfile
 
     def __del__(self):

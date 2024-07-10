@@ -6,6 +6,8 @@ Run with:
     python code_browser.py PATH
 """
 
+import re
+import threading
 from textual import on
 import argparse
 from logging import root
@@ -72,9 +74,6 @@ class CommandInput(Input):
         pass
 
 
-import re
-
-
 class history:
 
     def __init__(self) -> None:
@@ -120,6 +119,7 @@ HISTORY_LISTVIEW_TYPE = 2
 
 class MyListView(ListView):
     mainui: 'CodeBrowser'
+
     def action_select_cursor(self):
         self.mainui.on_select_list(self)
 
@@ -168,8 +168,20 @@ class CodeBrowser(App):
         pass
 
     def changefile(self, file):
-        self.lsp.changefile(file)
-        self.refresh_symbol_view()
+
+        def my_function(_self, file):
+            try:
+                _self.lsp.changefile(file)
+                _self.refresh_symbol_view()
+                _self.logview.write_line("open %s finished" % (file))
+            except Exception as e:
+                _self.logview.write_line("open %s error %s" % (file,str(e)))
+
+
+        self.symbol_listview.clear()
+        # thread = threading.Thread(target=my_function, args=(self, file))
+        # thread.start()
+        my_function(self,file)
         self.logview.write_line("open %s" % (file))
 
     def on_command_input(self, value):
@@ -207,7 +219,7 @@ class CodeBrowser(App):
         # self.text = TextArea.code_editor("xxxx")
         # yield self.text
         self.symbol_listview = MyListView(id="symbol-list")
-        self.symbol_listview.mainui= self
+        self.symbol_listview.mainui = self
         self.logview = MyLogView(id="logview")
         self.logview.mainuui = self
         yield self.logview
@@ -264,8 +276,9 @@ class CodeBrowser(App):
             self.codeview_file = self.sub_title
             self.logview.write_line("tree open %s" % (self.sub_title))
             self.history.add(self.codeview_file)
-            if self.symbol_listview_type==HISTORY_LISTVIEW_TYPE:
+            if self.symbol_listview_type == HISTORY_LISTVIEW_TYPE:
                 self.refresh_history_view()
+            self.changefile(self.codeview_file)
 
     def action_open_file(self) -> None:
         if self.lsp.currentfile.file != self.codeview_file:

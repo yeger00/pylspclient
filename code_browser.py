@@ -9,7 +9,9 @@ Run with:
 import argparse
 from logging import root
 import sys
+from textual.widgets import Log
 
+from pydantic import NatsDsn
 from rich.syntax import Syntax
 from rich.traceback import Traceback
 
@@ -19,7 +21,17 @@ from textual.containers import Container, VerticalScroll
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
-from lspcpp import LspMain
+from lspcpp import LspMain, Output, lspcpp
+from textual.app import App, ComposeResult
+from textual.widgets import TextArea
+
+
+class UiOutput(Output):
+    ui: Log| None = None
+
+    def write(self, s):
+        if self.ui != None:
+            self.ui.write_line(s)
 
 
 class CodeBrowser(App):
@@ -29,6 +41,9 @@ class CodeBrowser(App):
         App.__init__(self)
         self.lsp = LspMain(root=root, file=file)
         self.root = root
+        self.print_recieved = UiOutput("")
+        self.lsp.currentfile.save_uml_file = self.print_recieved
+        self.lsp.currentfile.save_stack_file = self.print_recieved
 
     """Textual code browser app."""
 
@@ -36,6 +51,8 @@ class CodeBrowser(App):
     BINDINGS = [
         ("f", "toggle_files", "Toggle Files"),
         ("q", "quit", "Quit"),
+        ("c", "callin", "CallIn"),
+        ("r", "refer", "Reference"),
     ]
 
     show_tree = var(True)
@@ -53,15 +70,19 @@ class CodeBrowser(App):
             with VerticalScroll(id="code-view"):
                 yield Static(id="code", expand=True)
         yield Footer()
-
-        self.a = ListView(ListItem(Label("xx")))
-        yield self.a
+        # self.text = TextArea.code_editor("xxxx")
+        # yield self.text
+        self.symbol_listview = ListView(ListItem(Label("xx")))
+        self.logview=Log()
+        self.print_recieved.ui = self.logview
+        yield self.logview
+        yield self.symbol_listview
 
     def on_mount(self) -> None:
         self.query_one(DirectoryTree).focus()
         aa = map(lambda x: ListItem(Label(x)),
                  self.lsp.currentfile.symbol_list_string())
-        self.a.extend(aa)
+        self.symbol_listview.extend(aa)
 
     def on_directory_tree_file_selected(
             self, event: DirectoryTree.FileSelected) -> None:
@@ -83,6 +104,10 @@ class CodeBrowser(App):
             code_view.update(syntax)
             self.query_one("#code-view").scroll_home(animate=False)
             self.sub_title = str(event.path)
+
+    def action_callin(self) -> None:
+        sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
+        self.lsp.currentfile.call(sym.symbol_display_name(),once=False,uml=True)
 
     def action_toggle_files(self) -> None:
         """Called in response to key binding."""

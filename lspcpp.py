@@ -185,8 +185,7 @@ class Symbol:
 
     def symbol_display_name(self) -> str:
         cls = self.cls.sym.name + "::" if self.cls != None else ""
-        return cls + self.sym.name 
-
+        return cls + self.sym.name
 
     def is_call(self):
         return self.sym.kind == SymbolKind.Method or self.sym.kind == SymbolKind.Function
@@ -859,17 +858,49 @@ class WorkSpaceSymbol:
             return None
 
 
-class SymbolFile:
-    save_uml_file: TextIOWrapper | None
-    save_stack_file: TextIOWrapper | None
+class Output:
 
-    def __init__(self, file, wk:WorkSpaceSymbol) -> None:
+    def __init__(self, name) -> None:
+        self.name = name
+        pass
+
+    def close(self):
+        pass
+
+    def write(self, s):
+        pass
+
+    def flush(self):
+        pass
+
+
+class OutputFile(Output):
+
+    def __init__(self, name) -> None:
+        super().__init__(name)
+        self.fp = open(name, "w")
+
+    def write(self, s):
+        self.fp.write(s)
+
+    def flush(self):
+        self.fp.flush()
+
+    def close(self):
+        self.fp.close()
+
+
+class SymbolFile:
+    save_uml_file: Output | None
+    save_stack_file: Output | None
+
+    def __init__(self, file, wk: WorkSpaceSymbol) -> None:
         self.save_stack_file = None
         self.save_uml_file = None
         self.wk = wk
         self.client = wk.client
         self.file = file
-        self.root = wk.root 
+        self.root = wk.root
         try:
             self.file = file
             source = self.client.open_file(file)
@@ -885,8 +916,8 @@ class SymbolFile:
 
         self.save_stack_file = self.save_uml_file = None
 
-    def get_symbol_list(self)->list[Symbol]:
-        self.symbols_list= []
+    def get_symbol_list(self) -> list[Symbol]:
+        self.symbols_list = []
         for a in self.client.get_class_symbol(file=self.file):
             if len(a.members):
                 self.symbols_list.extend(a.members)
@@ -894,31 +925,29 @@ class SymbolFile:
                 self.symbols_list.append(a)
         return self.symbols_list
 
-    def symbol_list_string(self)->list[str]:
-        self.SymbolList = self.get_symbol_list()
-        return list(map(lambda x:x.symbol_display_name(),self.symbols_list))
-
-
+    def symbol_list_string(self) -> list[str]:
+        self.get_symbol_list()
+        return list(map(lambda x: x.symbol_display_name(), self.symbols_list))
 
     def print(self):
         for s in self.get_symbol_list():
             print("%s %s" % ("Method" if s.is_call() else "Member",
-                                         s.symbol_display_name()))
+                             s.symbol_display_name()))
 
     def refer(self, method):
         symbo = self.find(method, False)
         print("Symbol number:", len(symbo))
         for s in symbo:
-            refs = self.client.get_symbol_reference(s)
+            refs = self.client.get_symbol_reference(s.sym)
             # print(refs)
             for r in refs:
                 print("Reference ", s.name,
                       "%s:%d" % (from_file(r.uri), r.range.start.line))
         pass
 
-    def find(self, method, Print=False) -> list[SymbolInformation]:
+    def find(self, method, Print=False) -> list[Symbol]:
 
-        def find_fn(x: SymbolInformation):
+        def find_fn(x: Symbol):
             if x.name == method:
                 return True
             return method.find("::" + x.name) > 0
@@ -932,7 +961,7 @@ class SymbolFile:
     def call(self, method, uml=False, once=True):
         symbo = self.find(method)
         walk = CallerWalker(self.client, self.wk)
-        ret = walk.get_caller(Symbol(symbo[0]), once=once)
+        ret = walk.get_caller(Symbol(symbo[0].sym), once=once)
         for a in ret:
             a.resolve_all(self.wk)
             stack = a.callstack()
@@ -971,8 +1000,10 @@ class LspMain:
     def changefile(self, file):
         self.currentfile = SymbolFile(file=file, wk=self.wk)
         return self.currentfile
+
     def __del__(self):
         self.client.close()
+
     def close(self):
         self.client.close()
 
@@ -997,7 +1028,7 @@ if __name__ == "__main__":
 
     colors = WordCompleter([
         '--file', '--callin', '--refer', '--exit', "--print", "--uml-output",
-        "--stack-output","--fzf"
+        "--stack-output", "--fzf"
     ])
     while True:
         try:
@@ -1041,16 +1072,16 @@ if __name__ == "__main__":
             if args.file != None:
                 _run = runMain.changefile(args.file)
                 _run.print()
-            if args.fzf!= None:
+            if args.fzf != None:
                 system("fzf")
                 pass
             if args.callin != None:
                 if args.stack_output:
-                    _run.save_stack_file = open(
-                        args.callin.replace(":", "_") + "_callstack.txt", "w")
+                    _run.save_stack_file = OutputFile(
+                        args.callin.replace(":", "_") + "_callstack.txt")
                 if args.uml_output:
-                    _run.save_uml_file = open(
-                        args.callin.replace(":", "_") + ".puml", "w")
+                    _run.save_uml_file = OutputFile(
+                        args.callin.replace(":", "_") + ".puml")
                 _run.call(args.callin, uml=True, once=False)
             elif args.refer != None:
                 _run.refer(args.refer)

@@ -15,7 +15,7 @@ from prompt_toolkit.filters import cli
 from pydantic import BaseModel
 import pylspclient
 import threading
-from os import link, path
+from os import link, path, system
 from pylspclient import LspClient, LspEndpoint
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
 
@@ -577,7 +577,8 @@ class CallNode:
         self.param = ""
 
     def printstack(self, level=0, fp=None):
-        classname = self.symboldefine.cls.name + "::" if self.symboldefine.cls != None else ""
+        classname = self.symboldefine.cls.name + \
+            "::" if self.symboldefine.cls != None else ""
         sss = " " * level + "->" + classname + self.sym.name + self.param + " " + "%s:%d" % (
             from_file(self.sym.uri), self.sym.range.start.line)
         print(sss)
@@ -896,7 +897,6 @@ class SymbolFile:
             else:
                 print(sym.name)
 
-
     def refer(self, method):
         symbo = self.find(method, False)
         print("Symbol number:", len(symbo))
@@ -967,33 +967,18 @@ class Run:
     def close(self):
         self.client.close()
 
+
 # python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp -m a::run
 # python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-w", "--root", help="root path")
     parser.add_argument("-f", "--file", help="root path")
-    parser.add_argument("-m", "--method", help="root path")
-    parser.add_argument("-i", "--index", help="root path")
-    parser.add_argument("-u", "--uml", help="root path", action="store_true")
-    parser.add_argument("-R", "--refer", help="root path")
-    parser.add_argument("-C", "--callin", help="root path")
-    parser.add_argument("-S", "--symbol", help="root path")
-    parser.add_argument("-q", "--exit", help="root path", action="store_true")
-    parser.add_argument("-uo",
-                        "--uml-output",
-                        help="root path",
-                        action="store_true")
-    parser.add_argument("-so",
-                        "--stack-output",
-                        help="root path",
-                        action="store_true")
+
     args = parser.parse_args()
     root = args.root
     if root != None and root[0] != "/":
         root = os.path.join(os.getcwd(), root)
-    print("-" * 5, args.method)
-    print(args.root, args.file, args.method, args.refer)
     runMain = Run(args.root, args.file)
     import time
     time.sleep(2)
@@ -1003,7 +988,7 @@ if __name__ == "__main__":
 
     colors = WordCompleter([
         '--file', '--callin', '--refer', '--exit', "--print", "--uml-output",
-        "--stack-output"
+        "--stack-output","--fzf"
     ])
     while True:
         try:
@@ -1014,15 +999,42 @@ if __name__ == "__main__":
             _run: SymbolFile = runMain.currentfile
             cmd = session.prompt("%s >\n" % (_run.file), completer=colors)
             # session.history.save()
-            print("--%s- %s" % (cmd, _run.file))
             _run.reset()
             try:
+                parser.add_argument("-m", "--method", help="root path")
+                parser.add_argument("-i", "--index", help="root path")
+                parser.add_argument("-u",
+                                    "--uml",
+                                    help="root path",
+                                    action="store_true")
+                parser.add_argument("-R", "--refer", help="root path")
+                parser.add_argument("-C", "--callin", help="root path")
+                parser.add_argument("-S", "--symbol", help="root path")
+                parser.add_argument("-q",
+                                    "--exit",
+                                    help="root path",
+                                    action="store_true")
+                parser.add_argument("-uo",
+                                    "--uml-output",
+                                    help="root path",
+                                    action="store_true")
+                parser.add_argument("-fzf",
+                                    "--fzf",
+                                    help="root path",
+                                    action="store_true")
+                parser.add_argument("-so",
+                                    "--stack-output",
+                                    help="root path",
+                                    action="store_true")
                 args = parser.parse_args(cmd.split(" "))
             except:
                 pass
             if args.file != None:
                 _run = runMain.changefile(args.file)
                 _run.print()
+            if args.fzf!= None:
+                system("fzf")
+                pass
             if args.callin != None:
                 if args.stack_output:
                     _run.save_stack_file = open(
@@ -1040,7 +1052,7 @@ if __name__ == "__main__":
             traceback.print_exc()
             pass
         pass
-    _run.close()
+    runMain.close()
     # main(root=root, file=args.file, method=None)
     # main(root=args.root, file=args.file,
     #  method=args.method, index=args.index != None)

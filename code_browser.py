@@ -317,7 +317,7 @@ class CodeBrowser(App):
 
         pass
 
-    async def action_quick(self) -> None:
+    async def action_quit(self) -> None:
         self.lsp.close()
         await App.action_quit(self)
 

@@ -122,6 +122,17 @@ def test_client_code_action():
     ret = client.lsp_client.code_action(file)
     client.close()
 
+def test_client_index():
+    cfg = project_config(
+        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
+        compile_database=None)
+    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
+    srv = lspcppserver(cfg.workspace_root)
+    client = srv.newclient(cfg)
+    ret = client.lsp_client.process()
+    print(ret)
+    client.close()
+
 
 def test_client_did_changed():
     cfg = project_config(
@@ -131,7 +142,7 @@ def test_client_did_changed():
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
-    ret = client.lsp_client.did_file_change(file)
+    ret = client.lsp_client.didChange(file)
     print(ret)
     client.close()
 

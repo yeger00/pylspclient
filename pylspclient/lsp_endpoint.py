@@ -43,7 +43,9 @@ class LspEndpoint(threading.Thread):
     def stop(self) -> None:
         self.shutdown_flag = True
 
-
+    def on_work_done_progress_create(self, params: dict):
+        self.token =dict
+        pass
     def run(self) -> None:
         while not self.shutdown_flag:
             try:
@@ -70,7 +72,10 @@ class LspEndpoint(threading.Thread):
                             if method=='textDocument/publishDiagnostics':
                                 import json
                                 if len(params["diagnostics"])>0:
-                                    print(json.dumps(params,indent=4))
+                                    # print(json.dumps(params,indent=4))
+                                    continue
+                            elif method=="window/workDoneProgress/create":
+                                self.on_work_done_progress_create(params)
                             else:
                             # Have nothing to do with this.
                                 print("Notify method not found: {method}.".format(method=method))

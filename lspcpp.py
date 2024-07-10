@@ -13,17 +13,17 @@ from os import link, path
 from pylspclient import LspClient, LspEndpoint
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
 
-DEFAULT_CAPABILITIES = {
-    'textDocument': {
-        'completion': {
-            'completionItem': {
-                'commitCharactersSupport': True,
-                'documentationFormat': ['markdown', 'plaintext'],
-                'snippetSupport': True
-            }
-        }
-    }
-}
+# DEFAULT_CAPABILITIES = {
+#     'textDocument': {
+#         'completion': {
+#             'completionItem': {
+#                 'commitCharactersSupport': True,
+#                 'documentationFormat': ['markdown', 'plaintext'],
+#                 'snippetSupport': True
+#             }
+#         }
+#     }
+# }
 
 
 class PrepareReturn(BaseModel):
@@ -147,7 +147,7 @@ class ReadPipe(threading.Thread):
     def run(self):
         line = self.pipe.readline().decode('utf-8')
         while line:
-            # print('pipe:', line)
+            print('pipe:', line)
             line = self.pipe.readline().decode('utf-8')
 
 
@@ -211,29 +211,11 @@ class LspClient2(LspClient):
         """
         LspClient.__init__(self, lsp_endpoint)
         self.endpoint = lsp_endpoint
-
-    def did_file_change(self, file):
-
-        class TextDocumentContentChangeEvent(BaseModel):
-            range: Range
-            text: str
-
-        class VersionedTextDocumentIdentifier(TextDocumentIdentifier):
-            version: int
-
-        ret = self.endpoint.call_method(
-            "textDocument/didChange",
-            textDocument=VersionedTextDocumentIdentifier(uri=to_file(file),
-                                                         version=1),
-            contentChanges=[
-                TextDocumentContentChangeEvent(text="",
-                                               range=Range(
-                                                   start=Position(line=0,
-                                                                  character=0),
-                                                   end=Position(line=0,
-                                                                character=0)))
-            ])
-        return ret
+    def process(self):
+        return self.endpoint.send_notification("$/progress")
+    def index_status(self):
+       ret = self.endpoint.call_method("textDocument/index") 
+       return ret
 
     def code_action(self, file):
         return self.endpoint.call_method("textDocument/codeAction",
@@ -319,6 +301,14 @@ class project_config:
         if compile_database is None:
             self.compile_database = os.path.join(self.workspace_root,
                                                  "compile_commands.json")
+    def open_all(self,
+                         client: 'lspcppclient'):
+        fp = open(self.compile_database, "r")
+        if fp != None:
+            dd = json.load(fp)
+            for a in dd:
+                client.open_file(a["file"])
+
 
     def create_workspace(self,
                          client: 'lspcppclient',
@@ -351,8 +341,13 @@ class lspcppclient:
         # initialization_options = {
         #     "compilationDatabasePath": data_path
         # } if data_path != None else None
-        initialization_options = {}
+        initialization_options = {
+            "clangdFileStatus": True,
+        }
         capabilities = {
+            "window":{
+                'workDoneProgress': True   
+            },
             'textDocument': {
                 'completion': {
                     'completionItem': {
@@ -370,7 +365,7 @@ class lspcppclient:
                                                     initialization_options,
                                                     capabilities, trace,
                                                     workspace_folders)
-        # print(json.dumps(initialize_response, indent=4))
+        print(json.dumps(initialize_response, indent=4))
         if initialize_response['serverInfo']['name'] != 'clangd':
             raise RuntimeError("failed to initialize lsp_client")
         lsp_client.initialized()
@@ -439,8 +434,6 @@ class lspcppclient:
     def get_reference(self, file, col: int, line: int) -> list[Location]:
         return self.lsp_client.references(file, col, line)
 
-    def did_change_file(self, file):
-        pass
 
     def open_file(self, file):
         uri = to_file(file)
@@ -465,7 +458,9 @@ class lspcppserver:
     def __init__(self, root):
         cmd = [
             "/home/z/.local/share/nvim/mason/bin/clangd",
-            "--compile-commands-dir", root
+            "--compile-commands-dir=%s"%(root), 
+            # "--log=verbose",
+            # "--background-index"
         ]
         p = subprocess.Popen(cmd,
                              stdin=subprocess.PIPE,
@@ -630,7 +625,7 @@ import sys
 
 def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
          file="/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp",
-         method="class_c::run_class_c"):
+         method="class_c::run_class_c",index=False):
     if file != None and os.path.isabs(file) == False:
         file = os.path.join(root, file)
     print(root, file)
@@ -639,11 +634,21 @@ def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
     client = srv.newclient(cfg)
 
     wk = cfg.create_workspace(client, add=False)
+    s=client.lsp_client.process()
     # source = SourceCode(file, client)
     source = client.open_file(file)
     wk.add(source)
     symbols_list = client.get_document_symbol(file)
-
+    if index==True:
+        while False:
+            # client.lsp_client.process()
+            import time
+            time.sleep(1)
+        cfg.open_all(client)
+        # client.close()
+        # import time
+        # while True:
+            # time.sleep(1)
     if method is None:
         for m in symbols_list:
             s = Token(m.location)
@@ -680,6 +685,7 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--root", help="root path")
     parser.add_argument("-f", "--file", help="root path")
     parser.add_argument("-m", "--method", help="root path")
+    parser.add_argument("-i", "--index", help="root path")
     args = parser.parse_args()
 
     root = args.root
@@ -688,4 +694,4 @@ if __name__ == "__main__":
     print("-" * 5, args.method)
     print(args.root, args.file, args.method)
     # main(root=root, file=args.file, method=None)
-    main(root=args.root, file=args.file, method=args.method)
+    main(root=args.root, file=args.file, method=args.method,index=args.index!=None)

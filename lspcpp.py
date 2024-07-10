@@ -611,7 +611,7 @@ class CallerWalker:
         self.caller_set = []
         self.client = client
         self.workspaceSymbol = workspaceSymbol
-        self.maxlevel = 5
+        self.maxlevel = 8
         pass
 
     def __get_caller_next(self, node: CallNode, once=False, level=10) -> list[CallNode]:

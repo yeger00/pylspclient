@@ -145,8 +145,20 @@ def test_client_did_changed():
     ret = client.lsp_client.didChange(file)
     print(ret)
     client.close()
+ def test_client_open():
+    open='/chrome/buildcef/chromium/src/chrome/browser/first_party_sets/first_party_sets_navigation_throttle.cc'
+    cfg = project_config(
+        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
+        compile_database=None)
+    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
+    srv = lspcppserver(cfg.workspace_root)
+    client = srv.newclient(cfg)
+    file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
+    ss = client.open_file(file).symbols
+    ret = client.lsp_client.workspace_symbol()
+    client.close()
 
-
+   
 def test_client_workspacesymbol():
     cfg = project_config(
         workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",

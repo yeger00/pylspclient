@@ -29,12 +29,10 @@ from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentif
 # }
 
 
-class PrepareReturn(BaseModel):
+class PrepareReturn(Location):
     data: str
     kind: SymbolKind
-    range: Range
     selectionRange: Range
-    uri: str
     name: str
 
     @staticmethod
@@ -105,6 +103,9 @@ class Symbol:
             yes = node.sym.in_range(a.sym)
             if yes:
                 return a
+        for a in self.members:
+            if a.sym.name==node.sym.name:
+                return a
         return None
 
     def __str__(self) -> str:
@@ -150,7 +151,7 @@ class ReadPipe(threading.Thread):
     def run(self):
         line = self.pipe.readline().decode('utf-8')
         while line:
-            print('pipe:', line)
+            # print('pipe:', line)
             line = self.pipe.readline().decode('utf-8')
 
 
@@ -518,7 +519,7 @@ class CallNode:
         if self.symboldefine != None:
             self.detail = str(self.symboldefine)
 
-    def uml(self, stack: list['CallNode']) -> str:
+    def uml(self, stack: list['CallNode'],wk: 'WorkSpaceSymbol'=None) -> str:
 
         def fix(node: CallNode):
             try:
@@ -542,12 +543,15 @@ class CallNode:
         def is_function(caller: CallNode):
             r = caller.sym.kind == SymbolKind.Function
             if r==False and caller.symboldefine.cls==None:
+                if wk!=None:
+                    caller.symboldefine = None
+                    wk.find(caller)
                 pass
             return r
         for s in stack:
             right_prefix = ""
             if is_function(s) == False:
-                right_prefix = s.symboldefine.cls.name+"::"
+                right_prefix = s.symboldefine.cls.name.replace("::",".")+"::"
             right = right_prefix+s.symboldefine.name
             if is_function(s) == False:
                 left = s.symboldefine.cls.name
@@ -558,13 +562,13 @@ class CallNode:
                         if caller.symboldefine.cls.name  != s.symboldefine.cls.name:
                             left = caller.symboldefine.cls.name
                 ret.append("%s -> %s" %
-                               (left, right))
+                               (left.replace("::","."), right))
             else:
                 if caller != None:
                     left = caller.symboldefine.cls.name if is_function(
                         caller) == False else caller.symboldefine.name
                     ret.append("%s -> %s" %
-                               (left, right))
+                               (left.replace("::","."), right))
                 else:
                     pass
             caller = s
@@ -657,14 +661,23 @@ class SourceCode:
         self.class_symbol = client.get_class_symbol(file)
 
     def find(self, node: CallNode) -> Symbol | None:
+        ret = self.__find(node)
+        if ret != None:
+            if ret.name!=node.sym.name:
+                ret = self.__find(node)
+                pass
+        return ret
+        
+    def __find(self, node: CallNode) -> Symbol | None:
         for a in self.class_symbol:
             r = a.find(node)
             if r != None:
                 return r
             pass
         for s in self.symbols:
-            if s.name.find(node.sym.name) > -1:
-                return Symbol(s)
+            if s.name.find(node.sym.name)>-1 and s.kind==node.sym.kind :
+                ret = Symbol(s)
+                return ret
         return None
 
 
@@ -767,8 +780,11 @@ class run:
             a.print()
             for ss in stack:
                 ss.resolve(self.wk)
-            if uml:
-                print(a.uml(stack))
+            try:
+                if uml:
+                    print(a.uml(stack,wk=self.wk))
+            except:
+                pass
 
 
 # python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp -m a::run

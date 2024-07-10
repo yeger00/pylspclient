@@ -28,8 +28,12 @@ from textual.widgets import TextArea
 
 class UiOutput(Output):
     ui: Log| None = None
-
+    is_close =False
+    def close(self):
+        self.is_close =True
     def write(self, s):
+        if self.is_close:
+            return
         if self.ui != None:
             if len(s) and s[-1] == "\n":
                 s = s[:-1]
@@ -75,8 +79,8 @@ class CodeBrowser(App):
         yield Footer()
         # self.text = TextArea.code_editor("xxxx")
         # yield self.text
-        self.symbol_listview = ListView(ListItem(Label("xx")))
-        self.logview=Log()
+        self.symbol_listview = ListView(id="symbol-list")
+        self.logview=Log(id="logview")
         self.print_recieved.ui = self.logview
         yield self.logview
         yield self.symbol_listview
@@ -85,6 +89,7 @@ class CodeBrowser(App):
         self.query_one(DirectoryTree).focus()
         aa = map(lambda x: ListItem(Label(x)),
                  self.lsp.currentfile.symbol_list_string())
+        self.symbol_listview.clear()
         self.symbol_listview.extend(aa)
 
     def on_directory_tree_file_selected(

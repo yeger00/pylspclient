@@ -18,8 +18,11 @@ CodeBrowser.-show-tree #tree-view {
     display: block;
     max-width: 20%;
 }
-
-
+CodeBrowser  #symbol-list
+{
+    display: block;
+    max-width: 40%;
+}
 #code-view {
     overflow: auto scroll;
     min-width: 100%;

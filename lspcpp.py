@@ -609,11 +609,14 @@ class CallNode:
                     wk.find(caller)
                 pass
             return r
+        title=""
         for s in stack:
             right_prefix = ""
             if is_function(s) == False:
                 right_prefix = s.symboldefine.cls.name.replace("::", ".")+"::"
             right = right_prefix+s.symboldefine.name
+            if len(ret)==0:
+               title="==%s=="%(right)
             if is_function(s) == False:
                 left = s.symboldefine.cls.name
                 if caller != None:
@@ -651,7 +654,7 @@ class CallNode:
         #             right = "%s:%s" % (cls.name, right)
         #         ret.append("%s -> %s" % (left, right))
         #     stack = stack[1:]
-        sss = ["\n"*1, "@startuml", "autoactivate on"]
+        sss = ["\n"*1,title, "@startuml", "autoactivate on"]
         sss.extend(ret)
         sss.extend(["@enduml", "\n" * 3])
         return "\n".join(sss)

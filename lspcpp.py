@@ -675,7 +675,7 @@ class CallNode:
         #             right = "%s:%s" % (cls.name, right)
         #         ret.append("%s -> %s" % (left, right))
         #     stack = stack[1:]
-        sss = ["\n" * 1, title, "@startuml", "autoactivate on"]
+        sss = ["\n" * 1, "@startuml", "autoactivate on", title]
         sss.extend(ret)
         sss.extend(["@enduml", "\n" * 3])
         return "\n".join(sss)
@@ -826,7 +826,8 @@ class WorkSpaceSymbol:
             ss = ret.split(",")
 
             def formatspace(s):
-                return " ".join(list(filter(lambda x: len(x) > 0, s.split(' ')))[:-1])
+                return " ".join(
+                    list(filter(lambda x: len(x) > 0, s.split(' ')))[:-1])
 
             return "(%s)" % (",".join(map(formatspace, ss)))
         except Exception as e:

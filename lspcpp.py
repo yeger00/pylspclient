@@ -582,6 +582,7 @@ class CallNode:
         if fp != None:
             fp.write(sss)
             fp.write("\n")
+            fp.flush()
         if self.callee != None:
             self.callee.printstack(level=level + 1, fp=fp)
 
@@ -855,6 +856,7 @@ class run:
             file = os.path.join(root, file)
         print(root, file)
         self.save_uml_file = savefile
+        self.save_stack_file = savefile
         cfg = project_config(workspace_root=root)
         srv = lspcppserver(cfg.workspace_root)
         client = srv.newclient(cfg)
@@ -927,7 +929,7 @@ class run:
         for a in ret:
             a.resolve_all(self.wk)
             stack = a.callstack()
-            a.printstack()
+            a.printstack(fp=self.save_stack_file)
             for ss in stack:
                 ss.resolve(self.wk)
             try:
@@ -959,6 +961,10 @@ if __name__ == "__main__":
                         "--uml-output",
                         help="root path",
                         action="store_true")
+    parser.add_argument("-so",
+                        "--stack-output",
+                        help="root path",
+                        action="store_true")
     args = parser.parse_args()
     root = args.root
     if root != None and root[0] != "/":
@@ -975,7 +981,7 @@ if __name__ == "__main__":
     from prompt_toolkit import prompt
 
     colors = WordCompleter(
-        ['--file', '--callin', '--refer', '--exit', "--print", "--uml-output"])
+        ['--file', '--callin', '--refer', '--exit', "--print", "--uml-output","--stack-output"])
     while True:
         try:
             from prompt_toolkit import PromptSession
@@ -988,6 +994,7 @@ if __name__ == "__main__":
             # session.history.save()
             print("--%s-" % (cmd))
             _run.save_uml_file = None
+            _run.save_stack_file= None
             try:
                 args = parser.parse_args(cmd.split(" "))
             except:
@@ -996,6 +1003,9 @@ if __name__ == "__main__":
                 _run.changefile(args.file)
                 _run.print()
             if args.callin != None:
+                if args.stack_output:
+                    _run.save_stack_file= open(
+                        args.callin.replace(":", "_") + "_callstack.txt", "w")
                 if args.uml_output:
                     _run.save_uml_file = open(
                         args.callin.replace(":", "_") + ".puml", "w")

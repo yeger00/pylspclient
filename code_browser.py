@@ -10,6 +10,7 @@ from textual import on
 import argparse
 from logging import root
 import sys
+from textual.suggester import SuggestFromList
 from textual.widgets import Log
 
 from pydantic import NatsDsn
@@ -53,13 +54,13 @@ class UiOutput(OutputFile):
 
 class Query:
 
-    def __init__(self, name,type) -> None:
+    def __init__(self, name, type) -> None:
         self.data = name
         self.type = type
         pass
 
     def __eq__(self, value: object) -> bool:
-        return self.data == value.data and self.type==value.type
+        return self.data == value.data and self.type == value.type
 
 
 class CommandInput(Input):
@@ -69,12 +70,18 @@ class CommandInput(Input):
         if self.mainui != None:
             self.mainui.on_command_input(self.value)
         pass
+
+
 import re
+
+
 class history:
+
     def __init__(self) -> None:
         self.data = set()
         pass
-    
+
+
 def extract_file_paths(text):
     # 正则表达式匹配Linux文件路径
     # 假设路径是从根目录开始，包含一个或多个目录层级
@@ -85,24 +92,27 @@ def extract_file_paths(text):
 
 class MyLogView(Log):
     mainuui: 'CodeBrowser'
-    
+
     def on_mouse_down(self, event) -> None:
         s = self.lines[event.y]
         file_paths = extract_file_paths(s)
-        link =None
+        link = None
         for f in file_paths:
             pos = s.find(f)
-            if event.x>pos and event.x<pos+len(f):
+            if event.x > pos and event.x < pos + len(f):
                 link = f
                 break
         self.mainuui.on_click_link(link)
         pass
-    
-SYMBOL_LISTVIEW_TYPE=1
-HISTORY_LISTVIEW_TYPE=2
+
+
+SYMBOL_LISTVIEW_TYPE = 1
+HISTORY_LISTVIEW_TYPE = 2
+
+
 class CodeBrowser(App):
     root: str
-    symbol_query = Query("","")
+    symbol_query = Query("", "")
     codeview_file: str
 
     def __init__(self, root, file):
@@ -131,8 +141,11 @@ class CodeBrowser(App):
     ]
 
     show_tree = var(True)
-    def on_click_link(self,link):
+
+    def on_click_link(self, link):
+        self.on_choose_file_from_event(link)
         pass
+
     def changefile(self, file):
         self.lsp.changefile(file)
         self.refresh_symbol_view()
@@ -149,7 +162,7 @@ class CodeBrowser(App):
             elif args[0] == "symbol":
                 self.refresh_symbol_view()
             return
-                
+
         parser = argparse.ArgumentParser()
         parser.add_argument("-o", "--file", help="root path")
         parser.parse_args(args)
@@ -177,22 +190,26 @@ class CodeBrowser(App):
         self.logview.mainuui = self
         yield self.logview
         yield self.symbol_listview
-        v = CommandInput(placeholder="A number", type="text")
+        countries = ["history", "symbol", "open"]
+        suggester = SuggestFromList(countries, case_sensitive=False)
+        v = CommandInput(placeholder="A number",
+                         type="text",
+                         suggester=suggester)
         v.mainui = self
         yield v
 
     def on_mount(self) -> None:
         self.query_one(DirectoryTree).focus()
         self.refresh_symbol_view()
+
     def refresh_history_view(self):
         self.symbol_listview_type = HISTORY_LISTVIEW_TYPE
-        aa = map(lambda x: ListItem(Label(x)),
-                 list(self.history.data))
+        aa = map(lambda x: ListItem(Label(x)), list(self.history.data))
         self.symbol_listview.clear()
         self.symbol_listview.extend(aa)
-        
+
     def refresh_symbol_view(self):
-        self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE 
+        self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE
         aa = map(lambda x: ListItem(Label(x)),
                  self.lsp.currentfile.symbol_list_string())
         self.symbol_listview.clear()
@@ -203,10 +220,13 @@ class CodeBrowser(App):
             self, event: DirectoryTree.FileSelected) -> None:
         """Called when the user click a file in the directory tree."""
         event.stop()
+        self.on_choose_file_from_event(str(event.path))
+
+    def on_choose_file_from_event(self, path):
         code_view = self.query_one("#code", Static)
         try:
             syntax = Syntax.from_path(
-                str(event.path),
+                str(path),
                 line_numbers=True,
                 word_wrap=False,
                 indent_guides=True,
@@ -218,7 +238,7 @@ class CodeBrowser(App):
         else:
             code_view.update(syntax)
             self.query_one("#code-view").scroll_home(animate=False)
-            self.sub_title = str(event.path)
+            self.sub_title = str(path)
             self.codeview_file = self.sub_title
             self.logview.write_line("tree open %s" % (self.sub_title))
             self.history.data.add(self.codeview_file)
@@ -236,17 +256,15 @@ class CodeBrowser(App):
         #         return
         def my_function(lsp, q: Query, toFile, toUml):
             try:
-                lsp.currentfile.refer(q.data,
-                                 toFile=toFile)
+                lsp.currentfile.refer(q.data, toFile=toFile)
             except Exception as e:
                 self.logview.write_line(str(e))
                 pass
             self.logview.write_line("Call Job finished")
-                
 
         import threading
         sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
-        q = Query(sym.symbol_display_name(),"r")
+        q = Query(sym.symbol_display_name(), "r")
         if q != self.symbol_query:
             if self.tofile != None:
                 self.tofile.close()
@@ -278,7 +296,7 @@ class CodeBrowser(App):
 
         import threading
         sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
-        q = Query(sym.symbol_display_name(),"callin")
+        q = Query(sym.symbol_display_name(), "callin")
         if q != self.symbol_query:
             if self.tofile != None:
                 self.tofile.close()
@@ -298,6 +316,7 @@ class CodeBrowser(App):
     def action_toggle_files(self) -> None:
         """Called in response to key binding."""
         self.show_tree = not self.show_tree
+
     def __del__(self):
         self.lsp.close()
 

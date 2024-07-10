@@ -318,7 +318,7 @@ class project_config:
     def create_workspace(self,
                          client: 'lspcppclient',
                          add: bool = True) -> 'WorkSpaceSymbol':
-        wk = WorkSpaceSymbol(self.workspace_root,client=client)
+        wk = WorkSpaceSymbol(self.workspace_root, client=client)
         if add == False:
             return wk
         fp = open(self.compile_database, "r")
@@ -512,25 +512,64 @@ class CallNode:
             s.resolve(wk)
 
     def resolve(self, wk: 'WorkSpaceSymbol'):
+        if self.symboldefine != None:
+            return
         self.symboldefine = wk.find(self)
         if self.symboldefine != None:
             self.detail = str(self.symboldefine)
 
     def uml(self, stack: list['CallNode']) -> str:
+
+        def fix(node: CallNode):
+            try:
+                xx = node.symboldefine.name.rindex("::")
+                clasname = node.symboldefine.name[:xx]
+                fn = node.symboldefine.name[xx+2:]
+                node.symboldefine.name = fn
+                if node.symboldefine.cls == None:
+                    node.symboldefine.cls = Symbol(node.symboldefine.sym)
+                    node.symboldefine.cls.name = clasname
+                    pass
+            except:
+                pass
+            return node
+        stack = list(map(fix, stack))
+
         ret = []
-        while len(stack) > 1:
-            caller = stack[0]
-            callee = stack[1]
-            cls = caller.symboldefine.cls
-            left = caller.symboldefine.sym.name
-            if cls != None:
-                left = cls.name
-            right = callee.symboldefine.sym.name
-            cls = callee.symboldefine.cls
-            if cls != None:
-                right = "%s:%s" % (cls.name, right)
-            ret.append("%s -> %s" % (left, right))
-            stack = stack[1:]
+        index = 0
+        caller = None
+        for s in stack:
+            right_prefix=""
+            if s.symboldefine.cls != None :
+                right_prefix = s.symboldefine.cls.name+"::" 
+            if s.symboldefine.cls != None:
+                left = s.symboldefine.cls.name
+                ret.append("%s -> %s"%(left,right_prefix+s.symboldefine.name))
+            else:
+                if caller != None:
+                    left = caller.symboldefine.cls.name if caller.symboldefine.cls != None else caller.symboldefine.name
+                    ret.append("%s -> %s"%(left,right_prefix+s.symboldefine.name))
+                else:
+                    pass
+            caller = s
+            pass
+        # while len(stack) > 1:
+        #     caller = stack[0]
+        #     callee = stack[1]
+        #     cls = caller.symboldefine.cls
+        #     left = caller.symboldefine.name
+        #     if cls != None:
+        #         left = cls.name
+        #     if len(ret) == 0 and cls != None:
+        #         right = caller.symboldefine.name
+        #         ret.append("%s ->%s::%s" % (left, left, right))
+        #     else:
+        #         right = callee.symboldefine.name
+        #         cls = callee.symboldefine.cls
+        #         if cls != None:
+        #             right = "%s:%s" % (cls.name, right)
+        #         ret.append("%s -> %s" % (left, right))
+        #     stack = stack[1:]
         sss = ["\n" * 3, "@startuml", "autoactivate on"]
         sss.extend(ret)
         sss.extend(["@enduml", "\n" * 3])
@@ -552,13 +591,13 @@ class CallerWalker:
         self.caller_set = []
         self.client = client
         self.workspaceSymbol = workspaceSymbol
-        self.maxlevel =5
+        self.maxlevel = 5
         pass
 
-    def __get_caller_next(self, node: CallNode, once=False,level=10) -> list[CallNode]:
-        if level>self.maxlevel:
+    def __get_caller_next(self, node: CallNode, once=False, level=10) -> list[CallNode]:
+        if level > self.maxlevel:
             return [node]
-        print(node.sym.name,node.sym.uri, len(self.caller_set))
+        print(node.sym.name, node.sym.uri, len(self.caller_set))
         param = node.sym
 
         has = list(filter(lambda x: x.range == param.range, self.caller_set))
@@ -575,7 +614,7 @@ class CallerWalker:
             return [node]
         ret = []
         for a in caller:
-            next = self.__get_caller_next(a,level=level+1)
+            next = self.__get_caller_next(a, level=level+1)
             ret.extend(next)
         return ret
 
@@ -585,7 +624,7 @@ class CallerWalker:
             callser: list[CallNode] = []
             for a in ctx:
                 c = CallNode(a)
-                callser.extend(self.__get_caller_next(c, once,level=0))
+                callser.extend(self.__get_caller_next(c, once, level=0))
             return callser
         return []
 
@@ -607,12 +646,15 @@ class SourceCode:
             if r != None:
                 return r
             pass
+        for s in self.symbols:
+            if s.name.find(node.sym.name) > -1:
+                return Symbol(s)
         return None
 
 
 class WorkSpaceSymbol:
 
-    def __init__(self, root: str,client:lspcppclient=None) -> None:
+    def __init__(self, root: str, client: lspcppclient = None) -> None:
         self.source_list = {}
         self.root = root
         self.client = client
@@ -662,7 +704,7 @@ class run:
 
     def print(self):
         self.symbols_list = self.client.get_document_symbol(self.file)
-        print("Symbol List %d"%(len(self.symbols_list)))
+        print("Symbol List %d" % (len(self.symbols_list)))
         for m in self.symbols_list:
             s = Token(m.location)
             print("%2d %s " % (m.kind, m.name), m.location.range.start.line,
@@ -699,7 +741,7 @@ class run:
                 print(i)
         return symbo
 
-    def call(self, method,uml=False,once=True):
+    def call(self, method, uml=False, once=True):
         symbo = self.find(method)
         walk = CallerWalker(self.client, self.wk)
         ret = walk.get_caller(Symbol(symbo[0]), once=once)
@@ -707,7 +749,10 @@ class run:
             a.resolve_all(self.wk)
             stack = a.callstack()
             a.print()
-            a.uml(stack)
+            for ss in stack:
+                ss.resolve(self.wk)
+            if uml:
+                print(a.uml(stack))
 
 
 # python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp -m a::run
@@ -718,11 +763,11 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--file", help="root path")
     parser.add_argument("-m", "--method", help="root path")
     parser.add_argument("-i", "--index", help="root path")
-    parser.add_argument("-u", "--uml", help="root path",action="store_true")
+    parser.add_argument("-u", "--uml", help="root path", action="store_true")
     parser.add_argument("-R", "--refer", help="root path")
     parser.add_argument("-C", "--callin", help="root path")
     parser.add_argument("-S", "--symbol", help="root path")
-    parser.add_argument("-q", "--exit", help="root path",action="store_true")
+    parser.add_argument("-q", "--exit", help="root path", action="store_true")
     args = parser.parse_args()
 
     root = args.root
@@ -739,17 +784,28 @@ if __name__ == "__main__":
     from prompt_toolkit.completion import WordCompleter
     from prompt_toolkit import prompt
 
-    colors = WordCompleter(['--file', '--callin', '--refer', '--exit',"--print"])
+    colors = WordCompleter(
+        ['--file', '--callin', '--refer', '--exit', "--print"])
     while True:
         try:
-            cmd = prompt("Please input PID=%d\n"%(os.getpid()), completer=colors)
+            from prompt_toolkit import PromptSession
+            from prompt_toolkit.history import FileHistory
+            history = FileHistory('history.txt')
+            session = PromptSession(history=history)
+
+            cmd = session.prompt("PID=%d >\n" %
+                                 (os.getpid()), completer=colors)
+            # session.history.save()
             print("--%s-" % (cmd))
-            args = parser.parse_args(cmd.split(" "))
+            try:
+                args = parser.parse_args(cmd.split(" "))
+            except:
+                pass
             if args.file != None:
                 _run.changefile(args.file)
                 _run.print(args.file)
             if args.callin != None:
-                _run.call(args.callin,True)
+                _run.call(args.callin, uml=True, once=False)
             elif args.refer != None:
                 _run.refer(args.refer)
             elif args.exit != None:

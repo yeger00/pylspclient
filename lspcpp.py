@@ -183,6 +183,11 @@ class Symbol:
         return cls + self.sym.name + " %s::%d" % (from_file(
             self.sym.location.uri), self.sym.location.range.start.line)
 
+    def symbol_display_name(self) -> str:
+        cls = self.cls.sym.name + "::" if self.cls != None else ""
+        return cls + self.sym.name 
+
+
     def is_call(self):
         return self.sym.kind == SymbolKind.Method or self.sym.kind == SymbolKind.Function
 
@@ -456,6 +461,8 @@ class lspcppclient:
         self.lsp_client.exit()
 
     def get_class_symbol(self, file) -> list[Symbol]:
+        global otherscls
+        otherscls.clear()
         ret = []
         symbols = self.get_document_symbol(file)
         while len(symbols):
@@ -857,7 +864,6 @@ class SymbolFile:
     save_stack_file: TextIOWrapper | None
 
     def __init__(self, file, wk:WorkSpaceSymbol) -> None:
-
         self.save_stack_file = None
         self.save_uml_file = None
         self.wk = wk
@@ -879,23 +885,25 @@ class SymbolFile:
 
         self.save_stack_file = self.save_uml_file = None
 
-    def print(self):
-        self.symbols_list = self.client.get_document_symbol(self.file)
-        print("Symbol List %d" % (len(self.symbols_list)))
-        for m in self.symbols_list:
-            s = Token(m.location)
-            print(
-                "%s %s " % (SymbolKindName(m.kind), m.name),
-                m.location.range.start.line,
-                m.location.range.end.line,
-            )
-        for sym in self.client.get_class_symbol(file=self.file):
-            if len(sym.members):
-                for s in sym.members:
-                    print("%s %s::%s" % ("Method" if s.is_call() else "Member",
-                                         sym.name, s.name))
+    def get_symbol_list(self)->list[Symbol]:
+        self.symbols_list= []
+        for a in self.client.get_class_symbol(file=self.file):
+            if len(a.members):
+                self.symbols_list.extend(a.members)
             else:
-                print(sym.name)
+                self.symbols_list.append(a)
+        return self.symbols_list
+
+    def symbol_list_string(self)->list[str]:
+        self.SymbolList = self.get_symbol_list()
+        return list(map(lambda x:x.symbol_display_name(),self.symbols_list))
+
+
+
+    def print(self):
+        for s in self.get_symbol_list():
+            print("%s %s" % ("Method" if s.is_call() else "Member",
+                                         s.symbol_display_name()))
 
     def refer(self, method):
         symbo = self.find(method, False)
@@ -963,7 +971,8 @@ class LspMain:
     def changefile(self, file):
         self.currentfile = SymbolFile(file=file, wk=self.wk)
         return self.currentfile
-
+    def __del__(self):
+        self.client.close()
     def close(self):
         self.client.close()
 

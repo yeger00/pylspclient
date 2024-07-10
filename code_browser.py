@@ -14,18 +14,21 @@ from rich.syntax import Syntax
 from rich.traceback import Traceback
 
 from textual.app import App, ComposeResult
+from textual.color import Lab
 from textual.containers import Container, VerticalScroll
 from textual.reactive import var
-from textual.widgets import DirectoryTree, Footer, Header, Static
-import lspcpp
+from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
+from textual.widgets import Footer, Label, ListItem, ListView
 from lspcpp import LspMain
 
 
 class CodeBrowser(App):
+    root: str
 
     def __init__(self, root, file):
         App.__init__(self)
         self.lsp = LspMain(root=root, file=file)
+        self.root = root
 
     """Textual code browser app."""
 
@@ -43,7 +46,7 @@ class CodeBrowser(App):
 
     def compose(self) -> ComposeResult:
         """Compose our UI."""
-        path = "./" if len(sys.argv) < 2 else sys.argv[1]
+        path = self.root
         yield Header()
         with Container():
             yield DirectoryTree(path, id="tree-view")
@@ -51,8 +54,14 @@ class CodeBrowser(App):
                 yield Static(id="code", expand=True)
         yield Footer()
 
+        self.a = ListView(ListItem(Label("xx")))
+        yield self.a
+
     def on_mount(self) -> None:
         self.query_one(DirectoryTree).focus()
+        aa = map(lambda x: ListItem(Label(x)),
+                 self.lsp.currentfile.symbol_list_string())
+        self.a.extend(aa)
 
     def on_directory_tree_file_selected(
             self, event: DirectoryTree.FileSelected) -> None:

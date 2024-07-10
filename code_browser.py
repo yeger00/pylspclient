@@ -21,36 +21,56 @@ from textual.containers import Container, VerticalScroll
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
-from lspcpp import LspMain, Output, lspcpp
+from lspcpp import LspMain, Output, lspcpp, OutputFile
 from textual.app import App, ComposeResult
 from textual.widgets import TextArea
 
 
-class UiOutput(Output):
-    ui: Log| None = None
-    is_close =False
+class UiOutput(OutputFile):
+    ui: Log | None = None
+    is_close = False
+
     def close(self):
-        self.is_close =True
+        self.is_close = True
+        OutputFile.close(self)
+
+    def flush(self):
+        if self.is_close:
+            return
+        return super().flush()
+
     def write(self, s):
         if self.is_close:
             return
+        OutputFile.write(self, s)
         if self.ui != None:
             if len(s) and s[-1] == "\n":
                 s = s[:-1]
             self.ui.write_line(s)
 
 
+class Query:
+    def __init__(self, name) -> None:
+        self.data = name
+        pass
+
+    def __eq__(self, value: object) -> bool:
+        return self.data == value.data
+
+
 class CodeBrowser(App):
     root: str
+    symbol_query = Query("")
 
     def __init__(self, root, file):
         App.__init__(self)
         self.thread = None
         self.lsp = LspMain(root=root, file=file)
         self.root = root
-        self.print_recieved = UiOutput("")
-        self.lsp.currentfile.save_uml_file = self.print_recieved
-        self.lsp.currentfile.save_stack_file = self.print_recieved
+        self.tofile = None
+        self.toUml = None
+        # self.lsp.currentfile.save_uml_file = self.print_recieved
+        # self.lsp.currentfile.save_stack_file = self.print_recieved
 
     """Textual code browser app."""
 
@@ -80,8 +100,7 @@ class CodeBrowser(App):
         # self.text = TextArea.code_editor("xxxx")
         # yield self.text
         self.symbol_listview = ListView(id="symbol-list")
-        self.logview=Log(id="logview")
-        self.print_recieved.ui = self.logview
+        self.logview = Log(id="logview")
         yield self.logview
         yield self.symbol_listview
 
@@ -114,17 +133,32 @@ class CodeBrowser(App):
             self.sub_title = str(event.path)
 
     def action_callin(self) -> None:
-        if self.thread!=None:
-            if self.thread.is_alive():
-                self.logview.write_line("Wait for previous call finished")
-                return
-        def my_function(lsp,sym):
-            lsp.currentfile.call(sym.symbol_display_name(),once=False,uml=True)
+        # if self.thread!=None:
+        #     if self.thread.is_alive():
+        #         self.logview.write_line("Wait for previous call finished")
+        #         return
+        def my_function(lsp, q: Query, toFile, toUml):
+            lsp.currentfile.call(q.data, once=False,
+                                 uml=True, toFile=toFile, toUml=toUml)
             self.logview.write_line("Call Job finished")
         import threading
         sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
-        self.thread = threading.Thread(target=my_function, args=(self.lsp, sym))
-        self.thread.start()
+        q = Query(sym.symbol_display_name())
+        if q != self.symbol_query:
+            if self.tofile!=None:
+                self.tofile.close()
+            self.tofile = UiOutput(q.data+".txt")
+            self.tofile.ui = self.logview
+            
+            if self.toUml!=None:
+                self.toUml.close()
+            self.toUml= UiOutput(q.data+".qml")
+            self.toUml.ui = self.logview
+ 
+            
+            self.thread = threading.Thread(target=my_function, args=(
+                self.lsp, q, self.tofile, self.toUml))
+            self.thread.start()
 
     def action_toggle_files(self) -> None:
         """Called in response to key binding."""

@@ -958,24 +958,24 @@ class SymbolFile:
                 print(i)
         return symbo
 
-    def call(self, method, uml=False, once=True):
+    def call(self, method, uml=False, once=True,toFile:Output=None,toUml:Output=None):
         symbo = self.find(method)
         walk = CallerWalker(self.client, self.wk)
         ret = walk.get_caller(Symbol(symbo[0].sym), once=once)
         for a in ret:
             a.resolve_all(self.wk)
             stack = a.callstack()
-            a.printstack(fp=self.save_stack_file)
+            a.printstack(fp=toFile)
             for ss in stack:
                 ss.resolve(self.wk)
             try:
                 if uml:
                     s = a.uml(stack, wk=self.wk)
                     print(s)
-                    if self.save_uml_file != None:
-                        self.save_uml_file.write(s)
-                        self.save_uml_file.write("\n")
-                        self.save_uml_file.flush()
+                    if toUml != None:
+                        toUml.write(s)
+                        toUml.write("\n")
+                        toUml.flush()
             except:
                 pass
 

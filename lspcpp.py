@@ -3,6 +3,9 @@
 
 """
 
+import sys
+import os
+import argparse
 import subprocess
 import json
 
@@ -211,11 +214,13 @@ class LspClient2(LspClient):
         """
         LspClient.__init__(self, lsp_endpoint)
         self.endpoint = lsp_endpoint
+
     def process(self):
         return self.endpoint.send_notification("$/progress")
+
     def index_status(self):
-       ret = self.endpoint.call_method("textDocument/index") 
-       return ret
+        ret = self.endpoint.call_method("textDocument/index")
+        return ret
 
     def code_action(self, file):
         return self.endpoint.call_method("textDocument/codeAction",
@@ -301,14 +306,14 @@ class project_config:
         if compile_database is None:
             self.compile_database = os.path.join(self.workspace_root,
                                                  "compile_commands.json")
+
     def open_all(self,
-                         client: 'lspcppclient'):
+                 client: 'lspcppclient'):
         fp = open(self.compile_database, "r")
         if fp != None:
             dd = json.load(fp)
             for a in dd:
                 client.open_file(a["file"])
-
 
     def create_workspace(self,
                          client: 'lspcppclient',
@@ -345,8 +350,8 @@ class lspcppclient:
             "clangdFileStatus": True,
         }
         capabilities = {
-            "window":{
-                'workDoneProgress': True   
+            "window": {
+                'workDoneProgress': True
             },
             'textDocument': {
                 'completion': {
@@ -434,7 +439,6 @@ class lspcppclient:
     def get_reference(self, file, col: int, line: int) -> list[Location]:
         return self.lsp_client.references(file, col, line)
 
-
     def open_file(self, file):
         uri = to_file(file)
         relative_file_path = file
@@ -458,7 +462,7 @@ class lspcppserver:
     def __init__(self, root):
         cmd = [
             "/home/z/.local/share/nvim/mason/bin/clangd",
-            "--compile-commands-dir=%s"%(root), 
+            "--compile-commands-dir=%s" % (root),
             # "--log=verbose",
             # "--background-index"
         ]
@@ -618,80 +622,98 @@ class WorkSpaceSymbol:
         return None
 
 
-import argparse
-import os
-import sys
+class run:
+    def __init__(self, root, file) -> None:
+        if file != None and os.path.isabs(file) == False:
+            file = os.path.join(root, file)
+        print(root, file)
+        cfg = project_config(workspace_root=root)
+        srv = lspcppserver(cfg.workspace_root)
+        client = srv.newclient(cfg)
+        wk = cfg.create_workspace(client, add=False)
+        s = client.lsp_client.process()
+        print(s)
+        source = client.open_file(file)
+        wk.add(source)
+        self.symbols_list = client.get_document_symbol(file)
+        self.wk = wk
+        self.client = client
+        self.file = file
+        self.root = root
 
-
-def main(root="/home/z/dev/lsp/pylspclient/tests/cpp/",
-         file="/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp",
-         method="class_c::run_class_c",index=False):
-    if file != None and os.path.isabs(file) == False:
-        file = os.path.join(root, file)
-    print(root, file)
-    cfg = project_config(workspace_root=root)
-    srv = lspcppserver(cfg.workspace_root)
-    client = srv.newclient(cfg)
-
-    wk = cfg.create_workspace(client, add=False)
-    s=client.lsp_client.process()
-    # source = SourceCode(file, client)
-    source = client.open_file(file)
-    wk.add(source)
-    symbols_list = client.get_document_symbol(file)
-    if index==True:
-        while False:
-            # client.lsp_client.process()
-            import time
-            time.sleep(1)
-        cfg.open_all(client)
-        # client.close()
-        # import time
-        # while True:
-            # time.sleep(1)
-    if method is None:
-        for m in symbols_list:
+    def print(self):
+        for m in self.symbols_list:
             s = Token(m.location)
             print("%2d %s " % (m.kind, m.name), m.location.range.start.line,
                   m.location.range.end.line)
-        for sym in client.get_class_symbol(file=file):
+        for sym in self.client.get_class_symbol(file=self.file):
             if len(sym.members):
                 for s in sym.members:
                     print("%s %s::%s" % ("Method" if s.is_call() else "Member",
                                          sym.name, s.name))
             else:
                 print(sym.name)
-        client.close()
-        return
 
-    def find_fn(x: SymbolInformation):
-        if x.name == method:
-            return True
-        return method.find("::" + x.name) > 0
+    def close(self): self.client.close()
 
-    symbo = list(filter(find_fn, symbols_list))
-    walk = CallerWalker(client, wk)
-    ret = walk.get_caller(Symbol(symbo[0]))
-    for a in ret:
-        a.resolve_all(wk)
-        a.print()
-    client.close()
+    def refer(self, method):
+        symbo = self.find(method,False)
+        print("Symbol number:",len(symbo))
+        for s in symbo:
+            refs = self.client.get_symbol_reference(s)
+            print(refs)
+            for r in refs:
+                print("Reference ", s.name, r.uri,
+                      r.range.start.line, r.range.end.line)
+        pass
+
+    def find(self, method, print=False) -> list[SymbolInformation]:
+        def find_fn(x: SymbolInformation):
+            if x.name == method:
+                return True
+            return method.find("::" + x.name) > 0
+        symbo = list(filter(find_fn, self.symbols_list))
+        if print:
+            for i in symbo:
+                print(i)
+        return symbo
+
+    def call(self, method):
+        symbo = self.find(method)
+        walk = CallerWalker(self.client, self.wk)
+        ret = walk.get_caller(Symbol(symbo[0]))
+        for a in ret:
+            a.resolve_all(self.wk)
+            a.print()
 
 
-#python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp -m a::run
-#python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp
+# python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp -m a::run
+# python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-r", "--root", help="root path")
+    parser.add_argument("-w", "--root", help="root path")
     parser.add_argument("-f", "--file", help="root path")
     parser.add_argument("-m", "--method", help="root path")
     parser.add_argument("-i", "--index", help="root path")
+    parser.add_argument("-r", "--refer", help="root path")
+    parser.add_argument("-c", "--call", help="root path")
     args = parser.parse_args()
 
     root = args.root
     if root != None and root[0] != "/":
         root = os.path.join(os.getcwd(), root)
     print("-" * 5, args.method)
-    print(args.root, args.file, args.method)
+    print(args.root, args.file, args.method,args.refer)
+    _run = run(args.root, args.file)
+    import time
+    time.sleep(2)
+    if args.call!= None:
+        _run.call(args.call)
+    elif args.refer != None:
+        _run.refer(args.refer)
+    else:
+        _run.print()
+    _run.close()
     # main(root=root, file=args.file, method=None)
-    main(root=args.root, file=args.file, method=args.method,index=args.index!=None)
+    # main(root=args.root, file=args.file,
+    #  method=args.method, index=args.index != None)

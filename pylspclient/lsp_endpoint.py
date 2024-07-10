@@ -3,6 +3,7 @@ import threading
 from pylspclient.lsp_errors import ErrorCodes, ResponseError
 from pylspclient import JsonRpcEndpoint
 from typing import Any, Dict, Callable, Union, Optional, Tuple, TypeAlias, TypedDict
+import json
 
 ResultType: TypeAlias = Optional[Dict[str, Any]]
 
@@ -69,8 +70,10 @@ class LspEndpoint(threading.Thread):
                     else:
                         # a call for notify
                         if method not in self.notify_callbacks:
-                            if method=='textDocument/publishDiagnostics':
-                                import json
+                            # print(method,json.dumps(params,indent=4))
+                            if method=="textDocument/clangd.fileStatus" :
+                                pass
+                            elif method=='textDocument/publishDiagnostics':
                                 if len(params["diagnostics"])>0:
                                     # print(json.dumps(params,indent=4))
                                     continue

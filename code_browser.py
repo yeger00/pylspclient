@@ -104,7 +104,7 @@ class MyLogView(Log):
 
     def on_mouse_down(self, event) -> None:
         try:
-            s: str = self.lines[event.y+self.scroll_y]
+            s: str = self.lines[int(event.y+self.scroll_y)]
             file_paths = extract_file_paths(s)
             link = None
             for f in file_paths:
@@ -112,9 +112,18 @@ class MyLogView(Log):
                 if event.x > pos and event.x < pos + len(f):
                     link = f
                     break
-            self.mainuui.on_click_link(link)
+            if link!=None:
+                line =None
+                try:
+                    end = s[s.index(link)+len(link):]
+                    pattern= re.compile(r'^:([0-9]+)')
+                    matches = pattern.findall(end)
+                    line = int(matches[0])
+                except:
+                    pass
+                self.mainuui.on_click_link(link,line=line)
             pass
-        except:
+        except Exception as e:
             pass
 
 
@@ -176,8 +185,10 @@ class CodeBrowser(App):
             pass
         pass
 
-    def on_click_link(self, link):
+    def on_click_link(self, link,line=None):
         self.on_choose_file_from_event(link)
+        if line!=None:
+            self.query_one("#code-view").scroll_to(y=line, animate=False)
         pass
 
     def change_lsp_file(self, file):

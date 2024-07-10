@@ -28,6 +28,36 @@ from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentif
 #     }
 # }
 
+#
+#
+tokenTypes = set([
+    "variable",
+    "variable",
+    "parameter",
+    "function",
+    "method",
+    "function",
+    "property",
+    "variable",
+    "class",
+    "interface",
+    "enum",
+    "enumMember",
+    "type",
+    "type",
+    "unknown",
+    "namespace",
+    "typeParameter",
+    "concept",
+    "type",
+    "macro",
+    "modifier",
+    "operator",
+    "bracket",
+    "label",
+    "comment"
+])
+
 
 def SymbolKindName(v):
     """Represents various symbol kinds like File, Module, Namespace, Package, Class, Method, etc."""
@@ -609,14 +639,14 @@ class CallNode:
                     wk.find(caller)
                 pass
             return r
-        title=""
+        title = ""
         for s in stack:
             right_prefix = ""
             if is_function(s) == False:
                 right_prefix = s.symboldefine.cls.name.replace("::", ".")+"::"
             right = right_prefix+s.symboldefine.name
-            if len(ret)==0:
-               title="==%s=="%(right)
+            if len(ret) == 0:
+                title = "==%s==" % (right)
             if is_function(s) == False:
                 left = s.symboldefine.cls.name
                 if caller != None:
@@ -654,7 +684,7 @@ class CallNode:
         #             right = "%s:%s" % (cls.name, right)
         #         ret.append("%s -> %s" % (left, right))
         #     stack = stack[1:]
-        sss = ["\n"*1,title, "@startuml", "autoactivate on"]
+        sss = ["\n"*1, title, "@startuml", "autoactivate on"]
         sss.extend(ret)
         sss.extend(["@enduml", "\n" * 3])
         return "\n".join(sss)
@@ -719,6 +749,8 @@ class CallerWalker:
 class SourceCode:
 
     def __init__(self, file, client: lspcppclient) -> None:
+        global otherscls
+        otherscls = []
         self.file = file
         self.lines = open(file, 'r').readlines()
         self.symbols = client.get_document_symbol(file)
@@ -771,10 +803,11 @@ class WorkSpaceSymbol:
 
 
 class run:
-    def __init__(self, root, file) -> None:
+    def __init__(self, root, file, savefile=None) -> None:
         if file != None and os.path.isabs(file) == False:
             file = os.path.join(root, file)
         print(root, file)
+        self.save_uml_file = savefile
         cfg = project_config(workspace_root=root)
         srv = lspcppserver(cfg.workspace_root)
         client = srv.newclient(cfg)
@@ -846,7 +879,12 @@ class run:
                 ss.resolve(self.wk)
             try:
                 if uml:
-                    print(a.uml(stack, wk=self.wk))
+                    s = a.uml(stack, wk=self.wk)
+                    print(s)
+                    if self.save_uml_file != None:
+                        self.save_uml_file.write(s)
+                        self.save_uml_file.write("\n")
+                        self.save_uml_file.flush()
             except:
                 pass
 
@@ -864,8 +902,9 @@ if __name__ == "__main__":
     parser.add_argument("-C", "--callin", help="root path")
     parser.add_argument("-S", "--symbol", help="root path")
     parser.add_argument("-q", "--exit", help="root path", action="store_true")
+    parser.add_argument("-uo", "--uml-output",
+                        help="root path", action="store_true")
     args = parser.parse_args()
-
     root = args.root
     if root != None and root[0] != "/":
         root = os.path.join(os.getcwd(), root)
@@ -881,7 +920,7 @@ if __name__ == "__main__":
     from prompt_toolkit import prompt
 
     colors = WordCompleter(
-        ['--file', '--callin', '--refer', '--exit', "--print"])
+        ['--file', '--callin', '--refer', '--exit', "--print", "--uml-output"])
     while True:
         try:
             from prompt_toolkit import PromptSession
@@ -893,6 +932,7 @@ if __name__ == "__main__":
                                  (os.getpid()), completer=colors)
             # session.history.save()
             print("--%s-" % (cmd))
+            _run.save_uml_file = None
             try:
                 args = parser.parse_args(cmd.split(" "))
             except:
@@ -901,6 +941,8 @@ if __name__ == "__main__":
                 _run.changefile(args.file)
                 _run.print()
             if args.callin != None:
+                if args.uml_output:
+                    _run.save_uml_file = open(""args.callin.replace(":","_")+".puml", "w")
                 _run.call(args.callin, uml=True, once=False)
             elif args.refer != None:
                 _run.refer(args.refer)

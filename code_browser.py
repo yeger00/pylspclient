@@ -165,7 +165,7 @@ class CodeBrowser(App):
                 try:
                     sym: Symbol = self.lsp.currentfile.symbols_list[list.index]
                     y = sym.sym.location.range.start.line
-                    self.query_one("#code-view").scroll_to(y=y,animate=False)
+                    self.query_one("#code-view").scroll_to(y=y, animate=False)
                     pass
                 except Exception as e:
                     self.logview.write_line(str(e))
@@ -223,15 +223,15 @@ class CodeBrowser(App):
             yield DirectoryTree(path, id="tree-view")
             with VerticalScroll(id="code-view"):
                 yield Static(id="code", expand=True)
+            self.symbol_listview = MyListView(id="symbol-list")
+            self.symbol_listview.mainui = self
+            yield self.symbol_listview
         yield Footer()
         # self.text = TextArea.code_editor("xxxx")
         # yield self.text
-        self.symbol_listview = MyListView(id="symbol-list")
-        self.symbol_listview.mainui = self
         self.logview = MyLogView(id="logview")
         self.logview.mainuui = self
         yield self.logview
-        yield self.symbol_listview
         countries = ["history", "symbol", "open"]
         suggester = SuggestFromList(countries, case_sensitive=False)
         v = CommandInput(placeholder=" ".join(countries),

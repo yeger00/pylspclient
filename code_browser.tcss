@@ -20,13 +20,14 @@ CodeBrowser.-show-tree #tree-view {
 }
 CodeBrowser  #symbol-list
 {
-    display: block;
-    max-width: 40%;
+    max-width: 30%;
+    overflow:auto;
+    height: 100%;
+    dock:right;
 }
 #code-view {
     overflow: auto scroll;
     min-width: 100%;
-    hatch: right $primary;   
 }
 #code {
     width: auto;

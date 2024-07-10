@@ -537,18 +537,34 @@ class CallNode:
 
         ret = []
         index = 0
-        caller = None
+        caller: CallNode = None
+
+        def is_function(caller: CallNode):
+            r = caller.sym.kind == SymbolKind.Function
+            if r==False and caller.symboldefine.cls==None:
+                pass
+            return r
         for s in stack:
-            right_prefix=""
-            if s.symboldefine.cls != None :
-                right_prefix = s.symboldefine.cls.name+"::" 
-            if s.symboldefine.cls != None:
+            right_prefix = ""
+            if is_function(s) == False:
+                right_prefix = s.symboldefine.cls.name+"::"
+            right = right_prefix+s.symboldefine.name
+            if is_function(s) == False:
                 left = s.symboldefine.cls.name
-                ret.append("%s -> %s"%(left,right_prefix+s.symboldefine.name))
+                if caller != None :
+                    if is_function(caller):
+                        left = caller.symboldefine.name
+                    else:
+                        if caller.symboldefine.cls.name  != s.symboldefine.cls.name:
+                            left = caller.symboldefine.cls.name
+                ret.append("%s -> %s" %
+                               (left, right))
             else:
                 if caller != None:
-                    left = caller.symboldefine.cls.name if caller.symboldefine.cls != None else caller.symboldefine.name
-                    ret.append("%s -> %s"%(left,right_prefix+s.symboldefine.name))
+                    left = caller.symboldefine.cls.name if is_function(
+                        caller) == False else caller.symboldefine.name
+                    ret.append("%s -> %s" %
+                               (left, right))
                 else:
                     pass
             caller = s
@@ -570,7 +586,7 @@ class CallNode:
         #             right = "%s:%s" % (cls.name, right)
         #         ret.append("%s -> %s" % (left, right))
         #     stack = stack[1:]
-        sss = ["\n" * 3, "@startuml", "autoactivate on"]
+        sss = ["\n"*1, "@startuml", "autoactivate on"]
         sss.extend(ret)
         sss.extend(["@enduml", "\n" * 3])
         return "\n".join(sss)
@@ -811,6 +827,8 @@ if __name__ == "__main__":
             elif args.exit != None:
                 break
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             pass
         pass
     _run.close()

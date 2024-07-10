@@ -53,22 +53,27 @@ class UiOutput(OutputFile):
 
 class Query:
 
-    def __init__(self, name) -> None:
+    def __init__(self, name,type) -> None:
         self.data = name
+        self.type = type
         pass
 
     def __eq__(self, value: object) -> bool:
-        return self.data == value.data
+        return self.data == value.data and self.type==value.type
+
 
 class CommandInput(Input):
-    mainui:'CodeBrowser' 
+    mainui: 'CodeBrowser'
+
     def on_input_submitted(self) -> None:
-        if self.mainui!=None:
+        if self.mainui != None:
             self.mainui.on_command_input(self.value)
         pass
+
+
 class CodeBrowser(App):
     root: str
-    symbol_query = Query("")
+    symbol_query = Query("","")
     codeview_file: str
 
     def __init__(self, root, file):
@@ -94,22 +99,23 @@ class CodeBrowser(App):
     ]
 
     show_tree = var(True)
-    def changefile(self,file):
+
+    def changefile(self, file):
         self.lsp.changefile(file)
         self.refresh_symbol_view()
-        self.logview.write_line("open %s"%(file))
+        self.logview.write_line("open %s" % (file))
 
-    def on_command_input(self,value):
+    def on_command_input(self, value):
         args = value.split(" ")
         self.logview.write_line(value)
-        if len(args)==1:
-            if args[0]=="open":
-                self.changefile(self.codeview_file) 
+        if len(args) == 1:
+            if args[0] == "open":
+                self.changefile(self.codeview_file)
                 return
         parser = argparse.ArgumentParser()
         parser.add_argument("-o", "--file", help="root path")
         parser.parse_args(args)
-        if args.file!=None:
+        if args.file != None:
             self.changefile(args.file)
             return
 
@@ -139,13 +145,13 @@ class CodeBrowser(App):
     def on_mount(self) -> None:
         self.query_one(DirectoryTree).focus()
         self.refresh_symbol_view()
-        
+
     def refresh_symbol_view(self):
         aa = map(lambda x: ListItem(Label(x)),
                  self.lsp.currentfile.symbol_list_string())
         self.symbol_listview.clear()
         self.symbol_listview.extend(aa)
-        self.logview.write_line("open %s"%(self.lsp.currentfile.file))
+        self.logview.write_line("open %s" % (self.lsp.currentfile.file))
 
     def on_directory_tree_file_selected(
             self, event: DirectoryTree.FileSelected) -> None:
@@ -168,13 +174,47 @@ class CodeBrowser(App):
             self.query_one("#code-view").scroll_home(animate=False)
             self.sub_title = str(event.path)
             self.codeview_file = self.sub_title
-            self.logview.write_line("tree open %s"%(self.sub_title))
+            self.logview.write_line("tree open %s" % (self.sub_title))
 
     def action_open_file(self) -> None:
         if self.lsp.currentfile.file != self.codeview_file:
             self.changefile(self.codeview_file)
 
         pass
+
+    def action_refer(self) -> None:
+        # if self.thread!=None:
+        #     if self.thread.is_alive():
+        #         self.logview.write_line("Wait for previous call finished")
+        #         return
+        def my_function(lsp, q: Query, toFile, toUml):
+            try:
+                lsp.currentfile.refer(q.data,
+                                 toFile=toFile)
+            except Exception as e:
+                self.logview.write_line(str(e))
+                pass
+            self.logview.write_line("Call Job finished")
+                
+
+        import threading
+        sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
+        q = Query(sym.symbol_display_name(),"r")
+        if q != self.symbol_query:
+            if self.tofile != None:
+                self.tofile.close()
+            self.tofile = UiOutput(q.data + ".txt")
+            self.tofile.ui = self.logview
+
+            if self.toUml != None:
+                self.toUml.close()
+            self.toUml = UiOutput(q.data + ".qml")
+            self.toUml.ui = self.logview
+
+            self.thread = threading.Thread(target=my_function,
+                                           args=(self.lsp, q, self.tofile,
+                                                 None))
+            self.thread.start()
 
     def action_callin(self) -> None:
         # if self.thread!=None:
@@ -191,7 +231,7 @@ class CodeBrowser(App):
 
         import threading
         sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
-        q = Query(sym.symbol_display_name())
+        q = Query(sym.symbol_display_name(),"callin")
         if q != self.symbol_query:
             if self.tofile != None:
                 self.tofile.close()
@@ -211,6 +251,8 @@ class CodeBrowser(App):
     def action_toggle_files(self) -> None:
         """Called in response to key binding."""
         self.show_tree = not self.show_tree
+    def __del__(self):
+        self.lsp.close()
 
 
 if __name__ == "__main__":

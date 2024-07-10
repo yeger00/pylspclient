@@ -934,15 +934,19 @@ class SymbolFile:
             print("%s %s" % ("Method" if s.is_call() else "Member",
                              s.symbol_display_name()))
 
-    def refer(self, method):
+    def refer(self, method, toFile: Output | None = None):
         symbo = self.find(method, False)
         print("Symbol number:", len(symbo))
+        if toFile != None:
+            toFile.write("Symbol number:%d" % (len(symbo)))
         for s in symbo:
             refs = self.client.get_symbol_reference(s.sym)
-            # print(refs)
             for r in refs:
-                print("Reference ", s.name,
-                      "%s:%d" % (from_file(r.uri), r.range.start.line))
+                v = "Reference " + s.name + " %s:%d" % (from_file(
+                    r.uri), r.range.start.line)
+                print(v)
+                if toFile != None:
+                    toFile.write(v)
         pass
 
     def find(self, method, Print=False) -> list[Symbol]:
@@ -962,8 +966,8 @@ class SymbolFile:
              method,
              uml=False,
              once=True,
-             toFile: Output = None,
-             toUml: Output = None):
+             toFile: Output | None = None,
+             toUml: Output | None = None):
         symbo = self.find(method)
         walk = CallerWalker(self.client, self.wk)
         ret = walk.get_caller(Symbol(symbo[0].sym), once=once)

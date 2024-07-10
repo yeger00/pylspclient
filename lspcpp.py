@@ -572,10 +572,11 @@ class CallNode:
     def __init__(self, sym: PrepareReturn) -> None:
         self.sym = sym
         self.callee = None
+        self.param = ""
 
     def printstack(self, level=0, fp=None):
-        sss = " " * level + "->" + self.sym.name + "%s:%d" % (from_file(
-            self.sym.uri), self.sym.range.start.line)
+        sss = " " * level + "->" + self.sym.name + self.param + " " + "%s:%d" % (
+            from_file(self.sym.uri), self.sym.range.start.line)
         print(sss)
         if fp != None:
             fp.write(sss)
@@ -593,7 +594,7 @@ class CallNode:
         self.symboldefine = wk.find(self)
         if self.symboldefine != None:
             if len(self.line) == 0:
-                self.line = wk.get_code_line(self)
+                self.param = wk.get_parama(self)
             self.detail = str(self.symboldefine)
 
     def uml(self,
@@ -789,11 +790,44 @@ class WorkSpaceSymbol:
     def add(self, s: SourceCode):
         self.source_list[s.file] = s
 
-    def get_code_line(self, node: CallNode) -> str:
+    def get_parama(self, node: CallNode) -> str:
         key = from_file(node.sym.uri)
         try:
             code: SourceCode = self.source_list[key]
-            return code.lines[node.sym.range.start.line].replace("\n", "")
+
+            s = code.lines[node.sym.range.end.line]
+            begin = s.find("(")
+            ret = ""
+            if begin > -1:
+                begin = begin + 1
+                ret = s[begin:]
+            end = s.find(")")
+            if begin > -1 and end > -1:
+                ret = s[begin:end]
+            if end < 0:
+                i = node.sym.range.end.line + 1
+                while i < len(code.lines):
+                    s = code.lines[i]
+                    i = i + 1
+                    if begin == -1:
+                        begin = s.find("(")
+                    if end == -1:
+                        end = s.find(")")
+                    if begin > -1:
+                        if len(ret) == 0:
+                            ret = ret[begin + 1:]
+                        if end > -1:
+                            ret = ret + s[:end]
+                            break
+                        else:
+                            ret = ret + s
+            ret = ret.replace("\n", "")
+            ss = ret.split(",")
+
+            def formatspace(s):
+                return " ".join(filter(lambda x: len(x) > 0, s.split(' ')))
+
+            return "(%s)" % (",".join(map(formatspace, ss)))
         except Exception as e:
             print(e)
         return ""

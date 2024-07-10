@@ -31,6 +31,8 @@ class UiOutput(Output):
 
     def write(self, s):
         if self.ui != None:
+            if len(s) and s[-1] == "\n":
+                s = s[:-1]
             self.ui.write_line(s)
 
 
@@ -39,6 +41,7 @@ class CodeBrowser(App):
 
     def __init__(self, root, file):
         App.__init__(self)
+        self.thread = None
         self.lsp = LspMain(root=root, file=file)
         self.root = root
         self.print_recieved = UiOutput("")
@@ -106,8 +109,17 @@ class CodeBrowser(App):
             self.sub_title = str(event.path)
 
     def action_callin(self) -> None:
+        if self.thread!=None:
+            if self.thread.is_alive():
+                self.logview.write_line("Wait for previous call finished")
+                return
+        def my_function(lsp,sym):
+            lsp.currentfile.call(sym.symbol_display_name(),once=False,uml=True)
+            self.logview.write_line("Call Job finished")
+        import threading
         sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
-        self.lsp.currentfile.call(sym.symbol_display_name(),once=False,uml=True)
+        self.thread = threading.Thread(target=my_function, args=(self.lsp, sym))
+        self.thread.start()
 
     def action_toggle_files(self) -> None:
         """Called in response to key binding."""

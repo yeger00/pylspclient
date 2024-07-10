@@ -16,7 +16,7 @@ Screen {
 
 CodeBrowser.-show-tree #tree-view {
     display: block;
-    max-width: 50%;
+    max-width: 20%;
 }
 
 

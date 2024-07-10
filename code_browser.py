@@ -78,8 +78,13 @@ import re
 class history:
 
     def __init__(self) -> None:
-        self.data = set()
+        self._data = set()
+        self.list = list(self._data)
         pass
+
+    def add(self, data):
+        self._data.add(data)
+        self.list = list(self._data)
 
 
 def extract_file_paths(text):
@@ -94,20 +99,28 @@ class MyLogView(Log):
     mainuui: 'CodeBrowser'
 
     def on_mouse_down(self, event) -> None:
-        s = self.lines[event.y]
-        file_paths = extract_file_paths(s)
-        link = None
-        for f in file_paths:
-            pos = s.find(f)
-            if event.x > pos and event.x < pos + len(f):
-                link = f
-                break
-        self.mainuui.on_click_link(link)
+        try:
+            s: str = self.lines[event.y]
+            file_paths = extract_file_paths(s)
+            link = None
+            for f in file_paths:
+                pos = s.find(f)
+                if event.x > pos and event.x < pos + len(f):
+                    link = f
+                    break
+            self.mainuui.on_click_link(link)
+        except:pass
         pass
 
 
 SYMBOL_LISTVIEW_TYPE = 1
 HISTORY_LISTVIEW_TYPE = 2
+
+
+class MyListView(ListView):
+    mainui: 'CodeBrowser'
+    def action_select_cursor(self):
+        self.mainui.on_select_list(self)
 
 
 class CodeBrowser(App):
@@ -124,7 +137,7 @@ class CodeBrowser(App):
         self.toUml = None
         self.codeview_file = self.sub_title = file
         self.history = history()
-        self.history.data.add(self.codeview_file)
+        self.history.add(self.codeview_file)
         self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE
         # self.lsp.currentfile.save_uml_file = self.print_recieved
         # self.lsp.currentfile.save_stack_file = self.print_recieved
@@ -141,6 +154,13 @@ class CodeBrowser(App):
     ]
 
     show_tree = var(True)
+
+    def on_select_list(self, list: ListView):
+        if list == self.symbol_listview:
+            if self.symbol_listview_type == HISTORY_LISTVIEW_TYPE:
+                self.on_choose_file_from_event(self.history.list[list.index])
+            pass
+        pass
 
     def on_click_link(self, link):
         self.on_choose_file_from_event(link)
@@ -185,14 +205,15 @@ class CodeBrowser(App):
         yield Footer()
         # self.text = TextArea.code_editor("xxxx")
         # yield self.text
-        self.symbol_listview = ListView(id="symbol-list")
+        self.symbol_listview = MyListView(id="symbol-list")
+        self.symbol_listview.mainui= self
         self.logview = MyLogView(id="logview")
         self.logview.mainuui = self
         yield self.logview
         yield self.symbol_listview
         countries = ["history", "symbol", "open"]
         suggester = SuggestFromList(countries, case_sensitive=False)
-        v = CommandInput(placeholder="A number",
+        v = CommandInput(placeholder=" ".join(countries),
                          type="text",
                          suggester=suggester)
         v.mainui = self
@@ -204,7 +225,7 @@ class CodeBrowser(App):
 
     def refresh_history_view(self):
         self.symbol_listview_type = HISTORY_LISTVIEW_TYPE
-        aa = map(lambda x: ListItem(Label(x)), list(self.history.data))
+        aa = map(lambda x: ListItem(Label(x)), list(self.history.list))
         self.symbol_listview.clear()
         self.symbol_listview.extend(aa)
 
@@ -213,7 +234,7 @@ class CodeBrowser(App):
         aa = map(lambda x: ListItem(Label(x)),
                  self.lsp.currentfile.symbol_list_string())
         self.symbol_listview.clear()
-        self.symbol_listview.extend(aa)
+        self.symbol_listview.extend(list(aa))
         self.logview.write_line("open %s" % (self.lsp.currentfile.file))
 
     def on_directory_tree_file_selected(
@@ -241,7 +262,9 @@ class CodeBrowser(App):
             self.sub_title = str(path)
             self.codeview_file = self.sub_title
             self.logview.write_line("tree open %s" % (self.sub_title))
-            self.history.data.add(self.codeview_file)
+            self.history.add(self.codeview_file)
+            if self.symbol_listview_type==HISTORY_LISTVIEW_TYPE:
+                self.refresh_history_view()
 
     def action_open_file(self) -> None:
         if self.lsp.currentfile.file != self.codeview_file:

@@ -575,7 +575,8 @@ class CallNode:
         self.param = ""
 
     def printstack(self, level=0, fp=None):
-        sss = " " * level + "->" + self.sym.name + self.param + " " + "%s:%d" % (
+        classname = self.symboldefine.cls.name + "::" if self.symboldefine.cls != None else ""
+        sss = " " * level + "->" + classname + self.sym.name + self.param + " " + "%s:%d" % (
             from_file(self.sym.uri), self.sym.range.start.line)
         print(sss)
         if fp != None:
@@ -825,7 +826,7 @@ class WorkSpaceSymbol:
             ss = ret.split(",")
 
             def formatspace(s):
-                return " ".join(filter(lambda x: len(x) > 0, s.split(' ')))
+                return " ".join(list(filter(lambda x: len(x) > 0, s.split(' ')))[:-1])
 
             return "(%s)" % (",".join(map(formatspace, ss)))
         except Exception as e:

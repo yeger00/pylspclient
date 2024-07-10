@@ -100,17 +100,18 @@ class MyLogView(Log):
 
     def on_mouse_down(self, event) -> None:
         try:
-            s: str = self.lines[event.y]
-            file_paths = extract_file_paths(s)
-            link = None
-            for f in file_paths:
-                pos = s.find(f)
-                if event.x > pos and event.x < pos + len(f):
-                    link = f
-                    break
-            self.mainuui.on_click_link(link)
-        except:pass
-        pass
+            # s: str = self.lines[event.y]
+            # file_paths = extract_file_paths(s)
+            # link = None
+            # for f in file_paths:
+            #     pos = s.find(f)
+            #     if event.x > pos and event.x < pos + len(f):
+            #         link = f
+            #         break
+            # self.mainuui.on_click_link(link)
+            pass
+        except:
+            pass
 
 
 SYMBOL_LISTVIEW_TYPE = 1

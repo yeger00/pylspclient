@@ -1007,11 +1007,11 @@ class LspMain:
         self.root = root
         self.changefile(file)
 
-    def changefile(self, file):
+    def changefile(self, file) -> SymbolFile:
         for f in self.opened_files:
             if f.file == file:
-                self.currentfile = file
-                return file
+                self.currentfile = f
+                return self.currentfile
         self.currentfile = SymbolFile(file=file, wk=self.wk)
         self.opened_files.append(self.currentfile)
         return self.currentfile

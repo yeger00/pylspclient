@@ -29,6 +29,64 @@ from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentif
 # }
 
 
+def SymbolKindName(v):
+    """Represents various symbol kinds like File, Module, Namespace, Package, Class, Method, etc."""
+
+    if SymbolKind.File == v:
+        return "File"
+    if SymbolKind.Module == v:
+        return "Module"
+    if SymbolKind.Namespace == v:
+        return "Namespace"
+    if SymbolKind.Package == v:
+        return "Package"
+    if SymbolKind.Class == v:
+        return "Class"
+    if SymbolKind.Method == v:
+        return "Method"
+    if SymbolKind.Property == v:
+        return "Property"
+    if SymbolKind.Field == v:
+        return "Field"
+    if SymbolKind.Constructor == v:
+        return "Constructor"
+    if SymbolKind.Enum == v:
+        return "Enum"
+    if SymbolKind.Interface == v:
+        return "Interface"
+    if SymbolKind.Function == v:
+        return "Function"
+    if SymbolKind.Variable == v:
+        return "Variable"
+    if SymbolKind.Constant == v:
+        return "Constant"
+    if SymbolKind.String == v:
+        return "String"
+    if SymbolKind.Number == v:
+        return "Number"
+    if SymbolKind.Boolean == v:
+        return "Boolean"
+    if SymbolKind.Array == v:
+        return "Array"
+    if SymbolKind.Object == v:
+        return "Object"
+    if SymbolKind.Key == v:
+        return "Key"
+    if SymbolKind.Null == v:
+        return "Null"
+    if SymbolKind.EnumMember == v:
+        return "EnumMember"
+    if SymbolKind.Struct == v:
+        return "Struct"
+    if SymbolKind.Event == v:
+        return "Event"
+    if SymbolKind.Operator == v:
+        return "Operator"
+    if SymbolKind.TypeParameter == v:
+        return "TypeParameter"
+    return "Unknow"
+
+
 class PrepareReturn(Location):
     data: str
     kind: SymbolKind
@@ -104,7 +162,7 @@ class Symbol:
             if yes:
                 return a
         for a in self.members:
-            if a.sym.name==node.sym.name:
+            if a.sym.name == node.sym.name:
                 return a
         return None
 
@@ -500,13 +558,16 @@ class CallNode:
         self.sym = sym
         self.callee = None
 
-    def print(self, level=0):
-        print(" " * level + "->", self.sym.name,
-              "%s:%d" % (
-                  from_file(self.sym.uri),
-                  self.sym.range.start.line))
+    def printstack(self, level=0, fp=None):
+        sss = " " * level + "->"+self.sym.name+"%s:%d" % (
+            from_file(self.sym.uri),
+            self.sym.range.start.line)
+        print(sss)
+        if fp != None:
+            fp.write(sss)
+            fp.write("\n")
         if self.callee != None:
-            self.callee.print(level + 1)
+            self.callee.printstack(level=level + 1, fp=fp)
 
     def resolve_all(self, wk: 'WorkSpaceSymbol'):
         for s in self.callstack():
@@ -519,7 +580,7 @@ class CallNode:
         if self.symboldefine != None:
             self.detail = str(self.symboldefine)
 
-    def uml(self, stack: list['CallNode'],wk: 'WorkSpaceSymbol'=None) -> str:
+    def uml(self, stack: list['CallNode'], wk: 'WorkSpaceSymbol' = None) -> str:
 
         def fix(node: CallNode):
             try:
@@ -542,8 +603,8 @@ class CallNode:
 
         def is_function(caller: CallNode):
             r = caller.sym.kind == SymbolKind.Function
-            if r==False and caller.symboldefine.cls==None:
-                if wk!=None:
+            if r == False and caller.symboldefine.cls == None:
+                if wk != None:
                     caller.symboldefine = None
                     wk.find(caller)
                 pass
@@ -551,24 +612,24 @@ class CallNode:
         for s in stack:
             right_prefix = ""
             if is_function(s) == False:
-                right_prefix = s.symboldefine.cls.name.replace("::",".")+"::"
+                right_prefix = s.symboldefine.cls.name.replace("::", ".")+"::"
             right = right_prefix+s.symboldefine.name
             if is_function(s) == False:
                 left = s.symboldefine.cls.name
-                if caller != None :
+                if caller != None:
                     if is_function(caller):
                         left = caller.symboldefine.name
                     else:
-                        if caller.symboldefine.cls.name  != s.symboldefine.cls.name:
+                        if caller.symboldefine.cls.name != s.symboldefine.cls.name:
                             left = caller.symboldefine.cls.name
                 ret.append("%s -> %s" %
-                               (left.replace("::","."), right))
+                           (left.replace("::", "."), right))
             else:
                 if caller != None:
                     left = caller.symboldefine.cls.name if is_function(
                         caller) == False else caller.symboldefine.name
                     ret.append("%s -> %s" %
-                               (left.replace("::","."), right))
+                               (left.replace("::", "."), right))
                 else:
                     pass
             caller = s
@@ -617,7 +678,7 @@ class CallerWalker:
     def __get_caller_next(self, node: CallNode, once=False, level=10) -> list[CallNode]:
         if level > self.maxlevel:
             return [node]
-        print(node.sym.name, node.sym.uri, len(self.caller_set))
+        # print(node.sym.name, node.sym.uri, len(self.caller_set))
         param = node.sym
 
         has = list(filter(lambda x: x.range == param.range, self.caller_set))
@@ -663,11 +724,11 @@ class SourceCode:
     def find(self, node: CallNode) -> Symbol | None:
         ret = self.__find(node)
         if ret != None:
-            if ret.name!=node.sym.name:
+            if ret.name != node.sym.name:
                 ret = self.__find(node)
                 pass
         return ret
-        
+
     def __find(self, node: CallNode) -> Symbol | None:
         for a in self.class_symbol:
             r = a.find(node)
@@ -675,7 +736,7 @@ class SourceCode:
                 return r
             pass
         for s in self.symbols:
-            if s.name.find(node.sym.name)>-1 and s.kind==node.sym.kind :
+            if s.name.find(node.sym.name) > -1 and s.kind == node.sym.kind:
                 ret = Symbol(s)
                 return ret
         return None
@@ -736,8 +797,8 @@ class run:
         print("Symbol List %d" % (len(self.symbols_list)))
         for m in self.symbols_list:
             s = Token(m.location)
-            print("%2d %s " % (m.kind, m.name), m.location.range.start.line,
-                  m.location.range.end.line)
+            print("%s %s " % (SymbolKindName(m.kind), m.name), m.location.range.start.line,
+                  m.location.range.end.line,)
         for sym in self.client.get_class_symbol(file=self.file):
             if len(sym.members):
                 for s in sym.members:
@@ -777,12 +838,12 @@ class run:
         for a in ret:
             a.resolve_all(self.wk)
             stack = a.callstack()
-            a.print()
+            a.printstack()
             for ss in stack:
                 ss.resolve(self.wk)
             try:
                 if uml:
-                    print(a.uml(stack,wk=self.wk))
+                    print(a.uml(stack, wk=self.wk))
             except:
                 pass
 
@@ -835,7 +896,7 @@ if __name__ == "__main__":
                 pass
             if args.file != None:
                 _run.changefile(args.file)
-                _run.print(args.file)
+                _run.print()
             if args.callin != None:
                 _run.call(args.callin, uml=True, once=False)
             elif args.refer != None:

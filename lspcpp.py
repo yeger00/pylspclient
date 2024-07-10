@@ -501,7 +501,7 @@ class CallNode:
 
     def print(self, level=0):
         print(" " * level + "->", self.sym.name,
-              "%s:%d"%(
+              "%s:%d" % (
                   from_file(self.sym.uri),
                   self.sym.range.start.line))
         if self.callee != None:
@@ -653,6 +653,7 @@ class run:
 
     def print(self):
         self.symbols_list = self.client.get_document_symbol(self.file)
+        print("Symbol List %d"%(len(self.symbols_list)))
         for m in self.symbols_list:
             s = Token(m.location)
             print("%2d %s " % (m.kind, m.name), m.location.range.start.line,
@@ -674,8 +675,8 @@ class run:
             refs = self.client.get_symbol_reference(s)
             # print(refs)
             for r in refs:
-                print("Reference ", s.name, from_file(r.uri),
-                      r.range.start.line)
+                print("Reference ", s.name, "%s:%d" % (from_file(r.uri),
+                      r.range.start.line))
         pass
 
     def find(self, method, print=False) -> list[SymbolInformation]:
@@ -706,9 +707,10 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--file", help="root path")
     parser.add_argument("-m", "--method", help="root path")
     parser.add_argument("-i", "--index", help="root path")
-    parser.add_argument("-r", "--refer", help="root path")
-    parser.add_argument("-c", "--callin", help="root path")
-    parser.add_argument("-q", "--exit", help="root path")
+    parser.add_argument("-R", "--refer", help="root path")
+    parser.add_argument("-C", "--callin", help="root path")
+    parser.add_argument("-S", "--symbol", help="root path")
+    parser.add_argument("-q", "--exit", help="root path",action="store_true")
     args = parser.parse_args()
 
     root = args.root
@@ -719,34 +721,30 @@ if __name__ == "__main__":
     _run = run(args.root, args.file)
     import time
     time.sleep(2)
-    if args.callin != None:
-        _run.call(args.callin)
-    elif args.refer != None:
-        _run.refer(args.refer)
-    else:
-        _run.print()
-        history = []
-        from prompt_toolkit import prompt
-        from prompt_toolkit.completion import WordCompleter
-        from prompt_toolkit import prompt
+    _run.print()
+    history = []
+    from prompt_toolkit import prompt
+    from prompt_toolkit.completion import WordCompleter
+    from prompt_toolkit import prompt
 
-        colors = WordCompleter(['--file', '--callin', '--refer', '--exit'])
-        while True:
-            try:
-                cmd = prompt("Please input\n",completer=colors)
-                print("--%s-" % (cmd))
-                args = parser.parse_args(cmd.split(" "))
-                if args.file!=None:
-                    _run.changefile(args.file)
-                if args.callin!=None:
-                    _run.call(args.callin)
-                elif args.refer!=None:
-                    _run.refer(args.refer)
-                elif args.exit!=None:
-                    break
-            except:
-                pass
+    colors = WordCompleter(['--file', '--callin', '--refer', '--exit',"--print"])
+    while True:
+        try:
+            cmd = prompt("Please input\n", completer=colors)
+            print("--%s-" % (cmd))
+            args = parser.parse_args(cmd.split(" "))
+            if args.file != None:
+                _run.changefile(args.file)
+                _run.print(args.file)
+            if args.callin != None:
+                _run.call(args.callin)
+            elif args.refer != None:
+                _run.refer(args.refer)
+            elif args.exit != None:
+                break
+        except:
             pass
+        pass
     _run.close()
     # main(root=root, file=args.file, method=None)
     # main(root=args.root, file=args.file,

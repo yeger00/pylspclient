@@ -69,8 +69,37 @@ class CommandInput(Input):
         if self.mainui != None:
             self.mainui.on_command_input(self.value)
         pass
+import re
+class history:
+    def __init__(self) -> None:
+        self.data = set()
+        pass
+    
+def extract_file_paths(text):
+    # 正则表达式匹配Linux文件路径
+    # 假设路径是从根目录开始，包含一个或多个目录层级
+    pattern = r'/(?:[\w-]+/)*[\w-]+\.(?:[\w-]+)'
+    matches = re.findall(pattern, text)
+    return matches
 
 
+class MyLogView(Log):
+    mainuui: 'CodeBrowser'
+    
+    def on_mouse_down(self, event) -> None:
+        s = self.lines[event.y]
+        file_paths = extract_file_paths(s)
+        link =None
+        for f in file_paths:
+            pos = s.find(f)
+            if event.x>pos and event.x<pos+len(f):
+                link = f
+                break
+        self.mainuui.on_click_link(link)
+        pass
+    
+SYMBOL_LISTVIEW_TYPE=1
+HISTORY_LISTVIEW_TYPE=2
 class CodeBrowser(App):
     root: str
     symbol_query = Query("","")
@@ -84,6 +113,9 @@ class CodeBrowser(App):
         self.tofile = None
         self.toUml = None
         self.codeview_file = self.sub_title = file
+        self.history = history()
+        self.history.data.add(self.codeview_file)
+        self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE
         # self.lsp.currentfile.save_uml_file = self.print_recieved
         # self.lsp.currentfile.save_stack_file = self.print_recieved
 
@@ -99,7 +131,8 @@ class CodeBrowser(App):
     ]
 
     show_tree = var(True)
-
+    def on_click_link(self,link):
+        pass
     def changefile(self, file):
         self.lsp.changefile(file)
         self.refresh_symbol_view()
@@ -111,7 +144,12 @@ class CodeBrowser(App):
         if len(args) == 1:
             if args[0] == "open":
                 self.changefile(self.codeview_file)
-                return
+            elif args[0] == "history":
+                self.refresh_history_view()
+            elif args[0] == "symbol":
+                self.refresh_symbol_view()
+            return
+                
         parser = argparse.ArgumentParser()
         parser.add_argument("-o", "--file", help="root path")
         parser.parse_args(args)
@@ -135,7 +173,8 @@ class CodeBrowser(App):
         # self.text = TextArea.code_editor("xxxx")
         # yield self.text
         self.symbol_listview = ListView(id="symbol-list")
-        self.logview = Log(id="logview")
+        self.logview = MyLogView(id="logview")
+        self.logview.mainuui = self
         yield self.logview
         yield self.symbol_listview
         v = CommandInput(placeholder="A number", type="text")
@@ -145,8 +184,15 @@ class CodeBrowser(App):
     def on_mount(self) -> None:
         self.query_one(DirectoryTree).focus()
         self.refresh_symbol_view()
-
+    def refresh_history_view(self):
+        self.symbol_listview_type = HISTORY_LISTVIEW_TYPE
+        aa = map(lambda x: ListItem(Label(x)),
+                 list(self.history.data))
+        self.symbol_listview.clear()
+        self.symbol_listview.extend(aa)
+        
     def refresh_symbol_view(self):
+        self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE 
         aa = map(lambda x: ListItem(Label(x)),
                  self.lsp.currentfile.symbol_list_string())
         self.symbol_listview.clear()
@@ -175,6 +221,7 @@ class CodeBrowser(App):
             self.sub_title = str(event.path)
             self.codeview_file = self.sub_title
             self.logview.write_line("tree open %s" % (self.sub_title))
+            self.history.data.add(self.codeview_file)
 
     def action_open_file(self) -> None:
         if self.lsp.currentfile.file != self.codeview_file:

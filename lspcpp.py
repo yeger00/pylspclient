@@ -318,7 +318,7 @@ class project_config:
     def create_workspace(self,
                          client: 'lspcppclient',
                          add: bool = True) -> 'WorkSpaceSymbol':
-        wk = WorkSpaceSymbol(self.workspace_root)
+        wk = WorkSpaceSymbol(self.workspace_root,client=client)
         if add == False:
             return wk
         fp = open(self.compile_database, "r")
@@ -552,9 +552,13 @@ class CallerWalker:
         self.caller_set = []
         self.client = client
         self.workspaceSymbol = workspaceSymbol
+        self.maxlevel =5
         pass
 
-    def __get_caller_next(self, node: CallNode, once=False) -> list[CallNode]:
+    def __get_caller_next(self, node: CallNode, once=False,level=10) -> list[CallNode]:
+        if level>self.maxlevel:
+            return [node]
+        print(node.sym.name,node.sym.uri, len(self.caller_set))
         param = node.sym
 
         has = list(filter(lambda x: x.range == param.range, self.caller_set))
@@ -571,7 +575,7 @@ class CallerWalker:
             return [node]
         ret = []
         for a in caller:
-            next = self.__get_caller_next(a)
+            next = self.__get_caller_next(a,level=level+1)
             ret.extend(next)
         return ret
 
@@ -581,7 +585,7 @@ class CallerWalker:
             callser: list[CallNode] = []
             for a in ctx:
                 c = CallNode(a)
-                callser.extend(self.__get_caller_next(c, once))
+                callser.extend(self.__get_caller_next(c, once,level=0))
             return callser
         return []
 
@@ -608,9 +612,10 @@ class SourceCode:
 
 class WorkSpaceSymbol:
 
-    def __init__(self, root: str) -> None:
+    def __init__(self, root: str,client:lspcppclient=None) -> None:
         self.source_list = {}
         self.root = root
+        self.client = client
         pass
 
     def add(self, s: SourceCode):
@@ -623,7 +628,11 @@ class WorkSpaceSymbol:
             return code.find(node)
         except Exception as e:
             print(e)
-        return None
+        try:
+            self.add(self.client.open_file(key))
+            return self.find(node)
+        except Exception as e:
+            return None
 
 
 class run:
@@ -690,10 +699,10 @@ class run:
                 print(i)
         return symbo
 
-    def call(self, method,uml=False):
+    def call(self, method,uml=False,once=True):
         symbo = self.find(method)
         walk = CallerWalker(self.client, self.wk)
-        ret = walk.get_caller(Symbol(symbo[0]), once=True)
+        ret = walk.get_caller(Symbol(symbo[0]), once=once)
         for a in ret:
             a.resolve_all(self.wk)
             stack = a.callstack()
@@ -745,7 +754,7 @@ if __name__ == "__main__":
                 _run.refer(args.refer)
             elif args.exit != None:
                 break
-        except:
+        except Exception as e:
             pass
         pass
     _run.close()

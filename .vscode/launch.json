@@ -21,7 +21,7 @@
                 "--root",
                 "/chrome/buildcef/chromium/src",
                 "-f",
-                "/chrome/buildcef/chromium/src/content/browser/renderer_host/navigation_throttle_runner.h"
+                "/chrome/buildcef/chromium/src/content/public/browser/navigation_throttle.h"
             ]
         }
     ]

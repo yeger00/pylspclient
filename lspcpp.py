@@ -1020,10 +1020,13 @@ class LspMain:
         return self.currentfile
 
     def __del__(self):
+        if self.client is None: return
         self.client.close()
 
     def close(self):
+        if self.client is None: return
         self.client.close()
+        self.client = None
 
 
 # python lspcpp.py  --root /home/z/dev/lsp/pylspclient/tests/cpp --file /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp -m a::run

@@ -31,6 +31,8 @@ from textual.app import App, ComposeResult
 from textual.widgets import TextArea
 from textual.widgets import Input
 
+countries = ["history", "symbol", "open", "refer", "callin"]
+
 
 class UiOutput(OutputFile):
     ui: Log | None = None
@@ -100,15 +102,15 @@ class MyLogView(Log):
 
     def on_mouse_down(self, event) -> None:
         try:
-            # s: str = self.lines[event.y]
-            # file_paths = extract_file_paths(s)
-            # link = None
-            # for f in file_paths:
-            #     pos = s.find(f)
-            #     if event.x > pos and event.x < pos + len(f):
-            #         link = f
-            #         break
-            # self.mainuui.on_click_link(link)
+            s: str = self.lines[event.y+self.scroll_y]
+            file_paths = extract_file_paths(s)
+            link = None
+            for f in file_paths:
+                pos = s.find(f)
+                if event.x > pos and event.x < pos + len(f):
+                    link = f
+                    break
+            self.mainuui.on_click_link(link)
             pass
         except:
             pass
@@ -176,7 +178,7 @@ class CodeBrowser(App):
         self.on_choose_file_from_event(link)
         pass
 
-    def changefile(self, file):
+    def change_lsp_file(self, file):
 
         def my_function(_self, file):
             try:
@@ -197,18 +199,21 @@ class CodeBrowser(App):
         self.logview.write_line(value)
         if len(args) == 1:
             if args[0] == "open":
-                self.changefile(self.codeview_file)
+                self.change_lsp_file(self.codeview_file)
             elif args[0] == "history":
                 self.refresh_history_view()
             elif args[0] == "symbol":
                 self.refresh_symbol_view()
+            elif args[0] == "refer":
+                self.action_refer()
+                pass
             return
 
         parser = argparse.ArgumentParser()
         parser.add_argument("-o", "--file", help="root path")
         parser.parse_args(args)
         if args.file != None:
-            self.changefile(args.file)
+            self.change_lsp_file(args.file)
             return
 
     def watch_show_tree(self, show_tree: bool) -> None:
@@ -232,7 +237,6 @@ class CodeBrowser(App):
         self.logview = MyLogView(id="logview")
         self.logview.mainuui = self
         yield self.logview
-        countries = ["history", "symbol", "open"]
         suggester = SuggestFromList(countries, case_sensitive=False)
         v = CommandInput(placeholder=" ".join(countries),
                          type="text",
@@ -242,7 +246,8 @@ class CodeBrowser(App):
 
     def on_mount(self) -> None:
         self.query_one(DirectoryTree).focus()
-        self.changefile(self.codeview_file)
+        self.on_choose_file_from_event(self.codeview_file)
+        self.change_lsp_file(self.codeview_file)
         self.refresh_symbol_view()
 
     def refresh_history_view(self):
@@ -287,13 +292,17 @@ class CodeBrowser(App):
             self.history.add(self.codeview_file)
             if self.symbol_listview_type == HISTORY_LISTVIEW_TYPE:
                 self.refresh_history_view()
-            self.changefile(self.codeview_file)
+            self.change_lsp_file(self.codeview_file)
 
     def action_open_file(self) -> None:
         if self.lsp.currentfile.file != self.codeview_file:
-            self.changefile(self.codeview_file)
+            self.change_lsp_file(self.codeview_file)
 
         pass
+
+    async def action_quick(self) -> None:
+        self.lsp.close()
+        await App.action_quit(self)
 
     def action_refer(self) -> None:
         # if self.thread!=None:

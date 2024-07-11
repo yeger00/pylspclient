@@ -7,34 +7,26 @@ Run with:
 """
 
 from textual.message import Message
-from textual.scroll_view import ScrollView
-from textual.widgets.text_area import Document, Selection
+from textual.widgets.text_area import Selection
 from concurrent.futures import ThreadPoolExecutor
-from textual.widgets import LoadingIndicator
 import os
 import re
-import asyncio
 import threading
-from rich.repr import Result
-from textual import on
 import argparse
 from textual.message_pump import events
 from textual.suggester import SuggestFromList, SuggestionReady
-from textual.validation import Failure
 from textual.widgets import Log, TextArea
 
-from pydantic import Field, NatsDsn
 from rich.syntax import Syntax
 from rich.traceback import Traceback
 
 from textual.app import App, ComposeResult
-from textual.color import Lab
-from textual.containers import Container, VerticalScroll
+from textual.containers import Container
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
 from codesearch import SourceCode, SourceCodeSearch
-from lspcpp import LspMain, Symbol, OutputFile, SymbolLocation, lspcpp
+from lspcpp import LspMain, Symbol, OutputFile, SymbolLocation
 from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
@@ -93,6 +85,7 @@ class ResultItemSymbo(ResultItem):
 
 
 class SearchResults:
+
     def __init__(self, list: list[ResultItem] = []):
         self.list = list
 
@@ -260,6 +253,7 @@ class LspQuery:
 
 
 class history:
+
     def __init__(self, file=None) -> None:
         self._data = set()
         self.list = list(self._data)
@@ -481,7 +475,7 @@ class CodeBrowser(App):
     symbol_query = LspQuery("", "")
     codeview_file: str
     search_result: SearchResults
-    symbol_listview : MyListView
+    symbol_listview: MyListView
 
     def on_refermessage(self, message: refermessage) -> None:
         self.search_result = SearchResults(

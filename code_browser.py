@@ -484,7 +484,7 @@ class CodeBrowser(App):
     symbol_query = LspQuery("", "")
     codeview_file: str
     search_result: SearchResults | None = None
-
+    lsp:LspMain
     def on_refermessage(self, message: refermessage) -> None:
         self.search_result = SearchResults(
             list(map(lambda x: ResultItemRefer(x), message.s)))
@@ -868,7 +868,7 @@ class CodeBrowser(App):
             self.logview.write_line("exception %s" % (str(e)))
             pass
     def __action_refer(self) -> None:
-        def my_function(lsp, sym: SymbolLocation, toFile, toUml):
+        def my_function(lsp:LspMain, sym: SymbolLocation, toFile, toUml):
             ret = []
             try:
                 ret = lsp.currentfile.refer_symbolinformation(sym, toFile=toFile)

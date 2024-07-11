@@ -144,14 +144,13 @@ class Token:
                         location.range.end.line][:location.range.end.character]
 
 
-
-
 class SymbolLocation:
-    def __init__(self, loc: Location, s:'Symbol') -> None:
+
+    def __init__(self, loc: Location, s: 'Symbol') -> None:
         self.file = from_file(loc.uri)
         self.token = Token(loc)
         self.range = loc.range
-        self.symbol = s 
+        self.symbol = s
 
     def __str__(self) -> str:
         return self.symbol.name + " %s:%d" % (self.file, self.range.start.line)
@@ -188,21 +187,42 @@ class Symbol:
         return None
 
     def __str__(self) -> str:
+        if self.is_class_define():
+            return self.name
         cls = self.cls.sym.name + "::" if self.cls != None else ""
         return cls + self.sym.name + " %s::%d" % (from_file(
             self.sym.location.uri), self.sym.location.range.start.line)
 
     def symbol_display_name(self) -> str:
+        if self.is_class_define():
+            return self.name
         cls = self.cls.sym.name + "::" if self.cls != None else ""
         return cls + self.sym.name
 
-    def is_call(self):
-        return self.sym.kind == SymbolKind.Method or self.sym.kind == SymbolKind.Function
+    def symbol_sidebar_displayname(self) -> str:
+        icon =" "+ ICON.ICON(self)+ " "
+        if self.is_class_define():
+            return icon + self.name
+        if self.cls:
+            return "    " + icon + self.name
+        return icon + self.sym.name
+
+    def is_construct(self):
+        return self.sym.kind == SymbolKind.Constructor
+
+    def is_class_define(self):
+        return self.sym.kind == SymbolKind.Class or self.sym.kind == SymbolKind.Struct
+
+    def is_function(self):
+        return self.sym.kind == SymbolKind.Function
+
+    def is_member(self):
+        return self.sym.kind == SymbolKind.Field
 
     def is_method(self):
         return self.sym.kind == SymbolKind.Method
 
-    def find_members(self, syms: list[SymbolInformation],otherscls):
+    def find_members(self, syms: list[SymbolInformation], otherscls):
         yes = self.sym.kind == SymbolKind.Class or self.sym.kind == SymbolKind.Struct
         if yes == False:
             return syms
@@ -219,7 +239,7 @@ class Symbol:
                 self.cls = self
             elif s1.sym.kind == SymbolKind.Class or s1.sym.kind == SymbolKind.Struct:
                 otherscls.append(s1)
-                syms = s1.find_members(syms[1:],otherscls)
+                syms = s1.find_members(syms[1:], otherscls)
                 continue
             syms = syms[1:]
         return syms
@@ -475,7 +495,7 @@ class lspcppclient:
             s = symbols[0]
             if s.kind == SymbolKind.Class or s.kind == SymbolKind.Struct:
                 s1 = Symbol(s)
-                symbols = s1.find_members(symbols[1:],ret)
+                symbols = s1.find_members(symbols[1:], ret)
                 ret.append(s1)
                 continue
             elif s.kind == SymbolKind.Function:
@@ -579,6 +599,41 @@ class lspcpp:
         config.workspace_root = default_root
         self.client = self.serv.newclient(config)
         pass
+
+
+class ICON:
+    Text = "󰉿"
+    Method = "󰆧"
+    Function = "󰊕"
+    Constructor = ""
+    Field = "󰜢"
+    Variable = "󰀫"
+    Class = "󰠱"
+    Interface = ""
+    Module = ""
+    Property = "󰜢"
+    Unit = "󰑭"
+    Value = "󰎠"
+    Enum = ""
+    Keyword = "󰌋"
+    Snippet = ""
+    Color = "󰏘"
+    File = "󰈙"
+    Reference = "󰈇"
+    Folder = "󰉋"
+    EnumMember = ""
+    Constant = "󰏿"
+    Struct = "󰙅"
+    Event = ""
+    Operator = "󰆕"
+    TypeParameter = ""
+
+    @staticmethod
+    def ICON(s):
+        return ICON.Method if s.is_method() else ICON.Field if s.is_member(
+        ) else ICON.Class if s.is_class_define(
+        ) else ICON.Function if s.is_function(
+        ) else ICON.Constructor if s.is_construct() else "?"
 
 
 class CallNode:
@@ -746,7 +801,7 @@ class CallerWalker:
         return ret
 
     def get_caller(self, sym: Symbol, once=False):
-        if sym.is_call():
+        if sym.is_function():
             ctx = self.client.lsp_client.callHierarchyPrepare(sym.sym)
             callser: list[CallNode] = []
             for a in ctx:
@@ -925,25 +980,37 @@ class SymbolFile:
         self.save_stack_file = self.save_uml_file = None
 
     def get_symbol_list(self) -> list[Symbol]:
-        if(len(self.symbols_list)):
+        if (len(self.symbols_list)):
             return self.symbols_list
         symbols_list = []
         for a in self.client.get_class_symbol(file=self.file):
+            symbols_list.append(a)
             if len(a.members):
                 symbols_list.extend(a.members)
-            else:
-                symbols_list.append(a)
+
+        def group_class(k: Symbol):
+            if k.is_class_define():
+                return k.name + "a"
+            if k.cls != None:
+                return k.cls.name + "b"
+            return str(k.sym.location.range.start.line)
+
+        symbols_list = sorted(symbols_list, key=group_class)
         self.symbols_list = symbols_list
         return symbols_list
 
     def get_symbol_list_string(self) -> list[str]:
-        self.get_symbol_list()
-        return list(map(lambda x: x.symbol_display_name(), self.symbols_list))
+        sss = self.get_symbol_list()
+
+        return list(map(lambda x: x.symbol_sidebar_displayname(), sss))
 
     def print(self):
         for s in self.get_symbol_list():
-            print("%s %s" % ("Method" if s.is_call() else "Member",
-                             s.symbol_display_name()))
+            print("%s %s" %
+                  ("Method" if s.is_method() else "Member" if s.is_member()
+                   else "Class" if s.is_class_define() else "Function" if s.
+                   is_function() else "Construct" if s.is_construct(
+                   ) else "Unknown", s.symbol_sidebar_displayname()))
 
     def refer(self, method, toFile: Output | None = None):
         symbo = self.find(method, False)

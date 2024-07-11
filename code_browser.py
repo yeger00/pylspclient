@@ -476,6 +476,7 @@ class CodeBrowser(App):
         self.search_result = SearchResults(
             list(map(lambda x: ResultItemRefer(x), message.s)))
         self.udpate_search_result_view()
+        self.searchview.focus()
         pass
 
     def on_mymessage(self, message: mymessage) -> None:

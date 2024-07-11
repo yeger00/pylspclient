@@ -465,7 +465,8 @@ class CodeBrowser(App):
                         logui.write_lines(s)
                     except Exception as e:
                         pass
-                self.logview.write_line("start to find %s"%(dir))
+
+                self.logview.write_line("start to find %s" % (dir))
                 TaskFindFile.run(dir, args[1:], cb)
                 pass
             elif args[0] == "history":
@@ -513,11 +514,21 @@ class CodeBrowser(App):
         yield Footer()
         # self.text = TextArea.code_editor("xxxx")
         # yield self.text
-        self.logview = MyLogView(id="logview")
-        self.logview.mainuui = self
-        yield self.logview
-        v = CommandInput(self, root=self.lsp.root)
-        yield v
+
+        with Container():
+            with TabbedContent(initial="log"):
+                with TabPane("Log", id="log"):  # First tab
+                    self.logview = MyLogView(id="logview")
+                    self.logview.mainuui = self
+                    yield self.logview
+                    v = CommandInput(self, root=self.lsp.root)
+                    yield v
+                with TabPane("Fzf", id="fzf"):
+                    self.searchview = MyListView()
+                    self.searchview.mainui = self
+                    yield self.searchview
+                    pass
+        yield Footer()
 
     def on_mount(self) -> None:
         self.query_one(DirectoryTree).focus()

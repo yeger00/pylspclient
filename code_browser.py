@@ -423,7 +423,7 @@ class CodeBrowser(App):
     BINDINGS = [
         ("f", "toggle_files", "Toggle Files"),
         ("q", "quit", "Quit"),
-        ("i", "focus_input", "Focuse to cmdline"),
+        ("i", "focus_input", "Focus to cmdline"),
         ("c", "callin", "CallIn"),
         ("o", "open_file", "Open"),
         ("r", "refer", "Reference"),

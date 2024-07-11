@@ -465,7 +465,7 @@ class CodeBrowser(App):
                         logui.write_lines(s)
                     except Exception as e:
                         pass
-
+                self.logview.write_line("start to find %s"%(dir))
                 TaskFindFile.run(dir, args[1:], cb)
                 pass
             elif args[0] == "history":

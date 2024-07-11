@@ -122,23 +122,6 @@ class input_suggestion(SuggestFromList):
         if suggestion is None:
             return
         requester.post_message(SuggestionReady(value, suggestion))
-    async def get_suggestion(self, value: str) -> str | None:
-        """Gets a completion from the given possibilities.
-
-        Args:
-            value: The current value.
-
-        Returns:
-            A valid completion suggestion or `None`.
-        """
-        for idx, suggestion in enumerate(self._for_comparison):
-
-            if suggestion.startswith(value):
-                return self._suggestions[idx]
-        ret = list(filter(lambda x: x.startswith(value), self._history._data))
-        if len(ret):
-            return ret[0]
-        return None
 
 
 class CommandInput(Input):

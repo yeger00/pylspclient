@@ -990,15 +990,6 @@ class SymbolFile:
             symbols_list.append(a)
             if len(a.members):
                 symbols_list.extend(a.members)
-
-        def group_class(k: Symbol):
-            if k.is_class_define():
-                return k.name + "a"
-            if k.cls != None:
-                return k.cls.name + "b"
-            return str(k.sym.location.range.start.line)
-
-        symbols_list = sorted(symbols_list, key=group_class)
         self.symbols_list = symbols_list
         return symbols_list
 

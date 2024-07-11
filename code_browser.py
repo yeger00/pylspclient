@@ -11,6 +11,7 @@ import os
 import re
 import asyncio
 import threading
+from rich.repr import Result
 from textual import on
 import argparse
 from textual.message_pump import events
@@ -42,9 +43,32 @@ input_command_options = [
 ]
 
 
+class ResultItem:
+
+    def __init__(self) -> None:
+        pass
+
+
+class ResultItemString(ResultItem):
+
+    def __init__(self, s) -> None:
+        super().__init__()
+        self.__str = s
+
+    def __str__(self) -> str:
+        return self.__str
+
+
+class ResultItemSymbo(ResultItem):
+
+    def __init__(self, s: Symbol) -> None:
+        super().__init__()
+        self.symbol = s
+
+
 class SearchResults:
 
-    def __init__(self, list: list[str] = []):
+    def __init__(self, list: list[ResultItem] = []):
         self.list = list
 
 
@@ -88,7 +112,7 @@ class dir_complete_db:
                     filter(lambda x: os.path.isdir(os.path.join(root, x)),
                            keys))
                 keys = sorted(keys, key=lambda x: x)
-                keys = list(set(list(map(lambda x:x[:2],keys))))
+                keys = list(set(list(map(lambda x: x[:2], keys))))
                 keys = sorted(keys, key=lambda x: x)
                 # return pattern + "|".join(keys[0:20])
                 return pattern + "|".join(keys)
@@ -442,7 +466,8 @@ class CodeBrowser(App):
 
     def on_select_list(self, list: ListView):
         if self.searchview == list:
-            self.on_choose_file_from_event(self.search_result.list[list.index])
+            self.on_choose_file_from_event(
+                str(self.search_result.list[list.index]))
         if self.history_view == list:
             self.on_choose_file_from_event(self.history.list[list.index])
         elif self.symbol_listview == list:
@@ -510,7 +535,8 @@ class CodeBrowser(App):
                 def cb(s: list[str]):
                     try:
                         logui.write_line("find files %d" % (len(s)))
-                        self.search_result = SearchResults(s)
+                        self.search_result = SearchResults(
+                            list(map(lambda x: ResultItemString(x), s)))
                         # logui.write_lines(s)
                         self.searchview.setlist(s)
                     except Exception as e:

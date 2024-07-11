@@ -7,12 +7,11 @@ Run with:
 """
 
 import re
+import asyncio
 import threading
 from typing import Coroutine
 from textual import on
 import argparse
-from logging import root
-import sys
 from textual.message_pump import events
 from textual.suggester import SuggestFromList, SuggestionReady
 from textual.validation import Failure
@@ -28,14 +27,52 @@ from textual.containers import Container, VerticalScroll
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
-from lspcpp import LspMain, Output, Symbol, lspcpp, OutputFile
+from lspcpp import LspMain, Symbol, OutputFile
 from textual.app import App, ComposeResult
-from textual.widgets import TextArea
 from textual.widgets import Input
-from textual.widgets import Footer, Label, Markdown, TabbedContent, TabPane
+from textual.widgets import Footer, Label, TabbedContent, TabPane
 
-input_command_options = ["history", "symbol", "open",
-                         "refer", "callin", "ctrl-c", "copy", "save", "log", "quit"]
+input_command_options = [
+    "history", "symbol", "open", "find", "refer", "callin", "ctrl-c", "copy",
+    "save", "log", "quit", "grep"
+]
+import os
+def find_files_os_walk(directory, file_extension):
+    files_found = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.find(file_extension)>0:
+                files_found.append(os.path.join(root, file))
+    return files_found
+
+from concurrent.futures import ThreadPoolExecutor
+
+def thread_submit(fn,cb, /, *args, **kwargs):
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future = executor.submit(fn)
+        result = future.result() 
+        cb(result)
+
+class TaskFindFile:
+    def __init__(self, dir, pattern) -> None:
+        self.dir = dir
+        self.filename = pattern
+        self.ret = []
+        pass
+    def get(self):
+        return find_files_os_walk(self.dir,self.filename)
+    @staticmethod
+    def run(dir,name,cb):
+        fileset = ["h","cc","cpp"]
+        def fn():
+            def extfilter(x:str):
+                for s in fileset:
+                    if x.endswith(s):
+                        return True
+                return False
+            return list(filter(extfilter, TaskFindFile(dir,name).get()))
+        thread_submit(fn,cb)
+    
 
 
 class UiOutput(OutputFile):
@@ -61,7 +98,7 @@ class UiOutput(OutputFile):
             self.ui.write_line(s)
 
 
-class Query:
+class LspQuery:
 
     def __init__(self, name, type) -> None:
         self.data = name
@@ -73,6 +110,7 @@ class Query:
 
 
 class history:
+
     def __init__(self, file=None) -> None:
         self._data = set()
         self.list = list(self._data)
@@ -89,12 +127,13 @@ class history:
     def add(self, data):
         self._data.add(data)
         self.list = list(self._data)
-        if self.file!=None:
+        if self.file != None:
             open(self.file, "w").write("\n".join(self.list))
 
 
 class input_suggestion(SuggestFromList):
     _history: history
+
     async def _get_suggestion(self, requester, value: str) -> None:
         """Used by widgets to get completion suggestions.
 
@@ -116,9 +155,10 @@ class input_suggestion(SuggestFromList):
             suggestion = self.cache[normalized_value]
 
         if suggestion is None:
-            ret = list(filter(lambda x: x.startswith(value), self._history._data))
-            if len(ret)>0:
-                suggestion = ret[0]    
+            ret = list(
+                filter(lambda x: x.startswith(value), self._history._data))
+            if len(ret) > 0:
+                suggestion = ret[0]
         if suggestion is None:
             return
         requester.post_message(SuggestionReady(value, suggestion))
@@ -129,8 +169,9 @@ class CommandInput(Input):
 
     def __init__(self, mainui: 'CodeBrowser') -> None:
         suggestion = input_suggestion(input_command_options)
-        super().__init__(suggester=suggestion, placeholder=" ".join(
-            input_command_options), type="text")
+        super().__init__(suggester=suggestion,
+                         placeholder=" ".join(input_command_options),
+                         type="text")
         self.history = history("input_history.history")
         self.mainui = mainui
         self.suggestion = suggestion
@@ -165,7 +206,7 @@ class MyLogView(Log):
 
     def on_mouse_down(self, event) -> None:
         try:
-            s: str = self.lines[int(event.y+self.scroll_y)]
+            s: str = self.lines[int(event.y + self.scroll_y)]
             file_paths = extract_file_paths(s)
             link = None
             for f in file_paths:
@@ -176,7 +217,7 @@ class MyLogView(Log):
             if link != None:
                 line = None
                 try:
-                    end = s[s.index(link)+len(link):]
+                    end = s[s.index(link) + len(link):]
                     pattern = re.compile(r'^:([0-9]+)')
                     matches = pattern.findall(end)
                     line = int(matches[0])
@@ -201,7 +242,7 @@ class MyListView(ListView):
 
 class CodeBrowser(App):
     root: str
-    symbol_query = Query("", "")
+    symbol_query = LspQuery("", "")
     codeview_file: str
 
     def __init__(self, root, file):
@@ -269,19 +310,46 @@ class CodeBrowser(App):
         self.logview.write_line("open %s" % (file))
 
     def on_command_input(self, value):
-        args = value.split(" ")
+        args = list(filter(lambda x:len(x)>0,value.split(" ")))
+        try:
+            ret = self.did_command_opt(value, args)
+            if ret == True:
+                return
+        except:
+            pass
+        self.did_command_cmdline(args)
+
+    def did_command_opt(self, value, args):
         self.logview.write_line(value)
-        if len(args) == 1:
+        if len(args)>0:
             if args[0] == "open":
                 self.change_lsp_file(self.codeview_file)
+            elif args[0] == "find":
+                dir = args[1]
+                if os.path.isabs(dir)==False:
+                    dir =os.path.join(self.lsp.root,dir)
+                    dir = os.path.realpath(dir)
+                
+                logui =self.logview
+                def cb(s):
+                    try:
+                        logui.write_lines(s[0:5])
+                    except Exception as e:
+                        pass
+                TaskFindFile.run(dir,args[2],cb)
+                pass
             elif args[0] == "history":
                 self.refresh_history_view()
             elif args[0] == "symbol":
                 self.refresh_symbol_view()
             elif args[0] == "refer":
                 self.action_refer()
-                pass
-            return
+            else:
+                return False
+            return True
+        return False 
+
+    def did_command_cmdline(self, args):
         try:
             parser = argparse.ArgumentParser()
             parser.add_argument("-o", "--file", help="root path")
@@ -383,7 +451,7 @@ class CodeBrowser(App):
         #     if self.thread.is_alive():
         #         self.logview.write_line("Wait for previous call finished")
         #         return
-        def my_function(lsp, q: Query, toFile, toUml):
+        def my_function(lsp, q: LspQuery, toFile, toUml):
             try:
                 lsp.currentfile.refer(q.data, toFile=toFile)
             except Exception as e:
@@ -391,9 +459,8 @@ class CodeBrowser(App):
                 pass
             self.logview.write_line("Call Job finished")
 
-        import threading
         sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
-        q = Query(sym.symbol_display_name(), "r")
+        q = LspQuery(sym.symbol_display_name(), "r")
         if q != self.symbol_query:
             if self.tofile != None:
                 self.tofile.close()
@@ -415,7 +482,7 @@ class CodeBrowser(App):
         #     if self.thread.is_alive():
         #         self.logview.write_line("Wait for previous call finished")
         #         return
-        def my_function(lsp, q: Query, toFile, toUml):
+        def my_function(lsp, q: LspQuery, toFile, toUml):
             lsp.currentfile.call(q.data,
                                  once=False,
                                  uml=True,
@@ -425,7 +492,7 @@ class CodeBrowser(App):
 
         import threading
         sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
-        q = Query(sym.symbol_display_name(), "callin")
+        q = LspQuery(sym.symbol_display_name(), "callin")
         if q != self.symbol_query:
             if self.tofile != None:
                 self.tofile.close()

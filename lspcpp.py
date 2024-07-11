@@ -925,6 +925,8 @@ class SymbolFile:
         self.save_stack_file = self.save_uml_file = None
 
     def get_symbol_list(self) -> list[Symbol]:
+        if(len(self.symbols_list)):
+            return self.symbols_list
         symbols_list = []
         for a in self.client.get_class_symbol(file=self.file):
             if len(a.members):

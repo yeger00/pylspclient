@@ -69,6 +69,7 @@ def build_dirs(directory):
 class dir_complete_db:
 
     def __init__(self, root) -> None:
+        self.root = root
         self.db = build_dirs(root)
         pass
 
@@ -77,11 +78,22 @@ class dir_complete_db:
             if self.db[pattern]:
                 return str(pattern)[1:]
         except:
-            keys = list(filter(lambda x: x.startswith(pattern),
+
+            if pattern[-1]=="/":
+                # pattern = pattern[:-1]
+                # keys= list(filter(lambda x: os.path.dirname(x)==pattern,self.db.keys()))
+                root = os.path.join(self.root,pattern[1:])
+                keys = os.listdir(root)
+                keys = list(filter(lambda x:os.path.isdir(os.path.join(root,x)),keys))
+                keys = sorted(keys, key=lambda x: x)
+                return pattern + "|".join(keys[0:10])
+                pass
+            else: 
+                keys = list(filter(lambda x: x.startswith(pattern),
                                self.db.keys()))
-            keys = sorted(keys, key=lambda x: len(x))
-            if len(keys):
-                return keys[0][1:]
+                keys = sorted(keys, key=lambda x: len(x))
+                if len(keys):
+                    return keys[0][1:]
 
         return None
 

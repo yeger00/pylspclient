@@ -476,12 +476,17 @@ class CodeBrowser(App):
             try:
                 sym: Symbol = self.lsp.currentfile.symbols_list[list.index]
                 y = sym.sym.location.range.start.line
-                code_view = self.code_editor_view()
+                self.code_editor_scroll_view().scroll_to(y=y-10, animate=False)
+                self.hightlight_code_line(y)
                 # code_view.selection=Selection(start=(0,y),end=(10,y))
                 pass
             except Exception as e:
                 self.logview.write_line(str(e))
         pass
+
+    def hightlight_code_line(self, y):
+        code:TextArea.code_editor=self.code_editor_view()
+        code.selection=Selection(start=(y,0),end=(y,code.region.width))
 
     def on_click_link(self, link, line=None):
         self.on_choose_file_from_event(link)

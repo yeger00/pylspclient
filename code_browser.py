@@ -41,6 +41,12 @@ input_command_options = [
 ]
 
 
+class SearchResults:
+
+    def __init__(self, list: list[str] = []):
+        self.list = list
+
+
 def convert_command_args(value):
     args = list(filter(lambda x: len(x) > 0, value.split(" ")))
     return args
@@ -106,21 +112,28 @@ def thread_submit(fn, cb, args: tuple):
 
 class TaskFindFile:
 
-    def __init__(self, dir, pattern) -> None:
+    def __init__(self, dir, pattern: list[str]) -> None:
         self.dir = dir
-        self.pattern = pattern
+        self.pattern = list(filter(lambda x: x[0] != '!', pattern))
+        self.exclude_pattern = list(
+            map(lambda x: x[1:], filter(lambda x: x[0] == '!', pattern)))
         self.ret = []
         pass
 
     def match_pattern(self, path):
+        for p in self.exclude_pattern:
+            if path.find(p) > -1:
+                return False
         for p in self.pattern:
             if path.find(p) == -1:
                 return False
+
         return True
 
     def get(self):
         files_found = []
-        if self.dir is None: return files_found
+        if self.dir is None:
+            return files_found
         for root, dirs, files in os.walk(self.dir):
             for file in files:
                 p = os.path.join(root, file)
@@ -130,7 +143,7 @@ class TaskFindFile:
 
     @staticmethod
     def run(dir, pattern, cb):
-        fileset = ["h", "cc", "cpp"]
+        fileset = ["h", "c", "hpp", "cc", "cpp"]
 
         def fn(dir, pattern):
 
@@ -358,6 +371,10 @@ HISTORY_LISTVIEW_TYPE = 2
 class MyListView(ListView):
     mainui: 'CodeBrowser'
 
+    def setlist(self, data: list[str]):
+        self.clear()
+        self.extend(list(map(lambda x: ListItem(Label(x)), data)))
+
     def _on_list_item__child_clicked(self,
                                      event: ListItem._ChildClicked) -> None:
         ListView._on_list_item__child_clicked(self, event)
@@ -371,6 +388,7 @@ class CodeBrowser(App):
     root: str
     symbol_query = LspQuery("", "")
     codeview_file: str
+    search_result: SearchResults | None = None
 
     def __init__(self, root, file):
         App.__init__(self)
@@ -400,18 +418,19 @@ class CodeBrowser(App):
     show_tree = var(True)
 
     def on_select_list(self, list: ListView):
-        if list == self.symbol_listview:
-            if self.history_view == list:
-                self.on_choose_file_from_event(self.history.list[list.index])
-            elif self.symbol_listview == list:
-                try:
-                    sym: Symbol = self.lsp.currentfile.symbols_list[list.index]
-                    y = sym.sym.location.range.start.line
-                    self.query_one("#code-view").scroll_to(y=y, animate=False)
-                    pass
-                except Exception as e:
-                    self.logview.write_line(str(e))
-            pass
+        if self.searchview == list:
+            self.on_choose_file_from_event(
+                self.search_result.list[list.index])
+        if self.history_view == list:
+            self.on_choose_file_from_event(self.history.list[list.index])
+        elif self.symbol_listview == list:
+            try:
+                sym: Symbol = self.lsp.currentfile.symbols_list[list.index]
+                y = sym.sym.location.range.start.line
+                self.query_one("#code-view").scroll_to(y=y, animate=False)
+                pass
+            except Exception as e:
+                self.logview.write_line(str(e))
         pass
 
     def on_click_link(self, link, line=None):
@@ -459,11 +478,14 @@ class CodeBrowser(App):
 
                 logui = self.logview
 
-                def cb(s):
+                def cb(s: list[str]):
                     try:
                         logui.write_line("find files %d" % (len(s)))
-                        logui.write_lines(s)
+                        self.search_result = SearchResults(s)
+                        # logui.write_lines(s)
+                        self.searchview.setlist(s)
                     except Exception as e:
+                        logui.write_line(str(e))
                         pass
 
                 self.logview.write_line("start to find %s" % (dir))
@@ -521,13 +543,13 @@ class CodeBrowser(App):
                     self.logview = MyLogView(id="logview")
                     self.logview.mainuui = self
                     yield self.logview
-                    v = CommandInput(self, root=self.lsp.root)
-                    yield v
                 with TabPane("Fzf", id="fzf"):
                     self.searchview = MyListView()
                     self.searchview.mainui = self
                     yield self.searchview
                     pass
+        v = CommandInput(self, root=self.lsp.root)
+        yield v
         yield Footer()
 
     def on_mount(self) -> None:

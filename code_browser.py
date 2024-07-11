@@ -606,7 +606,7 @@ class CodeBrowser(App):
 
                 logui = self.logview
                 self.logview.write_line("start to find %s" % (dir))
-                self.t = ThreadPoolExecutor(1)
+                t = ThreadPoolExecutor(1)
 
                 def cb2(future):
                     try:
@@ -616,7 +616,7 @@ class CodeBrowser(App):
                     except Exception as e:
                         logui.write_line(str(e))
                         pass
-                self.t.submit(TaskFindFile.run, dir,
+                t.submit(TaskFindFile.run, dir,
                               args[1:]).add_done_callback(cb2)
                 pass
             elif args[0] == "history":

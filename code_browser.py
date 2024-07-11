@@ -443,6 +443,17 @@ class mymessage(Message):
         self.s = s
 
 
+class changelspmessage(Message):
+    pass
+
+
+class symbolsmessage(Message):
+    data =[]
+    def __init__(self,data) -> None:
+        super().__init__()
+        self.data = data
+
+
 class refermessage(Message):
 
     def __init__(self, s: list[object]) -> None:
@@ -471,6 +482,9 @@ class CodeBrowser(App):
     symbol_query = LspQuery("", "")
     codeview_file: str
     search_result: SearchResults | None = None
+
+
+
 
     def on_refermessage(self, message: refermessage) -> None:
         self.search_result = SearchResults(
@@ -546,17 +560,14 @@ class CodeBrowser(App):
                 self.logview.write_line(str(e))
         pass
 
-    def code_to_refer(self, refer:ResultItemRefer):
+    def code_to_refer(self, refer: ResultItemRefer):
         self.on_choose_file_from_event(refer.item.file)
-        y =refer.item.range.start.line 
+        y = refer.item.range.start.line
         b = refer.item.range.start.character
         e = refer.item.range.end.character
         self.code_editor_scroll_view().scroll_to(y=y - 10, animate=False)
-        self.hightlight_code_line(y,
-                                  colbegin=b,
-                                  colend=e)
+        self.hightlight_code_line(y, colbegin=b, colend=e)
         pass
-
 
     def code_to_search_position(self, search):
         y = search.item.line
@@ -579,21 +590,20 @@ class CodeBrowser(App):
         if line != None:
             self.code_editor_scroll_view().scroll_to(y=line, animate=False)
         pass
+        
+    def on_changelspmessage(self, message: changelspmessage) -> None:
+        self.refresh_symbol_view()
+        pass
 
     def change_lsp_file(self, file):
 
-        def my_function(_self, file):
-            try:
-                _self.lsp.changefile(file)
-                _self.refresh_symbol_view()
-                _self.logview.write_line("open %s finished" % (file))
-            except Exception as e:
-                _self.logview.write_line("open %s error %s" % (file, str(e)))
+        def lsp_change(lsp :LspMain,file:str):
+            lsp.changefile(file)
+            self.post_message(changelspmessage())
 
         self.symbol_listview.clear()
-        # thread = threading.Thread(target=my_function, args=(self, file))
-        # thread.start()
-        my_function(self, file)
+        t = ThreadPoolExecutor(1)
+        t.submit(lsp_change, self.lsp, file)
         self.logview.write_line("open %s" % (file))
 
     def on_command_input(self, value):
@@ -757,12 +767,21 @@ class CodeBrowser(App):
         self.history_view.clear()
         self.history_view.extend(aa)
 
+    def on_symbolsmessage(self, message: symbolsmessage) -> None:
+        try:
+            self.symbol_listview.clear()
+            self.symbol_listview.extend(message.data)
+            self.logview.write_line("open %s" % (self.lsp.currentfile.file))
+        except Exception as e:
+            self.logview.write_line("exception %s" % (str(e)))
+        pass
+
     def refresh_symbol_view(self):
-        aa = map(lambda x: ListItem(Label(x)),
+        def my_function():
+            aa = map(lambda x: ListItem(Label(x)),
                  self.lsp.currentfile.symbol_list_string())
-        self.symbol_listview.clear()
-        self.symbol_listview.extend(list(aa))
-        self.logview.write_line("open %s" % (self.lsp.currentfile.file))
+            self.post_message(symbolsmessage(list(aa)))
+        ThreadPoolExecutor(1).submit(my_function)
 
     def on_directory_tree_file_selected(
             self, event: DirectoryTree.FileSelected) -> None:

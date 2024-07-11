@@ -144,7 +144,6 @@ class Token:
                         location.range.end.line][:location.range.end.character]
 
 
-otherscls = []
 
 
 class SymbolLocation:
@@ -203,7 +202,7 @@ class Symbol:
     def is_method(self):
         return self.sym.kind == SymbolKind.Method
 
-    def find_members(self, syms: list[SymbolInformation]):
+    def find_members(self, syms: list[SymbolInformation],otherscls):
         yes = self.sym.kind == SymbolKind.Class or self.sym.kind == SymbolKind.Struct
         if yes == False:
             return syms
@@ -220,7 +219,7 @@ class Symbol:
                 self.cls = self
             elif s1.sym.kind == SymbolKind.Class or s1.sym.kind == SymbolKind.Struct:
                 otherscls.append(s1)
-                syms = s1.find_members(syms[1:])
+                syms = s1.find_members(syms[1:],otherscls)
                 continue
             syms = syms[1:]
         return syms
@@ -470,15 +469,13 @@ class lspcppclient:
         self.lsp_client.exit()
 
     def get_class_symbol(self, file) -> list[Symbol]:
-        global otherscls
-        otherscls.clear()
         ret = []
         symbols = self.get_document_symbol(file)
         while len(symbols):
             s = symbols[0]
             if s.kind == SymbolKind.Class or s.kind == SymbolKind.Struct:
                 s1 = Symbol(s)
-                symbols = s1.find_members(symbols[1:])
+                symbols = s1.find_members(symbols[1:],ret)
                 ret.append(s1)
                 continue
             elif s.kind == SymbolKind.Function:
@@ -488,7 +485,6 @@ class lspcppclient:
                 s1 = Symbol(s)
                 ret.append(s1)
             symbols = symbols[1:]
-        ret.extend(otherscls)
         return ret
 
     def get_document_symbol(self, file: str) -> list[SymbolInformation]:
@@ -766,8 +762,6 @@ class CallerWalker:
 class SourceCode:
 
     def __init__(self, file, client: lspcppclient) -> None:
-        global otherscls
-        otherscls = []
         self.file = file
         self.lines = open(file, 'r').readlines()
         self.symbols = client.get_document_symbol(file)
@@ -914,6 +908,7 @@ class SymbolFile:
         self.client = wk.client
         self.file = file
         self.root = wk.root
+        self.symbols_list = []
         try:
             self.file = file
             source = self.client.open_file(file)
@@ -930,13 +925,14 @@ class SymbolFile:
         self.save_stack_file = self.save_uml_file = None
 
     def get_symbol_list(self) -> list[Symbol]:
-        self.symbols_list = []
+        symbols_list = []
         for a in self.client.get_class_symbol(file=self.file):
             if len(a.members):
-                self.symbols_list.extend(a.members)
+                symbols_list.extend(a.members)
             else:
-                self.symbols_list.append(a)
-        return self.symbols_list
+                symbols_list.append(a)
+        self.symbols_list = symbols_list
+        return symbols_list
 
     def symbol_list_string(self) -> list[str]:
         self.get_symbol_list()

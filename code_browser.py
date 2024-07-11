@@ -10,6 +10,7 @@ from textual.message import Message
 from textual.scroll_view import ScrollView
 from textual.widgets.text_area import Document, Selection
 from concurrent.futures import ThreadPoolExecutor
+from textual.widgets import LoadingIndicator
 import os
 import re
 import asyncio
@@ -674,8 +675,10 @@ class CodeBrowser(App):
                          args[1:]).add_done_callback(cb2)
                 pass
             elif args[0] == "history":
+                self.history_view.focus()
                 self.refresh_history_view()
             elif args[0] == "symbol":
+                self.symbol_listview.focus()
                 self.refresh_symbol_view()
             elif args[0] == "refer":
                 self.action_refer()
@@ -771,7 +774,7 @@ class CodeBrowser(App):
         try:
             self.symbol_listview.clear()
             self.symbol_listview.extend(message.data)
-            self.logview.write_line("open %s" % (self.lsp.currentfile.file))
+            self.logview.write_line("on_symbolsmessage %s %d" % (self.lsp.currentfile.file,len(message.data)))
         except Exception as e:
             self.logview.write_line("exception %s" % (str(e)))
         pass

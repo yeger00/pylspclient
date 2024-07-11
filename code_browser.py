@@ -38,7 +38,7 @@ view_key = "view "
 clear_key = "clear"
 input_command_options = [
     "history", "symbol", "open", "find", "refer", "callin", "ctrl-c", "copy",
-    "save", "log", "quit", "grep", "view" ,"clear"
+    "save", "log", "quit", "grep", "view", "clear"
 ]
 
 
@@ -411,6 +411,7 @@ class CodeBrowser(App):
     BINDINGS = [
         ("f", "toggle_files", "Toggle Files"),
         ("q", "quit", "Quit"),
+        ("i", "focus_input", "Focuse to cmdline"),
         ("c", "callin", "CallIn"),
         ("o", "open_file", "Open"),
         ("r", "refer", "Reference"),
@@ -418,10 +419,13 @@ class CodeBrowser(App):
 
     show_tree = var(True)
 
+    def action_focus_input(self) -> None:
+        self.cmdline.focus()
+        pass
+
     def on_select_list(self, list: ListView):
         if self.searchview == list:
-            self.on_choose_file_from_event(
-                self.search_result.list[list.index])
+            self.on_choose_file_from_event(self.search_result.list[list.index])
         if self.history_view == list:
             self.on_choose_file_from_event(self.history.list[list.index])
         elif self.symbol_listview == list:
@@ -462,14 +466,19 @@ class CodeBrowser(App):
             ret = self.did_command_opt(value, args)
             if ret == True:
                 return
-        except:
+        except Exception as e:
             pass
         self.did_command_cmdline(args)
 
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:
-            if args[0] == clear_key:
+            if args[0] == "view":
+                view = args[1]
+                if view=="code":
+                    view="code-view"
+                self.focus_to_viewid(view)
+            elif args[0] == clear_key:
                 self.logview.clear()
             elif args[0] == "open":
                 self.change_lsp_file(self.codeview_file)
@@ -505,6 +514,14 @@ class CodeBrowser(App):
             return True
         return False
 
+    def focus_to_viewid(self, view):
+        try:
+            v=self.query_one("#"+view)
+            if v!=None:
+                v.focus()
+        except:
+            pass
+
     def did_command_cmdline(self, args):
         try:
             parser = argparse.ArgumentParser()
@@ -529,11 +546,11 @@ class CodeBrowser(App):
                 yield Static(id="code", expand=True)
             with TabbedContent(initial="jessica", id="symbol-list"):
                 with TabPane("Rencently", id="leto"):  # First tab
-                    self.history_view = MyListView(id="symbol-listx")
+                    self.history_view = MyListView(id="history")
                     self.history_view.mainui = self
                     yield self.history_view
                 with TabPane("Symbol", id="jessica"):
-                    self.symbol_listview = MyListView(id="symbol-listx")
+                    self.symbol_listview = MyListView(id="symbol")
                     self.symbol_listview.mainui = self
                     yield self.symbol_listview
         yield Footer()
@@ -541,17 +558,18 @@ class CodeBrowser(App):
         # yield self.text
 
         with Container():
-            with TabbedContent(initial="log"):
-                with TabPane("Log", id="log"):  # First tab
-                    self.logview = MyLogView(id="logview")
+            with TabbedContent(initial="log-tab"):
+                with TabPane("Log", id="log-tab"):  # First tab
+                    self.logview = MyLogView(id="log")
                     self.logview.mainuui = self
                     yield self.logview
-                with TabPane("Fzf", id="fzf"):
-                    self.searchview = MyListView()
+                with TabPane("Fzf", id="fzf-tab"):
+                    self.searchview = MyListView(id='fzf')
                     self.searchview.mainui = self
                     yield self.searchview
                     pass
         v = CommandInput(self, root=self.lsp.root)
+        self.cmdline = v
         yield v
         yield Footer()
 
@@ -643,6 +661,7 @@ class CodeBrowser(App):
                                            args=(self.lsp, q, self.tofile,
                                                  None))
             self.thread.start()
+            self.logview.focus()
 
     def action_callin(self) -> None:
         # if self.thread!=None:
@@ -675,6 +694,7 @@ class CodeBrowser(App):
                                            args=(self.lsp, q, self.tofile,
                                                  self.toUml))
             self.thread.start()
+            self.logview.focus()
 
     def action_toggle_files(self) -> None:
         """Called in response to key binding."""

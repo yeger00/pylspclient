@@ -603,12 +603,12 @@ class lspcpp:
 
 class ICON:
     Text = "󰉿"
-    Method = "󰆧"
-    Function = "󰊕"
-    Constructor = ""
+    Method = "ƒ"
+    Function = ""
+    Constructor =""
     Field = "󰜢"
     Variable = "󰀫"
-    Class = "󰠱"
+    Class = "𝓒"
     Interface = ""
     Module = ""
     Property = "󰜢"
@@ -623,7 +623,7 @@ class ICON:
     Folder = "󰉋"
     EnumMember = ""
     Constant = "󰏿"
-    Struct = "󰙅"
+    Struct = "𝓢"
     Event = ""
     Operator = "󰆕"
     TypeParameter = ""
@@ -634,6 +634,7 @@ class ICON:
         ) else ICON.Class if s.is_class_define(
         ) else ICON.Function if s.is_function(
         ) else ICON.Constructor if s.is_construct() else "?"
+
 
 
 class CallNode:

@@ -11,7 +11,6 @@ import os
 import re
 import asyncio
 import threading
-from typing import Coroutine
 from textual import on
 import argparse
 from textual.message_pump import events
@@ -19,7 +18,7 @@ from textual.suggester import SuggestFromList, SuggestionReady
 from textual.validation import Failure
 from textual.widgets import Log
 
-from pydantic import NatsDsn
+from pydantic import Field, NatsDsn
 from rich.syntax import Syntax
 from rich.traceback import Traceback
 
@@ -107,18 +106,31 @@ class TaskFindFile:
 
     def __init__(self, dir, pattern) -> None:
         self.dir = dir
-        self.filename = pattern
+        self.pattern = pattern
         self.ret = []
         pass
 
+    def match_pattern(self, path):
+        for p in self.pattern:
+            if path.find(p) == -1:
+                return False
+        return True
+
     def get(self):
-        return find_files_os_walk(self.dir, self.filename)
+        files_found = []
+        if self.dir is None: return files_found
+        for root, dirs, files in os.walk(self.dir):
+            for file in files:
+                p = os.path.join(root, file)
+                if self.match_pattern(p):
+                    files_found.append(p)
+        return files_found
 
     @staticmethod
-    def run(dir, name, cb):
+    def run(dir, pattern, cb):
         fileset = ["h", "cc", "cpp"]
 
-        def fn(dir, name):
+        def fn(dir, pattern):
 
             def extfilter(x: str):
                 for s in fileset:
@@ -126,9 +138,9 @@ class TaskFindFile:
                         return True
                 return False
 
-            return list(filter(extfilter, TaskFindFile(dir, name).get()))
+            return list(filter(extfilter, TaskFindFile(dir, pattern).get()))
 
-        thread_submit(fn, cb, (dir, name))
+        thread_submit(fn, cb, (dir, pattern))
 
 
 class UiOutput(OutputFile):
@@ -227,13 +239,13 @@ class input_suggestion(SuggestFromList):
             # if self.root is None: return None
             if value.startswith(find_key) == False:
                 return None
-            args =  convert_command_args(value)
+            args = convert_command_args(value)
             if self.dircomplete != None:
                 if len(args) == 2 and len(args[1]) > 1:
                     s = self.dircomplete.find(args[1])
                     if s != None:
                         part1 = value[0:value.find(args[1])]
-                        return part1 + "/"+s
+                        return part1 + "/" + s
 
             # ret = find_dirs_os_walk(self.root, args[1])
             # if len(ret):
@@ -261,7 +273,7 @@ class CommandInput(Input):
         if self.mainui != None:
             self.history.add_to_history(self.value)
             args = convert_command_args(self.value)
-            if len(args)>1:
+            if len(args) > 1:
                 if args[0] in input_command_options:
                     for a in args[1:]:
                         self.history.add_to_history(a)
@@ -321,7 +333,9 @@ HISTORY_LISTVIEW_TYPE = 2
 
 class MyListView(ListView):
     mainui: 'CodeBrowser'
-
+    def _on_list_item__child_clicked(self, event: ListItem._ChildClicked) -> None:
+        ListView._on_list_item__child_clicked(self, event)
+        self.mainui.on_select_list(self)
     def action_select_cursor(self):
         self.mainui.on_select_list(self)
 
@@ -396,7 +410,7 @@ class CodeBrowser(App):
         self.logview.write_line("open %s" % (file))
 
     def on_command_input(self, value):
-        args =convert_command_args(value)
+        args = convert_command_args(value)
         try:
             ret = self.did_command_opt(value, args)
             if ret == True:
@@ -412,19 +426,20 @@ class CodeBrowser(App):
                 self.change_lsp_file(self.codeview_file)
             elif args[0] == "find":
                 dir = args[1]
-                if os.path.isabs(dir) == False:
-                    dir = os.path.join(self.lsp.root, dir)
+                if self.root.find(dir) == -1:
+                    dir = self.root + dir
                     dir = os.path.realpath(dir)
 
                 logui = self.logview
 
                 def cb(s):
                     try:
-                        logui.write_lines(s[0:5])
+                        logui.write_line("find files %d" % (len(s)))
+                        logui.write_lines(s)
                     except Exception as e:
                         pass
 
-                TaskFindFile.run(dir, args[2], cb)
+                TaskFindFile.run(dir, args[1:], cb)
                 pass
             elif args[0] == "history":
                 self.refresh_history_view()
@@ -484,7 +499,7 @@ class CodeBrowser(App):
         self.refresh_symbol_view()
 
     def refresh_history_view(self):
-        aa = map(lambda x: ListItem(Label(x)), list(self.history.list))
+        aa = map(lambda x: ListItem(Label(os.path.basename(x))), list(self.history.list))
         self.history_view.clear()
         self.history_view.extend(aa)
 

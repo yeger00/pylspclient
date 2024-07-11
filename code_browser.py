@@ -8,11 +8,13 @@ Run with:
 
 import re
 import threading
+from typing import Coroutine
 from textual import on
 import argparse
 from logging import root
 import sys
-from textual.suggester import SuggestFromList
+from textual.message_pump import events
+from textual.suggester import SuggestFromList, SuggestionReady
 from textual.validation import Failure
 from textual.widgets import Log
 
@@ -70,25 +72,101 @@ class Query:
         return self.data == value.data and self.type == value.type
 
 
-class CommandInput(Input):
-    mainui: 'CodeBrowser'
-
-    def on_input_submitted(self) -> None:
-        if self.mainui != None:
-            self.mainui.on_command_input(self.value)
-        pass
-
-
 class history:
-
-    def __init__(self) -> None:
+    def __init__(self, file=None) -> None:
         self._data = set()
         self.list = list(self._data)
+        self.file = file
+        if file != None:
+            try:
+                self.list = map(lambda x: x.replace("\n", ""),
+                                open(file, "r").readlines())
+                self._data = set(self.list)
+            except:
+                pass
         pass
 
     def add(self, data):
         self._data.add(data)
         self.list = list(self._data)
+        if self.file!=None:
+            open(self.file, "w").write("\n".join(self.list))
+
+
+class input_suggestion(SuggestFromList):
+    _history: history
+    async def _get_suggestion(self, requester, value: str) -> None:
+        """Used by widgets to get completion suggestions.
+
+        Note:
+            When implementing custom suggesters, this method does not need to be
+            overridden.
+
+        Args:
+            requester: The message target that requested a suggestion.
+            value: The current value to complete.
+        """
+
+        normalized_value = value if self.case_sensitive else value.casefold()
+        if self.cache is None or normalized_value not in self.cache:
+            suggestion = await self.get_suggestion(normalized_value)
+            if self.cache is not None:
+                self.cache[normalized_value] = suggestion
+        else:
+            suggestion = self.cache[normalized_value]
+
+        if suggestion is None:
+            ret = list(filter(lambda x: x.startswith(value), self._history._data))
+            if len(ret)>0:
+                suggestion = ret[0]    
+        if suggestion is None:
+            return
+        requester.post_message(SuggestionReady(value, suggestion))
+    async def get_suggestion(self, value: str) -> str | None:
+        """Gets a completion from the given possibilities.
+
+        Args:
+            value: The current value.
+
+        Returns:
+            A valid completion suggestion or `None`.
+        """
+        for idx, suggestion in enumerate(self._for_comparison):
+
+            if suggestion.startswith(value):
+                return self._suggestions[idx]
+        ret = list(filter(lambda x: x.startswith(value), self._history._data))
+        if len(ret):
+            return ret[0]
+        return None
+
+
+class CommandInput(Input):
+    mainui: 'CodeBrowser'
+
+    def __init__(self, mainui: 'CodeBrowser') -> None:
+        suggestion = input_suggestion(input_command_options)
+        super().__init__(suggester=suggestion, placeholder=" ".join(
+            input_command_options), type="text")
+        self.history = history("input_history.history")
+        self.mainui = mainui
+        self.suggestion = suggestion
+        suggestion._history = self.history
+
+    def on_input_submitted(self) -> None:
+        if self.mainui != None:
+            self.history.add(self.value)
+            self.mainui.on_command_input(self.value)
+        pass
+
+    def on_key(self, event: events.Key) -> None:
+        if event.key == "up":
+            event.stop()
+            return
+        if event.key == "down":
+            event.stop()
+            return
+        pass
 
 
 def extract_file_paths(text):
@@ -112,16 +190,16 @@ class MyLogView(Log):
                 if event.x > pos and event.x < pos + len(f):
                     link = f
                     break
-            if link!=None:
-                line =None
+            if link != None:
+                line = None
                 try:
                     end = s[s.index(link)+len(link):]
-                    pattern= re.compile(r'^:([0-9]+)')
+                    pattern = re.compile(r'^:([0-9]+)')
                     matches = pattern.findall(end)
                     line = int(matches[0])
                 except:
                     pass
-                self.mainuui.on_click_link(link,line=line)
+                self.mainuui.on_click_link(link, line=line)
             pass
         except Exception as e:
             pass
@@ -172,9 +250,9 @@ class CodeBrowser(App):
 
     def on_select_list(self, list: ListView):
         if list == self.symbol_listview:
-            if self.history_view ==list:
+            if self.history_view == list:
                 self.on_choose_file_from_event(self.history.list[list.index])
-            elif self.symbol_listview== list:
+            elif self.symbol_listview == list:
                 try:
                     sym: Symbol = self.lsp.currentfile.symbols_list[list.index]
                     y = sym.sym.location.range.start.line
@@ -185,9 +263,9 @@ class CodeBrowser(App):
             pass
         pass
 
-    def on_click_link(self, link,line=None):
+    def on_click_link(self, link, line=None):
         self.on_choose_file_from_event(link)
-        if line!=None:
+        if line != None:
             self.query_one("#code-view").scroll_to(y=line, animate=False)
         pass
 
@@ -221,13 +299,14 @@ class CodeBrowser(App):
                 self.action_refer()
                 pass
             return
-
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-o", "--file", help="root path")
-        parser.parse_args(args)
-        if args.file != None:
-            self.change_lsp_file(args.file)
-            return
+        try:
+            parser = argparse.ArgumentParser()
+            parser.add_argument("-o", "--file", help="root path")
+            parser.parse_args(args)
+            if args.file != None:
+                self.change_lsp_file(args.file)
+        except:
+            pass
 
     def watch_show_tree(self, show_tree: bool) -> None:
         """Called when show_tree is modified."""
@@ -241,9 +320,9 @@ class CodeBrowser(App):
             yield DirectoryTree(path, id="tree-view")
             with VerticalScroll(id="code-view"):
                 yield Static(id="code", expand=True)
-            with TabbedContent(initial="jessica",id="symbol-list"):
+            with TabbedContent(initial="jessica", id="symbol-list"):
                 with TabPane("Rencently", id="leto"):  # First tab
-                    self.history_view= MyListView(id="symbol-listx")
+                    self.history_view = MyListView(id="symbol-listx")
                     self.history_view.mainui = self
                     yield self.history_view
                 with TabPane("Symbol", id="jessica"):
@@ -256,12 +335,7 @@ class CodeBrowser(App):
         self.logview = MyLogView(id="logview")
         self.logview.mainuui = self
         yield self.logview
-        suggester = SuggestFromList(
-            input_command_options, case_sensitive=False)
-        v = CommandInput(placeholder=" ".join(input_command_options),
-                         type="text",
-                         suggester=suggester)
-        v.mainui = self
+        v = CommandInput(self)
         yield v
 
     def on_mount(self) -> None:

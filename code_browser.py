@@ -35,9 +35,10 @@ from textual.widgets import Footer, Label, TabbedContent, TabPane
 
 find_key = "find "
 view_key = "view "
+clear_key = "clear"
 input_command_options = [
     "history", "symbol", "open", "find", "refer", "callin", "ctrl-c", "copy",
-    "save", "log", "quit", "grep", "view"
+    "save", "log", "quit", "grep", "view" ,"clear"
 ]
 
 
@@ -468,7 +469,9 @@ class CodeBrowser(App):
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:
-            if args[0] == "open":
+            if args[0] == clear_key:
+                self.logview.clear()
+            elif args[0] == "open":
                 self.change_lsp_file(self.codeview_file)
             elif args[0] == "find":
                 dir = args[1]

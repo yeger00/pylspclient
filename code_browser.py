@@ -6,6 +6,7 @@ Run with:
     python code_browser.py PATH
 """
 
+from textual.message import Message
 from textual.scroll_view import ScrollView
 from textual.widgets.text_area import Document, Selection
 from concurrent.futures import ThreadPoolExecutor
@@ -159,12 +160,14 @@ def find_files_os_walk(directory, file_extension):
     return files_found
 
 
-def thread_submit(fn, cb, args: tuple):
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future = executor.submit(fn, *args)
-        result = future.result()
-        cb(result)
-
+# def thread_submit(fn, cb, args: tuple):
+#     with ThreadPoolExecutor(max_workers=2) as executor:
+#         future = executor.submit(fn, *args)
+#             cb(future.result())
+#         future.add_done_callback(done,cb)
+#         # result = future.result()
+#         # cb(result)
+#
 
 class TaskFindFile:
 
@@ -198,20 +201,17 @@ class TaskFindFile:
         return files_found
 
     @staticmethod
-    def run(dir, pattern, cb):
+    def run(dir, pattern):
         fileset = ["h", "c", "hpp", "cc", "cpp"]
 
-        def fn(dir, pattern):
+        def extfilter(x: str):
+            for s in fileset:
+                if x.endswith(s):
+                    return True
+            return False
 
-            def extfilter(x: str):
-                for s in fileset:
-                    if x.endswith(s):
-                        return True
-                return False
-
-            return list(filter(extfilter, TaskFindFile(dir, pattern).get()))
-
-        thread_submit(fn, cb, (dir, pattern))
+        ret = list(filter(extfilter, TaskFindFile(dir, pattern).get()))
+        return ret
 
 
 class UiOutput(OutputFile):
@@ -424,6 +424,12 @@ SYMBOL_LISTVIEW_TYPE = 1
 HISTORY_LISTVIEW_TYPE = 2
 
 
+class mymessage(Message):
+    def __init__(self,  s: list[str]) -> None:
+        super().__init__()
+        self.s = s
+
+
 class MyListView(ListView):
     mainui: 'CodeBrowser'
 
@@ -445,6 +451,15 @@ class CodeBrowser(App):
     symbol_query = LspQuery("", "")
     codeview_file: str
     search_result: SearchResults | None = None
+
+    def on_mymessage(self, message: mymessage) -> None:
+        s = message.s
+        self.search_result = SearchResults(
+            list(map(lambda x: ResultItemString(x), s)))
+        # logui.write_lines(s)
+        self.searchview.setlist(s)
+        self.searchview.focus()
+        pass
 
     def __init__(self, root, file):
         App.__init__(self)
@@ -506,9 +521,9 @@ class CodeBrowser(App):
         y = search.item.line
         self.soucecode.search.index = y
         self.code_editor_scroll_view().scroll_to(y=y - 10,
-                                                         animate=False)
+                                                 animate=False)
         self.hightlight_code_line(
-                    y, colbegin=search.item.col, colend=search.item.col+len(self.soucecode.search.pattern))
+            y, colbegin=search.item.col, colend=search.item.col+len(self.soucecode.search.pattern))
         pass
 
     def hightlight_code_line(self, y, colbegin=None, colend=None):
@@ -557,12 +572,14 @@ class CodeBrowser(App):
         if len(args) > 0:
             if args[0] == "search":
                 if self.soucecode.search.pattern == args[1]:
-                    if len(args)>2 and  args[2]=="-":
-                        self.soucecode.search.index=self.soucecode.search.index+len(self.search_result.list)-1
+                    if len(args) > 2 and args[2] == "-":
+                        self.soucecode.search.index = self.soucecode.search.index + \
+                            len(self.search_result.list)-1
                     else:
-                        self.soucecode.search.index=self.soucecode.search.index+1
-                     
-                    index = self.soucecode.search.index%len(self.search_result.list)
+                        self.soucecode.search.index = self.soucecode.search.index+1
+
+                    index = self.soucecode.search.index % len(
+                        self.search_result.list)
                     search = self.search_result.list[index]
                     self.code_to_search_position(search)
                     pass
@@ -588,20 +605,19 @@ class CodeBrowser(App):
                     dir = os.path.realpath(dir)
 
                 logui = self.logview
+                self.logview.write_line("start to find %s" % (dir))
+                self.t = ThreadPoolExecutor(1)
 
-                def cb(s: list[str]):
+                def cb2(future):
                     try:
-                        logui.write_line("find files %d" % (len(s)))
-                        self.search_result = SearchResults(
-                            list(map(lambda x: ResultItemString(x), s)))
-                        # logui.write_lines(s)
-                        self.searchview.setlist(s)
+                        sss = future.result()
+                        logui.write_line("find files %d" % (len(sss)))
+                        self.post_message(mymessage(sss))
                     except Exception as e:
                         logui.write_line(str(e))
                         pass
-
-                self.logview.write_line("start to find %s" % (dir))
-                TaskFindFile.run(dir, args[1:], cb)
+                self.t.submit(TaskFindFile.run, dir,
+                              args[1:]).add_done_callback(cb2)
                 pass
             elif args[0] == "history":
                 self.refresh_history_view()

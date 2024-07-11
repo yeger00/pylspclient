@@ -6,6 +6,8 @@ Run with:
     python code_browser.py PATH
 """
 
+from concurrent.futures import ThreadPoolExecutor
+import os
 import re
 import asyncio
 import threading
@@ -36,7 +38,11 @@ input_command_options = [
     "history", "symbol", "open", "find", "refer", "callin", "ctrl-c", "copy",
     "save", "log", "quit", "grep"
 ]
-import os
+
+
+def convert_command_args(value):
+    args = list(filter(lambda x: len(x) > 0, value.split(" ")))
+    return args
 
 
 def build_dirs(directory):
@@ -61,13 +67,13 @@ class dir_complete_db:
     def find(self, pattern):
         try:
             if self.db[pattern]:
-                return str(pattern)
+                return str(pattern)[1:]
         except:
             keys = list(filter(lambda x: x.startswith(pattern),
                                self.db.keys()))
             keys = sorted(keys, key=lambda x: len(x))
             if len(keys):
-                return keys[0]
+                return keys[0][1:]
 
         return None
 
@@ -88,9 +94,6 @@ def find_files_os_walk(directory, file_extension):
             if file.find(file_extension) > 0:
                 files_found.append(os.path.join(root, file))
     return files_found
-
-
-from concurrent.futures import ThreadPoolExecutor
 
 
 def thread_submit(fn, cb, args: tuple):
@@ -177,7 +180,7 @@ class history:
                 pass
         pass
 
-    def add(self, data):
+    def add_to_history(self, data):
         self._data.add(data)
         self.list = list(self._data)
         if self.file != None:
@@ -222,16 +225,15 @@ class input_suggestion(SuggestFromList):
     def complete_path(self, value: str):
         try:
             # if self.root is None: return None
-            find_key = "find "
             if value.startswith(find_key) == False:
                 return None
-            args = list(filter(lambda x: len(x) > 0, value.split(" ")))
+            args =  convert_command_args(value)
             if self.dircomplete != None:
                 if len(args) == 2 and len(args[1]) > 1:
                     s = self.dircomplete.find(args[1])
                     if s != None:
                         part1 = value[0:value.find(args[1])]
-                        return part1 + s
+                        return part1 + "/"+s
 
             # ret = find_dirs_os_walk(self.root, args[1])
             # if len(ret):
@@ -257,7 +259,13 @@ class CommandInput(Input):
 
     def on_input_submitted(self) -> None:
         if self.mainui != None:
-            self.history.add(self.value)
+            self.history.add_to_history(self.value)
+            args = convert_command_args(self.value)
+            if len(args)>1:
+                if args[0] in input_command_options:
+                    for a in args[1:]:
+                        self.history.add_to_history(a)
+
             self.mainui.on_command_input(self.value)
         pass
 
@@ -332,7 +340,7 @@ class CodeBrowser(App):
         self.toUml = None
         self.codeview_file = self.sub_title = file
         self.history = history()
-        self.history.add(self.codeview_file)
+        self.history.add_to_history(self.codeview_file)
         self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE
         # self.lsp.currentfile.save_uml_file = self.print_recieved
         # self.lsp.currentfile.save_stack_file = self.print_recieved
@@ -388,7 +396,7 @@ class CodeBrowser(App):
         self.logview.write_line("open %s" % (file))
 
     def on_command_input(self, value):
-        args = list(filter(lambda x: len(x) > 0, value.split(" ")))
+        args =convert_command_args(value)
         try:
             ret = self.did_command_opt(value, args)
             if ret == True:
@@ -512,7 +520,7 @@ class CodeBrowser(App):
             self.sub_title = str(path)
             self.codeview_file = self.sub_title
             self.logview.write_line("tree open %s" % (self.sub_title))
-            self.history.add(self.codeview_file)
+            self.history.add_to_history(self.codeview_file)
             self.refresh_history_view()
             self.change_lsp_file(self.codeview_file)
 

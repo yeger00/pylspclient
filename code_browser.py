@@ -449,8 +449,9 @@ class changelspmessage(Message):
 
 
 class symbolsmessage(Message):
-    data =[]
-    def __init__(self,data) -> None:
+    data = []
+
+    def __init__(self, data) -> None:
         super().__init__()
         self.data = data
 
@@ -483,9 +484,6 @@ class CodeBrowser(App):
     symbol_query = LspQuery("", "")
     codeview_file: str
     search_result: SearchResults | None = None
-
-
-
 
     def on_refermessage(self, message: refermessage) -> None:
         self.search_result = SearchResults(
@@ -591,14 +589,14 @@ class CodeBrowser(App):
         if line != None:
             self.code_editor_scroll_view().scroll_to(y=line, animate=False)
         pass
-        
+
     def on_changelspmessage(self, message: changelspmessage) -> None:
         self.refresh_symbol_view()
         pass
 
     def change_lsp_file(self, file):
 
-        def lsp_change(lsp :LspMain,file:str):
+        def lsp_change(lsp: LspMain, file: str):
             lsp.changefile(file)
             self.post_message(changelspmessage())
 
@@ -774,16 +772,26 @@ class CodeBrowser(App):
         try:
             self.symbol_listview.clear()
             self.symbol_listview.extend(message.data)
-            self.logview.write_line("on_symbolsmessage %s %d" % (self.lsp.currentfile.file,len(message.data)))
+            self.logview.write_line(
+                "on_symbolsmessage %s %d" %
+                (self.lsp.currentfile.file, len(message.data)))
         except Exception as e:
             self.logview.write_line("exception %s" % (str(e)))
         pass
 
     def refresh_symbol_view(self):
+
         def my_function():
+            file = self.lsp.currentfile.file
+            self.symbol_listview.loading = True
             aa = map(lambda x: ListItem(Label(x)),
-                 self.lsp.currentfile.symbol_list_string())
+                     self.lsp.currentfile.symbol_list_string())
+            file2 = self.lsp.currentfile.file
+            self.symbol_listview.loading = False
+            if file2 != file:
+                return
             self.post_message(symbolsmessage(list(aa)))
+
         ThreadPoolExecutor(1).submit(my_function)
 
     def on_directory_tree_file_selected(
@@ -847,10 +855,15 @@ class CodeBrowser(App):
         await App.action_quit(self)
 
     def action_refer(self) -> None:
-        # if self.thread!=None:
-        #     if self.thread.is_alive():
-        #         self.logview.write_line("Wait for previous call finished")
-        #         return
+        try:
+            self.__action_refer()
+        except Exception as e:
+            self.log.error("exception %s" % (str(e)))
+            self.logview.write_line("exception %s" % (str(e)))
+            pass
+
+    def __action_refer(self) -> None:
+
         def my_function(lsp, q: LspQuery, toFile, toUml):
             ret = []
             try:

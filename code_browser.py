@@ -780,7 +780,8 @@ class CodeBrowser(App):
         code_view = self.code_editor_view()
 
         TEXT = open(str(path), "r").read()
-        code_view.document = Document(TEXT)
+        # code_view.document = Document(TEXT)
+        code_view.load_text(TEXT)
         self.soucecode = SourceCode(self.codeview_file)
         self.code_editor_view().scroll_home(animate=False)
         self.sub_title = str(path)

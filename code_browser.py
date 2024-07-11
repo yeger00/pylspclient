@@ -42,8 +42,8 @@ import os
 def build_dirs(directory):
     files_found = {}
     for root, dirs, _, in os.walk(directory):
-        aa  = root.replace(directory, "").split("/")
-        if len(aa)>3:
+        aa = root.replace(directory, "").split("/")
+        if len(aa) > 3:
             continue
         for file in dirs:
             key = os.path.join(root, file)
@@ -61,13 +61,13 @@ class dir_complete_db:
     def find(self, pattern):
         try:
             if self.db[pattern]:
-                return str(pattern)[1:]
+                return str(pattern)
         except:
             keys = list(filter(lambda x: x.startswith(pattern),
                                self.db.keys()))
-            keys = sorted(keys,key=lambda x: len(x))
+            keys = sorted(keys, key=lambda x: len(x))
             if len(keys):
-                return keys[0][1:] 
+                return keys[0]
 
         return None
 
@@ -186,7 +186,8 @@ class history:
 
 class input_suggestion(SuggestFromList):
     _history: history
-    dircomplete :dir_complete_db
+    dircomplete: dir_complete_db
+
     async def _get_suggestion(self, requester, value: str) -> None:
         """Used by widgets to get completion suggestions.
 
@@ -225,14 +226,13 @@ class input_suggestion(SuggestFromList):
             if value.startswith(find_key) == False:
                 return None
             args = list(filter(lambda x: len(x) > 0, value.split(" ")))
-            if self.dircomplete!= None:
-                if len(args)==2 and len(args[1])>1:
+            if self.dircomplete != None:
+                if len(args) == 2 and len(args[1]) > 1:
                     s = self.dircomplete.find(args[1])
                     if s != None:
                         part1 = value[0:value.find(args[1])]
-                        return part1 + "/"+s
-                        
-                    
+                        return part1 + s
+
             # ret = find_dirs_os_walk(self.root, args[1])
             # if len(ret):
             # return ret[0]
@@ -246,7 +246,7 @@ class CommandInput(Input):
 
     def __init__(self, mainui: 'CodeBrowser', root) -> None:
         suggestion = input_suggestion(input_command_options)
-        suggestion.dircomplete= dir_complete_db(root)
+        suggestion.dircomplete = dir_complete_db(root)
         super().__init__(suggester=suggestion,
                          placeholder=" ".join(input_command_options),
                          type="text")

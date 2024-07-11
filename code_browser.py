@@ -31,6 +31,7 @@ from textual.containers import Container, VerticalScroll
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
+from codesearch import SourceCode, SourceCodeSearch
 from lspcpp import LspMain, Symbol, OutputFile, lspcpp
 from textual.app import App, ComposeResult
 from textual.widgets import Input
@@ -61,6 +62,16 @@ class ResultItemString(ResultItem):
         return self.__str
 
 
+class ResultItemSearch(ResultItem):
+
+    def __init__(self, item: SourceCodeSearch.Pos) -> None:
+        super().__init__()
+        self.item = item
+
+    def __str__(self) -> str:
+        return str(self.item)
+
+
 class ResultItemSymbo(ResultItem):
 
     def __init__(self, s: Symbol) -> None:
@@ -69,6 +80,7 @@ class ResultItemSymbo(ResultItem):
 
 
 class SearchResults:
+    list: list[ResultItem]
 
     def __init__(self, list: list[ResultItem] = []):
         self.list = list
@@ -468,15 +480,26 @@ class CodeBrowser(App):
 
     def on_select_list(self, list: ListView):
         if self.searchview == list:
-            self.on_choose_file_from_event(
-                str(self.search_result.list[list.index]))
+            result = self.search_result.list[list.index]
+            if isinstance(result, ResultItemString):
+                self.on_choose_file_from_event(
+                    str(result))
+            elif isinstance(result, ResultItemSearch):
+                search: ResultItemSearch = result
+                y = search.item.line
+                self.code_editor_scroll_view().scroll_to(y=y - 10,
+                                                         animate=False)
+                self.hightlight_code_line(
+                    y, colbegin=search.item.col, colend=search.item.col+len(self.soucecode.search.pattern))
+                pass
         if self.history_view == list:
             self.on_choose_file_from_event(self.history.list[list.index])
         elif self.symbol_listview == list:
             try:
                 sym: Symbol = self.lsp.currentfile.symbols_list[list.index]
                 y = sym.sym.location.range.start.line
-                self.code_editor_scroll_view().scroll_to(y=y-10, animate=False)
+                self.code_editor_scroll_view().scroll_to(y=y - 10,
+                                                         animate=False)
                 self.hightlight_code_line(y)
                 # code_view.selection=Selection(start=(0,y),end=(10,y))
                 pass
@@ -484,9 +507,10 @@ class CodeBrowser(App):
                 self.logview.write_line(str(e))
         pass
 
-    def hightlight_code_line(self, y):
-        code:TextArea.code_editor=self.code_editor_view()
-        code.selection=Selection(start=(y,0),end=(y,code.region.width))
+    def hightlight_code_line(self, y, colbegin=None, colend=None):
+        code: TextArea.code_editor = self.code_editor_view()
+        code.selection = Selection(start=(y, 0 if colbegin == None else colbegin), end=(
+            y, code.region.width if colend == None else colend))
 
     def on_click_link(self, link, line=None):
         self.on_choose_file_from_event(link)
@@ -520,10 +544,20 @@ class CodeBrowser(App):
             pass
         self.did_command_cmdline(args)
 
+    def udpate_search_result_view(self):
+        m = map(lambda x: str(x), self.search_result.list)
+        self.searchview.setlist(list(m))
+
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:
-            if args[0] == "view":
+            if args[0] == "search":
+                ret = self.soucecode.search.search(args[1])
+                self.search_result = SearchResults(
+                    list(map(lambda x: ResultItemSearch(x), ret)))
+                self.udpate_search_result_view()
+                pass
+            elif args[0] == "view":
                 view = args[1]
                 self.focus_to_viewid(view)
             elif args[0] == clear_key:
@@ -593,12 +627,13 @@ class CodeBrowser(App):
             yield DirectoryTree(path, id="tree-view")
             from tree_sitter_languages import get_language
             from pathlib import Path
-            code = TextArea.code_editor(
-                Path(self.codeview_file).read_text(), id="code-view",read_only=True)
+            code = TextArea.code_editor(Path(self.codeview_file).read_text(),
+                                        id="code-view",
+                                        read_only=True)
             try:
                 cpp = get_language("cpp")
-                cpp_highlight_query = (
-                    Path(__file__).parent/"queries/c/highlights.scm").read_text()
+                cpp_highlight_query = (Path(__file__).parent /
+                                       "queries/c/highlights.scm").read_text()
                 code.register_language(cpp, cpp_highlight_query)
                 code.language = "cpp"
             except Exception as e:
@@ -669,7 +704,7 @@ class CodeBrowser(App):
 
         TEXT = open(str(path), "r").read()
         code_view.document = Document(TEXT)
-
+        self.soucecode = SourceCode(self.codeview_file)
         self.code_editor_view().scroll_home(animate=False)
         self.sub_title = str(path)
         self.codeview_file = self.sub_title

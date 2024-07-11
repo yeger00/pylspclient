@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 class SourceCodeSearch(object):
-
+    index =0
     class Pos:
 
         def __init__(self, line, col, text):
@@ -28,16 +28,17 @@ class SourceCodeSearch(object):
                 pos = line.find(pattern)
                 if pos > 1:
                     result = SourceCodeSearch.Pos(
-                        index, pos, line[pos - 10:pos + len(pattern)+10])
+                        index, pos, line[pos - 20:pos + len(pattern)+20])
                     ret.append(result)
                 index = index + 1
+        self.index = 0
         return ret
 
 
 class SourceCode:
     #
     search: SourceCodeSearch
-
+    
     def __init__(self, file) -> None:
         self.file = file
         self.search = SourceCodeSearch(file)

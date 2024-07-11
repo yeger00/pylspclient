@@ -486,12 +486,7 @@ class CodeBrowser(App):
                     str(result))
             elif isinstance(result, ResultItemSearch):
                 search: ResultItemSearch = result
-                y = search.item.line
-                self.code_editor_scroll_view().scroll_to(y=y - 10,
-                                                         animate=False)
-                self.hightlight_code_line(
-                    y, colbegin=search.item.col, colend=search.item.col+len(self.soucecode.search.pattern))
-                pass
+                self.code_to_search_position(search)
         if self.history_view == list:
             self.on_choose_file_from_event(self.history.list[list.index])
         elif self.symbol_listview == list:
@@ -505,6 +500,15 @@ class CodeBrowser(App):
                 pass
             except Exception as e:
                 self.logview.write_line(str(e))
+        pass
+
+    def code_to_search_position(self, search):
+        y = search.item.line
+        self.soucecode.search.index = y
+        self.code_editor_scroll_view().scroll_to(y=y - 10,
+                                                         animate=False)
+        self.hightlight_code_line(
+                    y, colbegin=search.item.col, colend=search.item.col+len(self.soucecode.search.pattern))
         pass
 
     def hightlight_code_line(self, y, colbegin=None, colend=None):
@@ -552,10 +556,23 @@ class CodeBrowser(App):
         self.logview.write_line(value)
         if len(args) > 0:
             if args[0] == "search":
-                ret = self.soucecode.search.search(args[1])
-                self.search_result = SearchResults(
-                    list(map(lambda x: ResultItemSearch(x), ret)))
-                self.udpate_search_result_view()
+                if self.soucecode.search.pattern == args[1]:
+                    if len(args)>2 and  args[2]=="-":
+                        self.soucecode.search.index=self.soucecode.search.index+len(self.search_result.list)-1
+                    else:
+                        self.soucecode.search.index=self.soucecode.search.index+1
+                     
+                    index = self.soucecode.search.index%len(self.search_result.list)
+                    search = self.search_result.list[index]
+                    self.code_to_search_position(search)
+                    pass
+                else:
+                    ret = self.soucecode.search.search(args[1])
+                    self.search_result = SearchResults(
+                        list(map(lambda x: ResultItemSearch(x), ret)))
+                    self.udpate_search_result_view()
+                    self.focus_to_viewid("fzf")
+                    self.code_to_search_position(self.search_result.list[0])
                 pass
             elif args[0] == "view":
                 view = args[1]

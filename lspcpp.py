@@ -142,10 +142,20 @@ class Token:
                 self.data = lines[location.range.start.line][
                     location.range.start.character:] + lines[
                         location.range.end.line][:location.range.end.character]
-        pass
 
 
 otherscls = []
+
+
+class SymbolLocation:
+    def __init__(self, loc: Location, s:'Symbol') -> None:
+        self.file = from_file(loc.uri)
+        self.token = Token(loc)
+        self.range = loc.range
+        self.symbol = s 
+
+    def __str__(self) -> str:
+        return self.symbol.name + " %s:%d" % (self.file, self.range.start.line)
 
 
 class Symbol:
@@ -942,15 +952,17 @@ class SymbolFile:
         print("Symbol number:", len(symbo))
         if toFile != None:
             toFile.write("Symbol number:%d" % (len(symbo)))
+        ret = []
         for s in symbo:
             refs = self.client.get_symbol_reference(s.sym)
             for r in refs:
+                ret.append(SymbolLocation(r, s))
                 v = "Reference " + s.name + " %s:%d" % (from_file(
                     r.uri), r.range.start.line)
                 print(v)
                 if toFile != None:
                     toFile.write(v)
-        pass
+        return ret
 
     def find(self, method, Print=False) -> list[Symbol]:
 
@@ -1020,11 +1032,13 @@ class LspMain:
         return self.currentfile
 
     def __del__(self):
-        if self.client is None: return
+        if self.client is None:
+            return
         self.client.close()
 
     def close(self):
-        if self.client is None: return
+        if self.client is None:
+            return
         self.client.close()
         self.client = None
 

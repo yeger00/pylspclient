@@ -33,7 +33,7 @@ from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
 from codesearch import SourceCode, SourceCodeSearch
-from lspcpp import LspMain, Symbol, OutputFile, lspcpp
+from lspcpp import LspMain, Symbol, OutputFile, SymbolLocation, lspcpp
 from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
@@ -53,6 +53,16 @@ class ResultItem:
         pass
 
 
+class ResultItemRefer(ResultItem):
+
+    def __init__(self, item: SymbolLocation) -> None:
+        super().__init__()
+        self.item = item
+
+    def __str__(self) -> str:
+        return str(self.item)
+
+
 class ResultItemString(ResultItem):
 
     def __init__(self, s) -> None:
@@ -64,6 +74,7 @@ class ResultItemString(ResultItem):
 
 
 class ResultItemSearch(ResultItem):
+    item: SourceCodeSearch.Pos
 
     def __init__(self, item: SourceCodeSearch.Pos) -> None:
         super().__init__()
@@ -168,6 +179,7 @@ def find_files_os_walk(directory, file_extension):
 #         # result = future.result()
 #         # cb(result)
 #
+
 
 class TaskFindFile:
 
@@ -425,7 +437,15 @@ HISTORY_LISTVIEW_TYPE = 2
 
 
 class mymessage(Message):
-    def __init__(self,  s: list[str]) -> None:
+
+    def __init__(self, s: list[str]) -> None:
+        super().__init__()
+        self.s = s
+
+
+class refermessage(Message):
+
+    def __init__(self, s: list[object]) -> None:
         super().__init__()
         self.s = s
 
@@ -451,6 +471,12 @@ class CodeBrowser(App):
     symbol_query = LspQuery("", "")
     codeview_file: str
     search_result: SearchResults | None = None
+
+    def on_refermessage(self, message: refermessage) -> None:
+        self.search_result = SearchResults(
+            list(map(lambda x: ResultItemRefer(x), message.s)))
+        self.udpate_search_result_view()
+        pass
 
     def on_mymessage(self, message: mymessage) -> None:
         s = message.s
@@ -497,8 +523,10 @@ class CodeBrowser(App):
         if self.searchview == list:
             result = self.search_result.list[list.index]
             if isinstance(result, ResultItemString):
-                self.on_choose_file_from_event(
-                    str(result))
+                self.on_choose_file_from_event(str(result))
+            elif isinstance(result, ResultItemRefer):
+                self.code_to_refer(result)
+                pass
             elif isinstance(result, ResultItemSearch):
                 search: ResultItemSearch = result
                 self.code_to_search_position(search)
@@ -517,19 +545,33 @@ class CodeBrowser(App):
                 self.logview.write_line(str(e))
         pass
 
+    def code_to_refer(self, refer:ResultItemRefer):
+        self.on_choose_file_from_event(refer.item.file)
+        y =refer.item.range.start.line 
+        b = refer.item.range.start.character
+        e = refer.item.range.end.character
+        self.code_editor_scroll_view().scroll_to(y=y - 10, animate=False)
+        self.hightlight_code_line(y,
+                                  colbegin=b,
+                                  colend=e)
+        pass
+
+
     def code_to_search_position(self, search):
         y = search.item.line
         self.soucecode.search.index = y
-        self.code_editor_scroll_view().scroll_to(y=y - 10,
-                                                 animate=False)
-        self.hightlight_code_line(
-            y, colbegin=search.item.col, colend=search.item.col+len(self.soucecode.search.pattern))
+        self.code_editor_scroll_view().scroll_to(y=y - 10, animate=False)
+        self.hightlight_code_line(y,
+                                  colbegin=search.item.col,
+                                  colend=search.item.col +
+                                  len(self.soucecode.search.pattern))
         pass
 
     def hightlight_code_line(self, y, colbegin=None, colend=None):
         code: TextArea.code_editor = self.code_editor_view()
-        code.selection = Selection(start=(y, 0 if colbegin == None else colbegin), end=(
-            y, code.region.width if colend == None else colend))
+        code.selection = Selection(
+            start=(y, 0 if colbegin == None else colbegin),
+            end=(y, code.region.width if colend == None else colend))
 
     def on_click_link(self, link, line=None):
         self.on_choose_file_from_event(link)
@@ -576,7 +618,7 @@ class CodeBrowser(App):
                         self.soucecode.search.index = self.soucecode.search.index + \
                             len(self.search_result.list)-1
                     else:
-                        self.soucecode.search.index = self.soucecode.search.index+1
+                        self.soucecode.search.index = self.soucecode.search.index + 1
 
                     index = self.soucecode.search.index % len(
                         self.search_result.list)
@@ -616,8 +658,9 @@ class CodeBrowser(App):
                     except Exception as e:
                         logui.write_line(str(e))
                         pass
+
                 t.submit(TaskFindFile.run, dir,
-                              args[1:]).add_done_callback(cb2)
+                         args[1:]).add_done_callback(cb2)
                 pass
             elif args[0] == "history":
                 self.refresh_history_view()
@@ -785,12 +828,14 @@ class CodeBrowser(App):
         #         self.logview.write_line("Wait for previous call finished")
         #         return
         def my_function(lsp, q: LspQuery, toFile, toUml):
+            ret = []
             try:
-                lsp.currentfile.refer(q.data, toFile=toFile)
+                ret = lsp.currentfile.refer(q.data, toFile=toFile)
             except Exception as e:
-                self.logview.write_line(str(e))
                 pass
             self.logview.write_line("Call Job finished")
+            self.post_message(refermessage(ret))
+            return ret
 
         sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
         q = LspQuery(sym.symbol_display_name(), "r")
@@ -799,17 +844,14 @@ class CodeBrowser(App):
                 self.tofile.close()
             self.tofile = UiOutput(q.data + ".txt")
             self.tofile.ui = self.logview
-
-            if self.toUml != None:
-                self.toUml.close()
-            self.toUml = UiOutput(q.data + ".qml")
-            self.toUml.ui = self.logview
-
             self.thread = threading.Thread(target=my_function,
                                            args=(self.lsp, q, self.tofile,
                                                  None))
-            self.thread.start()
-            self.logview.focus()
+            ThreadPoolExecutor(1).submit(my_function,
+                                         self.lsp,
+                                         q,
+                                         toFile=self.tofile,
+                                         toUml=None)
 
     def action_callin(self) -> None:
         # if self.thread!=None:

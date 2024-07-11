@@ -47,9 +47,9 @@ def find_files_os_walk(directory, file_extension):
 
 from concurrent.futures import ThreadPoolExecutor
 
-def thread_submit(fn,cb, /, *args, **kwargs):
+def thread_submit(fn,cb, args:tuple):
     with ThreadPoolExecutor(max_workers=2) as executor:
-        future = executor.submit(fn)
+        future = executor.submit(fn,*args)
         result = future.result() 
         cb(result)
 
@@ -64,14 +64,14 @@ class TaskFindFile:
     @staticmethod
     def run(dir,name,cb):
         fileset = ["h","cc","cpp"]
-        def fn():
+        def fn(dir,name):
             def extfilter(x:str):
                 for s in fileset:
                     if x.endswith(s):
                         return True
                 return False
             return list(filter(extfilter, TaskFindFile(dir,name).get()))
-        thread_submit(fn,cb)
+        thread_submit(fn,cb,(dir,name))
     
 
 

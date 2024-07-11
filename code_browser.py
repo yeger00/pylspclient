@@ -93,8 +93,6 @@ class ResultItemSymbo(ResultItem):
 
 
 class SearchResults:
-    list: list[ResultItem]
-
     def __init__(self, list: list[ResultItem] = []):
         self.list = list
 
@@ -262,7 +260,6 @@ class LspQuery:
 
 
 class history:
-
     def __init__(self, file=None) -> None:
         self._data = set()
         self.list = list(self._data)
@@ -483,7 +480,8 @@ class CodeBrowser(App):
     root: str
     symbol_query = LspQuery("", "")
     codeview_file: str
-    search_result: SearchResults | None = None
+    search_result: SearchResults
+    symbol_listview : MyListView
 
     def on_refermessage(self, message: refermessage) -> None:
         self.search_result = SearchResults(
@@ -579,7 +577,7 @@ class CodeBrowser(App):
         pass
 
     def hightlight_code_line(self, y, colbegin=None, colend=None):
-        code: TextArea.code_editor = self.code_editor_view()
+        code: TextArea = self.code_editor_view()
         code.selection = Selection(
             start=(y, 0 if colbegin == None else colbegin),
             end=(y, code.region.width if colend == None else colend))
@@ -597,6 +595,7 @@ class CodeBrowser(App):
     def change_lsp_file(self, file):
 
         def lsp_change(lsp: LspMain, file: str):
+            self.symbol_listview.loading = True
             lsp.changefile(file)
             self.post_message(changelspmessage())
 
@@ -800,7 +799,7 @@ class CodeBrowser(App):
         event.stop()
         self.on_choose_file_from_event(str(event.path))
 
-    def code_editor_view(self):
+    def code_editor_view(self) -> TextArea:
         return self.query_one("#code-view", TextArea)
 
     def code_editor_scroll_view(self):

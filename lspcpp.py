@@ -986,7 +986,7 @@ class SymbolFile:
         if (len(self.symbols_list)):
             return self.symbols_list
         symbols_list = []
-        cimpl ={
+        cimpl = {
         }
         for a in self.client.get_class_symbol(file=self.file):
             if a.is_class_define():
@@ -1007,10 +1007,10 @@ class SymbolFile:
                         a.name = name
                         cls.members.append(a)
                         a.cls = cls
-                    except: 
+                    except:
                         cls = Symbol(a.sym.copy())
                         cls.name = classname
-                        cls.sym.kind  =SymbolKind.Class
+                        cls.sym.kind = SymbolKind.Class
                         cimpl[classname] = cls
                         symbols_list.append(cls)
                     pass
@@ -1033,7 +1033,20 @@ class SymbolFile:
                   ("Method" if s.is_method() else "Member" if s.is_member()
                    else "Class" if s.is_class_define() else "Function" if s.
                    is_function() else "Construct" if s.is_construct(
-                   ) else "Unknown", s.symbol_sidebar_displayname()))
+                  ) else "Unknown", s.symbol_sidebar_displayname()))
+
+    def refer_symbolinformation(self, sym: SymbolInformation, toFile: Output | None = None):
+        s = Symbol(sym)
+        refs = self.client.get_symbol_reference(sym)
+        ret = []
+        for r in refs:
+            ret.append(SymbolLocation(r, s))
+            v = "Reference " + s.name + " %s:%d" % (from_file(
+                r.uri), r.range.start.line)
+            print(v)
+            if toFile != None:
+                toFile.write(v)
+        return ret
 
     def refer(self, method, toFile: Output | None = None):
         symbo = self.find(method, False)
@@ -1191,13 +1204,11 @@ if __name__ == "__main__":
                                     action="store_true")
                 args = parser.parse_args(cmd.split(" "))
             except:
+                continue
                 pass
             if args.file != None:
                 _run = runMain.changefile(args.file)
                 _run.print()
-            if args.fzf != None:
-                system("fzf")
-                pass
             if args.callin != None:
                 if args.stack_output:
                     _run.save_stack_file = OutputFile(

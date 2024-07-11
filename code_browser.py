@@ -7,26 +7,34 @@ Run with:
 """
 
 from textual.message import Message
-from textual.widgets.text_area import Selection
+from textual.scroll_view import ScrollView
+from textual.widgets.text_area import Document, Selection
 from concurrent.futures import ThreadPoolExecutor
+from textual.widgets import LoadingIndicator
 import os
 import re
+import asyncio
 import threading
+from rich.repr import Result
+from textual import on
 import argparse
 from textual.message_pump import events
 from textual.suggester import SuggestFromList, SuggestionReady
+from textual.validation import Failure
 from textual.widgets import Log, TextArea
 
+from pydantic import Field, NatsDsn
 from rich.syntax import Syntax
 from rich.traceback import Traceback
 
 from textual.app import App, ComposeResult
-from textual.containers import Container
+from textual.color import Lab
+from textual.containers import Container, VerticalScroll
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
 from codesearch import SourceCode, SourceCodeSearch
-from lspcpp import LspMain, Symbol, OutputFile, SymbolLocation
+from lspcpp import LspMain, Symbol, OutputFile, SymbolLocation, lspcpp
 from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
@@ -85,6 +93,7 @@ class ResultItemSymbo(ResultItem):
 
 
 class SearchResults:
+    list: list[ResultItem]
 
     def __init__(self, list: list[ResultItem] = []):
         self.list = list
@@ -474,8 +483,7 @@ class CodeBrowser(App):
     root: str
     symbol_query = LspQuery("", "")
     codeview_file: str
-    search_result: SearchResults
-    symbol_listview: MyListView
+    search_result: SearchResults | None = None
 
     def on_refermessage(self, message: refermessage) -> None:
         self.search_result = SearchResults(
@@ -571,7 +579,7 @@ class CodeBrowser(App):
         pass
 
     def hightlight_code_line(self, y, colbegin=None, colend=None):
-        code: TextArea = self.code_editor_view()
+        code: TextArea.code_editor = self.code_editor_view()
         code.selection = Selection(
             start=(y, 0 if colbegin == None else colbegin),
             end=(y, code.region.width if colend == None else colend))
@@ -589,7 +597,6 @@ class CodeBrowser(App):
     def change_lsp_file(self, file):
 
         def lsp_change(lsp: LspMain, file: str):
-            self.symbol_listview.loading = True
             lsp.changefile(file)
             self.post_message(changelspmessage())
 
@@ -775,12 +782,18 @@ class CodeBrowser(App):
     def refresh_symbol_view(self):
 
         def my_function():
+            try:
+                __my_function()
+            except Exception as e:
+                self.logview.write_line(str(e))
+                pass
+        def __my_function():
             file = self.lsp.currentfile.file
-            self.symbol_listview.loading = True
+            self.symbol_listview.loading = True 
             aa = map(lambda x: ListItem(Label(x)),
                      self.lsp.currentfile.get_symbol_list_string())
             file2 = self.lsp.currentfile.file
-            self.symbol_listview.loading = False
+            self.symbol_listview.loading = False 
             if file2 != file:
                 return
             self.post_message(symbolsmessage(list(aa)))
@@ -793,7 +806,7 @@ class CodeBrowser(App):
         event.stop()
         self.on_choose_file_from_event(str(event.path))
 
-    def code_editor_view(self) -> TextArea:
+    def code_editor_view(self):
         return self.query_one("#code-view", TextArea)
 
     def code_editor_scroll_view(self):
@@ -854,21 +867,19 @@ class CodeBrowser(App):
             self.log.error("exception %s" % (str(e)))
             self.logview.write_line("exception %s" % (str(e)))
             pass
-
     def __action_refer(self) -> None:
-
-        def my_function(lsp, q: LspQuery, toFile, toUml):
+        def my_function(lsp, sym: SymbolLocation, toFile, toUml):
             ret = []
             try:
-                ret = lsp.currentfile.refer(q.data, toFile=toFile)
+                ret = lsp.currentfile.refer_symbolinformation(sym, toFile=toFile)
             except Exception as e:
                 pass
             self.logview.write_line("Call Job finished")
             self.post_message(refermessage(ret))
             return ret
 
-        sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
-        q = LspQuery(sym.symbol_display_name(), "r")
+        sym :Symbol= self.lsp.currentfile.symbols_list[self.symbol_listview.index]
+        q = LspQuery(sym.sym.name, "r")
         if q != self.symbol_query:
             if self.tofile != None:
                 self.tofile.close()
@@ -879,7 +890,7 @@ class CodeBrowser(App):
                                                  None))
             ThreadPoolExecutor(1).submit(my_function,
                                          self.lsp,
-                                         q,
+                                         sym.sym,
                                          toFile=self.tofile,
                                          toUml=None)
 

@@ -79,18 +79,23 @@ class dir_complete_db:
                 return str(pattern)[1:]
         except:
 
-            if pattern[-1]=="/":
+            if pattern[-1] == "/":
                 # pattern = pattern[:-1]
                 # keys= list(filter(lambda x: os.path.dirname(x)==pattern,self.db.keys()))
-                root = os.path.join(self.root,pattern[1:])
+                root = os.path.join(self.root, pattern[1:])
                 keys = os.listdir(root)
-                keys = list(filter(lambda x:os.path.isdir(os.path.join(root,x)),keys))
+                keys = list(
+                    filter(lambda x: os.path.isdir(os.path.join(root, x)),
+                           keys))
                 keys = sorted(keys, key=lambda x: x)
-                return pattern + "|".join(keys[0:10])
+                keys = list(set(list(map(lambda x:x[:2],keys))))
+                keys = sorted(keys, key=lambda x: x)
+                # return pattern + "|".join(keys[0:20])
+                return pattern + "|".join(keys)
                 pass
-            else: 
-                keys = list(filter(lambda x: x.startswith(pattern),
-                               self.db.keys()))
+            else:
+                keys = list(
+                    filter(lambda x: x.startswith(pattern), self.db.keys()))
                 keys = sorted(keys, key=lambda x: len(x))
                 if len(keys):
                     return keys[0][1:]
@@ -291,7 +296,7 @@ class input_suggestion(SuggestFromList):
             if value.startswith(find_key) == False:
                 return None
             if self.dircomplete != None:
-                if len(args) == 2 and len(args[1]) > 1:
+                if len(args) == 2:
                     s = self.dircomplete.find(args[1])
                     if s != None:
                         part1 = value[0:value.find(args[1])]
@@ -487,8 +492,8 @@ class CodeBrowser(App):
         if len(args) > 0:
             if args[0] == "view":
                 view = args[1]
-                if view=="code":
-                    view="code-view"
+                if view == "code":
+                    view = "code-view"
                 self.focus_to_viewid(view)
             elif args[0] == clear_key:
                 self.logview.clear()
@@ -528,8 +533,8 @@ class CodeBrowser(App):
 
     def focus_to_viewid(self, view):
         try:
-            v=self.query_one("#"+view)
-            if v!=None:
+            v = self.query_one("#" + view)
+            if v != None:
                 v.focus()
         except:
             pass

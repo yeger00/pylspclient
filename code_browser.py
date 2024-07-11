@@ -6,6 +6,8 @@ Run with:
     python code_browser.py PATH
 """
 
+from textual.scroll_view import ScrollView
+from textual.widgets.text_area import Document, Selection
 from concurrent.futures import ThreadPoolExecutor
 import os
 import re
@@ -17,7 +19,7 @@ import argparse
 from textual.message_pump import events
 from textual.suggester import SuggestFromList, SuggestionReady
 from textual.validation import Failure
-from textual.widgets import Log
+from textual.widgets import Log, TextArea
 
 from pydantic import Field, NatsDsn
 from rich.syntax import Syntax
@@ -29,7 +31,7 @@ from textual.containers import Container, VerticalScroll
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
-from lspcpp import LspMain, Symbol, OutputFile
+from lspcpp import LspMain, Symbol, OutputFile, lspcpp
 from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
@@ -474,7 +476,8 @@ class CodeBrowser(App):
             try:
                 sym: Symbol = self.lsp.currentfile.symbols_list[list.index]
                 y = sym.sym.location.range.start.line
-                self.query_one("#code-view").scroll_to(y=y, animate=False)
+                code_view = self.code_editor_view()
+                # code_view.selection=Selection(start=(0,y),end=(10,y))
                 pass
             except Exception as e:
                 self.logview.write_line(str(e))
@@ -483,7 +486,7 @@ class CodeBrowser(App):
     def on_click_link(self, link, line=None):
         self.on_choose_file_from_event(link)
         if line != None:
-            self.query_one("#code-view").scroll_to(y=line, animate=False)
+            self.code_editor_scroll_view().scroll_to(y=line, animate=False)
         pass
 
     def change_lsp_file(self, file):
@@ -517,8 +520,6 @@ class CodeBrowser(App):
         if len(args) > 0:
             if args[0] == "view":
                 view = args[1]
-                if view == "code":
-                    view = "code-view"
                 self.focus_to_viewid(view)
             elif args[0] == clear_key:
                 self.logview.clear()
@@ -585,8 +586,19 @@ class CodeBrowser(App):
         yield Header()
         with Container():
             yield DirectoryTree(path, id="tree-view")
-            with VerticalScroll(id="code-view"):
-                yield Static(id="code", expand=True)
+            from tree_sitter_languages import get_language
+            from pathlib import Path
+            code = TextArea.code_editor(
+                Path(self.codeview_file).read_text(), id="code-view",read_only=True)
+            try:
+                cpp = get_language("cpp")
+                cpp_highlight_query = (
+                    Path(__file__).parent/"queries/c/highlights.scm").read_text()
+                code.register_language(cpp, cpp_highlight_query)
+                code.language = "cpp"
+            except Exception as e:
+                pass
+            yield code
             with TabbedContent(initial="jessica", id="symbol-list"):
                 with TabPane("Rencently", id="leto"):  # First tab
                     self.history_view = MyListView(id="history")
@@ -641,7 +653,27 @@ class CodeBrowser(App):
         event.stop()
         self.on_choose_file_from_event(str(event.path))
 
+    def code_editor_view(self):
+        return self.query_one("#code-view", TextArea)
+
+    def code_editor_scroll_view(self):
+        return self.query_one("#code-view")
+
     def on_choose_file_from_event(self, path):
+        code_view = self.code_editor_view()
+
+        TEXT = open(str(path), "r").read()
+        code_view.document = Document(TEXT)
+
+        self.code_editor_view().scroll_home(animate=False)
+        self.sub_title = str(path)
+        self.codeview_file = self.sub_title
+        self.logview.write_line("tree open %s" % (self.sub_title))
+        self.history.add_to_history(self.codeview_file)
+        self.refresh_history_view()
+        self.change_lsp_file(self.codeview_file)
+
+    def on_choose_file_from_event_static(self, path):
         code_view = self.query_one("#code", Static)
         try:
             syntax = Syntax.from_path(
@@ -656,7 +688,7 @@ class CodeBrowser(App):
             self.sub_title = "ERROR"
         else:
             code_view.update(syntax)
-            self.query_one("#code-view").scroll_home(animate=False)
+            self.code_editor_scroll_view().scroll_home(animate=False)
             self.sub_title = str(path)
             self.codeview_file = self.sub_title
             self.logview.write_line("tree open %s" % (self.sub_title))

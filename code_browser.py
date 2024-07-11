@@ -37,42 +37,93 @@ input_command_options = [
     "save", "log", "quit", "grep"
 ]
 import os
+
+
+def build_dirs(directory):
+    files_found = {}
+    for root, dirs, _, in os.walk(directory):
+        aa  = root.replace(directory, "").split("/")
+        if len(aa)>3:
+            continue
+        for file in dirs:
+            key = os.path.join(root, file)
+            files_found[key.replace(directory, "")] = True
+            # files_found[file] = os.path.join(root, file)
+    return files_found
+
+
+class dir_complete_root:
+
+    def __init__(self, root) -> None:
+        self.db = build_dirs(root)
+        pass
+
+    def find(self, pattern):
+        try:
+            if self.db[pattern]:
+                return pattern
+        except:
+            keys = list(filter(lambda x: x.startswith(pattern),
+                               self.db.keys()))
+            if len(keys):
+                return keys[0] 
+        return None
+
+
+def find_dirs_os_walk(directory, pattern):
+    files_found = []
+    for root, dirs, _, in os.walk(directory):
+        for file in dirs:
+            if file.startswith(pattern):
+                files_found.append(os.path.join(root, file))
+    return files_found
+
+
 def find_files_os_walk(directory, file_extension):
     files_found = []
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.find(file_extension)>0:
+            if file.find(file_extension) > 0:
                 files_found.append(os.path.join(root, file))
     return files_found
 
+
 from concurrent.futures import ThreadPoolExecutor
 
-def thread_submit(fn,cb, args:tuple):
+
+def thread_submit(fn, cb, args: tuple):
     with ThreadPoolExecutor(max_workers=2) as executor:
-        future = executor.submit(fn,*args)
-        result = future.result() 
+        future = executor.submit(fn, *args)
+        result = future.result()
         cb(result)
 
+
 class TaskFindFile:
+
     def __init__(self, dir, pattern) -> None:
         self.dir = dir
         self.filename = pattern
         self.ret = []
         pass
+
     def get(self):
-        return find_files_os_walk(self.dir,self.filename)
+        return find_files_os_walk(self.dir, self.filename)
+
     @staticmethod
-    def run(dir,name,cb):
-        fileset = ["h","cc","cpp"]
-        def fn(dir,name):
-            def extfilter(x:str):
+    def run(dir, name, cb):
+        fileset = ["h", "cc", "cpp"]
+
+        def fn(dir, name):
+
+            def extfilter(x: str):
                 for s in fileset:
                     if x.endswith(s):
                         return True
                 return False
-            return list(filter(extfilter, TaskFindFile(dir,name).get()))
-        thread_submit(fn,cb,(dir,name))
-    
+
+            return list(filter(extfilter, TaskFindFile(dir, name).get()))
+
+        thread_submit(fn, cb, (dir, name))
 
 
 class UiOutput(OutputFile):
@@ -163,12 +214,29 @@ class input_suggestion(SuggestFromList):
             return
         requester.post_message(SuggestionReady(value, suggestion))
 
+    def complete_path(self, value: str):
+        try:
+            # if self.root is None: return None
+            if value.startswith("find ") == False:
+                return None
+            args = list(filter(lambda x: len(x) > 0, value.split(" ")))
+            if self.dirdb != None:
+                return self.dirdb.find(args[1])
+            # ret = find_dirs_os_walk(self.root, args[1])
+            # if len(ret):
+            # return ret[0]
+        except:
+            pass
+        return None
+
 
 class CommandInput(Input):
     mainui: 'CodeBrowser'
 
-    def __init__(self, mainui: 'CodeBrowser') -> None:
+    def __init__(self, mainui: 'CodeBrowser', root) -> None:
         suggestion = input_suggestion(input_command_options)
+        suggestion.root = root
+        suggestion.dirdb = dir_complete_root(root)
         super().__init__(suggester=suggestion,
                          placeholder=" ".join(input_command_options),
                          type="text")
@@ -310,7 +378,7 @@ class CodeBrowser(App):
         self.logview.write_line("open %s" % (file))
 
     def on_command_input(self, value):
-        args = list(filter(lambda x:len(x)>0,value.split(" ")))
+        args = list(filter(lambda x: len(x) > 0, value.split(" ")))
         try:
             ret = self.did_command_opt(value, args)
             if ret == True:
@@ -321,22 +389,24 @@ class CodeBrowser(App):
 
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
-        if len(args)>0:
+        if len(args) > 0:
             if args[0] == "open":
                 self.change_lsp_file(self.codeview_file)
             elif args[0] == "find":
                 dir = args[1]
-                if os.path.isabs(dir)==False:
-                    dir =os.path.join(self.lsp.root,dir)
+                if os.path.isabs(dir) == False:
+                    dir = os.path.join(self.lsp.root, dir)
                     dir = os.path.realpath(dir)
-                
-                logui =self.logview
+
+                logui = self.logview
+
                 def cb(s):
                     try:
                         logui.write_lines(s[0:5])
                     except Exception as e:
                         pass
-                TaskFindFile.run(dir,args[2],cb)
+
+                TaskFindFile.run(dir, args[2], cb)
                 pass
             elif args[0] == "history":
                 self.refresh_history_view()
@@ -347,7 +417,7 @@ class CodeBrowser(App):
             else:
                 return False
             return True
-        return False 
+        return False
 
     def did_command_cmdline(self, args):
         try:
@@ -386,7 +456,7 @@ class CodeBrowser(App):
         self.logview = MyLogView(id="logview")
         self.logview.mainuui = self
         yield self.logview
-        v = CommandInput(self)
+        v = CommandInput(self, root=self.lsp.root)
         yield v
 
     def on_mount(self) -> None:

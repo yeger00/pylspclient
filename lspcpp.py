@@ -200,7 +200,7 @@ class Symbol:
         return cls + self.sym.name
 
     def symbol_sidebar_displayname(self) -> str:
-        icon =" "+ ICON.ICON(self)+ " "
+        icon = " " + ICON.ICON(self) + " "
         if self.is_class_define():
             return icon + self.name
         if self.cls:
@@ -217,7 +217,10 @@ class Symbol:
         return self.sym.kind == SymbolKind.Function
 
     def is_member(self):
-        return self.sym.kind == SymbolKind.Field
+        a = self.sym.kind == SymbolKind.Field
+        if a:
+            pass
+        return a
 
     def is_method(self):
         return self.sym.kind == SymbolKind.Method
@@ -236,7 +239,7 @@ class Symbol:
                 self.members.append(s1)
             elif s.kind == SymbolKind.Field:
                 self.members.append(s1)
-                self.cls = self
+                s1.cls = self
             elif s1.sym.kind == SymbolKind.Class or s1.sym.kind == SymbolKind.Struct:
                 otherscls.append(s1)
                 syms = s1.find_members(syms[1:], otherscls)
@@ -605,7 +608,7 @@ class ICON:
     Text = "󰉿"
     Method = "ƒ"
     Function = ""
-    Constructor =""
+    Constructor = ""
     Field = "󰜢"
     Variable = "󰀫"
     Class = "𝓒"
@@ -634,7 +637,6 @@ class ICON:
         ) else ICON.Class if s.is_class_define(
         ) else ICON.Function if s.is_function(
         ) else ICON.Constructor if s.is_construct() else "?"
-
 
 
 class CallNode:

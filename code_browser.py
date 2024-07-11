@@ -778,7 +778,7 @@ class CodeBrowser(App):
             file = self.lsp.currentfile.file
             self.symbol_listview.loading = True
             aa = map(lambda x: ListItem(Label(x)),
-                     self.lsp.currentfile.symbol_list_string())
+                     self.lsp.currentfile.get_symbol_list_string())
             file2 = self.lsp.currentfile.file
             self.symbol_listview.loading = False
             if file2 != file:

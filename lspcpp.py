@@ -936,7 +936,7 @@ class SymbolFile:
         self.symbols_list = symbols_list
         return symbols_list
 
-    def symbol_list_string(self) -> list[str]:
+    def get_symbol_list_string(self) -> list[str]:
         self.get_symbol_list()
         return list(map(lambda x: x.symbol_display_name(), self.symbols_list))
 

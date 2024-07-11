@@ -12,7 +12,7 @@ import json
 from time import sleep
 
 from prompt_toolkit.filters import cli
-from pydantic import BaseModel
+from pydantic import BaseModel, NatsDsn
 import pylspclient
 import threading
 from os import link, path, system
@@ -205,7 +205,7 @@ class Symbol:
             return icon + self.name
         if self.cls:
             return "    " + icon + self.name
-        return icon + self.sym.name
+        return icon + self.name
 
     def is_construct(self):
         return self.sym.kind == SymbolKind.Constructor
@@ -986,10 +986,39 @@ class SymbolFile:
         if (len(self.symbols_list)):
             return self.symbols_list
         symbols_list = []
+        cimpl ={
+        }
         for a in self.client.get_class_symbol(file=self.file):
-            symbols_list.append(a)
-            if len(a.members):
-                symbols_list.extend(a.members)
+            if a.is_class_define():
+                if len(a.members):
+                    symbols_list.append(a)
+                    symbols_list.extend(a.members)
+                else:
+                    cimpl[a.name] = a
+            elif a.is_method():
+                name = a.name
+                classname = None
+                index = name.rfind("::")
+                if index > 0:
+                    classname = name[:index]
+                    name = name[index + 2:]
+                    try:
+                        cls = cimpl[classname]
+                        a.name = name
+                        cls.members.append(a)
+                        a.cls = cls
+                    except: 
+                        cls = Symbol(a.sym.copy())
+                        cls.name = classname
+                        cls.sym.kind  =SymbolKind.Class
+                        cimpl[classname] = cls
+                        symbols_list.append(cls)
+                    pass
+            else:
+                symbols_list.append(a)
+        for k in cimpl.values():
+            symbols_list.append(k)
+            symbols_list.extend(k.members)
         self.symbols_list = symbols_list
         return symbols_list
 

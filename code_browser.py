@@ -33,9 +33,11 @@ from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
 
+find_key = "find "
+view_key = "view "
 input_command_options = [
     "history", "symbol", "open", "find", "refer", "callin", "ctrl-c", "copy",
-    "save", "log", "quit", "grep"
+    "save", "log", "quit", "grep", "view"
 ]
 
 
@@ -215,6 +217,14 @@ class input_suggestion(SuggestFromList):
             value: The current value to complete.
         """
 
+        args = convert_command_args(value)
+        suggestion = None
+        if suggestion is None:
+            suggestion = self.complete_view(value, args)
+
+        if suggestion != None:
+            requester.post_message(SuggestionReady(value, suggestion))
+
         normalized_value = value if self.case_sensitive else value.casefold()
         if self.cache is None or normalized_value not in self.cache:
             suggestion = await self.get_suggestion(normalized_value)
@@ -224,7 +234,7 @@ class input_suggestion(SuggestFromList):
             suggestion = self.cache[normalized_value]
 
         if suggestion is None:
-            suggestion = self.complete_path(value)
+            suggestion = self.complete_path(value, args)
         if suggestion is None:
             ret = list(
                 filter(lambda x: x.startswith(value), self._history._data))
@@ -234,12 +244,26 @@ class input_suggestion(SuggestFromList):
             return
         requester.post_message(SuggestionReady(value, suggestion))
 
-    def complete_path(self, value: str):
+    def complete_view(self, value: str, args):
+        view_name = ["code", "explore", "symbol", "history"]
+        try:
+            if value.startswith(view_key) == False:
+                return None
+            if len(args) == 2:
+                for a in view_name:
+                    if a.startswith(args[1]):
+                        args[1] = a
+                        return " ".join(args)
+
+        except:
+            pass
+        return None
+
+    def complete_path(self, value: str, args):
         try:
             # if self.root is None: return None
             if value.startswith(find_key) == False:
                 return None
-            args = convert_command_args(value)
             if self.dircomplete != None:
                 if len(args) == 2 and len(args[1]) > 1:
                     s = self.dircomplete.find(args[1])
@@ -333,9 +357,12 @@ HISTORY_LISTVIEW_TYPE = 2
 
 class MyListView(ListView):
     mainui: 'CodeBrowser'
-    def _on_list_item__child_clicked(self, event: ListItem._ChildClicked) -> None:
+
+    def _on_list_item__child_clicked(self,
+                                     event: ListItem._ChildClicked) -> None:
         ListView._on_list_item__child_clicked(self, event)
         self.mainui.on_select_list(self)
+
     def action_select_cursor(self):
         self.mainui.on_select_list(self)
 
@@ -499,7 +526,8 @@ class CodeBrowser(App):
         self.refresh_symbol_view()
 
     def refresh_history_view(self):
-        aa = map(lambda x: ListItem(Label(os.path.basename(x))), list(self.history.list))
+        aa = map(lambda x: ListItem(Label(os.path.basename(x))),
+                 list(self.history.list))
         self.history_view.clear()
         self.history_view.extend(aa)
 

@@ -4,13 +4,13 @@
 """
 
 from io import TextIOWrapper
+import logging
 import sys
 import os
 import argparse
 import subprocess
 import json
 from time import sleep
-from tkinter import N
 from typing import Optional
 
 from prompt_toolkit.filters import cli
@@ -20,6 +20,8 @@ import threading
 from os import link, path, system
 from pylspclient import LspClient, LspEndpoint
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
+
+logger = logging.getLogger('lsp_log')
 
 # DEFAULT_CAPABILITIES = {
 #     'textDocument': {
@@ -163,7 +165,7 @@ class Symbol:
     members: list['Symbol']
 
     def all_call_symbol(self):
-        ret = [self]
+        ret: list[Symbol] = [self]
         ret.extend(self.members)
         return ret
 
@@ -176,7 +178,7 @@ class Symbol:
         self.cls = None
         # self.othercls = []
 
-    def find(self, node: 'CallNode') -> 'Symbol':
+    def find(self, node: 'CallNode') -> Optional['Symbol']:
         if node.sym.in_range(self.sym):
             return self
         for a in self.members:
@@ -368,7 +370,7 @@ class LspClient2(LspClient):
                 print(e)
                 return None
 
-        return list(filter(lambda x: x != None, map(convert, ret)))
+        return [x for x in map(convert, ret) if x is not None]
 
     def callHierarchyPrepare(self, sym: SymbolInformation):
         s = SymbolParser(sym)
@@ -403,17 +405,21 @@ class LspClient2(LspClient):
                 "character": col,
                 "line": line
             })
-        return list(
-            filter(lambda x: x != None and x.range.start.line != line,
-                   map(convert, ret)))
+        # return list(
+        # filter(lambda x: x != None and x.range.start.line != line,
+        #    map(convert, ret)))
+        return [
+            x for x in map(convert, ret)
+            if x is not None and x.range.start.line != line
+        ]
 
 
 class project_config:
     compile_database: None | str
-    workspace_root: None | str
+    workspace_root: str
 
     def __init__(self,
-                 workspace_root: None | str,
+                 workspace_root: str,
                  compile_database: None | str = None) -> None:
         self.workspace_root = workspace_root
         self.compile_database = compile_database
@@ -422,6 +428,8 @@ class project_config:
                                                  "compile_commands.json")
 
     def open_all(self, client: 'lspcppclient'):
+        if self.compile_database is None:
+            raise Exception("compile_database is None")
         fp = open(self.compile_database, "r")
         if fp != None:
             dd = json.load(fp)
@@ -433,6 +441,9 @@ class project_config:
                          add: bool = True) -> 'WorkSpaceSymbol':
         wk = WorkSpaceSymbol(self.workspace_root, client=client)
         if add == False:
+            return wk
+        if self.compile_database is None:
+            logger.warning("compile_database is None")
             return wk
         fp = open(self.compile_database, "r")
         if fp != None:
@@ -532,9 +543,11 @@ class lspcppclient:
                 decal = self.lsp_client.declaration(
                     textDocument=TextDocumentIdentifier(
                         uri=symbol.location.uri),
-                    position=Position(line=s.symbol_line,
-                                      character=s.symbol_col))[0]
-            except:
+                    position=Position(
+                        line=s.symbol_line,
+                        character=s.symbol_col))[0]  # type: ignore
+            except Exception as e:
+                logger.exception(e)
                 pass
 
         rets = self.get_reference(symbol.location.uri, s.symbol_col,
@@ -543,9 +556,10 @@ class lspcppclient:
         def filter_head(x: Location):
             try:
                 if decal != None:
-                    if x.uri == decal.uri and x.range.start.line == decal.range.start.line:
+                    if x.uri == decal.uri and x.range.start.line == decal.range.start.line:  # type: ignore
                         return False
-            except:
+            except Exception as e:
+                logger.exception(e)
                 pass
             return True
 
@@ -587,23 +601,14 @@ class lspcppserver:
                              stderr=subprocess.PIPE)
         read_pipe = ReadPipe(p.stderr)
         read_pipe.start()
-        self.json_rpc_endpoint = pylspclient.JsonRpcEndpoint(p.stdin, p.stdout)
+        self.json_rpc_endpoint = pylspclient.JsonRpcEndpoint(
+            p.stdin, p.stdout)  # type: ignore
 
     def newclient(self, confg: project_config) -> lspcppclient:
         return lspcppclient(confg, self.json_rpc_endpoint)
 
 
 DEFAULT_ROOT = path.abspath("./tests/test-workspace/cpp")
-
-
-class lspcpp:
-
-    def __init__(self, default_root) -> None:
-        self.serv = lspcppserver()
-        config = project_config()
-        config.workspace_root = default_root
-        self.client = self.serv.newclient(config)
-        pass
 
 
 class ICON:
@@ -645,6 +650,7 @@ class CallNode:
     symboldefine: Symbol | None = None
     detail: str = ""
     line: str = ""
+    callee: Optional['CallNode'] = None
 
     def __init__(self, sym: PrepareReturn) -> None:
         self.sym = sym
@@ -690,10 +696,12 @@ class CallNode:
                 fn = node.symboldefine.name[xx + 2:]
                 node.symboldefine.name = fn
                 if node.symboldefine.cls == None:
-                    node.symboldefine.cls = Symbol(node.symboldefine.sym) # type: ignore
-                    node.symboldefine.cls.name = clasname # type: ignore
+                    node.symboldefine.cls = Symbol(
+                        node.symboldefine.sym)  # type: ignore
+                    node.symboldefine.cls.name = clasname  # type: ignore
                     pass
-            except:
+            except Exception as e:
+                logger.warn(e)
                 pass
             return node
 
@@ -701,7 +709,7 @@ class CallNode:
 
         ret = []
         index = 0
-        caller: CallNode|None = None
+        caller: CallNode | None = None
 
         def is_function(caller: CallNode):
             r = caller.sym.kind == SymbolKind.Function
@@ -727,7 +735,7 @@ class CallNode:
                     if is_function(caller):
                         left = caller.symboldefine.name
                     else:
-                        if caller.symboldefine.cls.name != s.symboldefine.cls.name: 
+                        if caller.symboldefine.cls.name != s.symboldefine.cls.name:
                             left = caller.symboldefine.cls.name
                 ret.append("%s -> %s" % (left.replace("::", "."), right))
             else:
@@ -762,7 +770,7 @@ class CallNode:
         return "\n".join(sss)
 
     def callstack(self):
-        ret = [self]
+        ret: list[CallNode] = [self]
         next = self.callee
         while next != None:
             ret.append(next)
@@ -860,8 +868,9 @@ class SourceCode:
 
 
 class WorkSpaceSymbol:
+    client: lspcppclient
 
-    def __init__(self, root: str, client: lspcppclient = None) -> None:
+    def __init__(self, root: str, client: lspcppclient) -> None:
         self.source_list = {}
         self.root = root
         self.client = client

@@ -108,6 +108,13 @@ class parameter_cpp(parameter):
     def __str__(self) -> str:
         return self.param
 
+def range_before(r1: Position, r2: Position):
+    if r1.line < r2.line:
+        return True
+    elif r1.line == r2.line:
+        return r1.character <= r2.character
+    else:
+        return False
 
 def test_client_symbol_param():
     srv = lspcpp.lspcppserver(cfg.workspace_root)
@@ -121,7 +128,7 @@ def test_client_symbol_param():
         kind = SymbolKindName(s.kind)
         if s.kind == SymbolKind.Method or SymbolKind.Function == s.kind:
             print("name=%s\n kind=%s\n block=++%s--" % (name, kind, str(body)))
-            print(name, "(", parameter_cpp(s), ")")
+            print("parameters:", name, "(", parameter_cpp(s), ")")
         else:
             # print("xxx name=%s\n kind=%s\n token=%s" % (name, kind, str(body)))
             pass

@@ -182,17 +182,17 @@ class Symbol:
 
     def __init__(self, sym: SymbolInformation) -> None:
         self.sym = sym
-        self.begin = sym.location.range.start
-        self.end = sym.location.range.end
+        self.__begin = sym.location.range.start
+        self.__end = sym.location.range.end
         self.name = sym.name
         self.members = []
         self.cls = None
         
     def contain(self, node: 'Symbol'):
-        if self.end.line < node.end.line:
+        if self.__end.line < node.__end.line:
             return False 
-        if self.end.line == node.end.line:
-            return self.end.character >= node.end.character
+        if self.__end.line == node.__end.line:
+            return self.__end.character >= node.__end.character
         return True
         
         

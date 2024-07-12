@@ -25,7 +25,8 @@ from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
 from codesearch import SourceCode, SourceCodeSearch
-from lspcpp import LspMain, Symbol, OutputFile, SymbolLocation, lspcpp
+from lspcpp import LspMain, Symbol, OutputFile, SymbolLocation
+import lspcpp
 from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
@@ -919,12 +920,13 @@ class CodeBrowser(App):
         #         return
         def my_function(lsp: LspMain, sym: SymbolInformation, toFile, toUml):
             try:
+                self.logview.write_line("Callin Job %s Started"%(sym.name))
                 lsp.currentfile.callin(sym,
                                    once=False,
                                    uml=True,
                                    toFile=toFile,
                                    toUml=toUml)
-                self.logview.write_line("Call Job finished")
+                self.logview.write_line("Callin Job %s Stopped"%(sym.name))
             except Exception as e:
                 self.logview.write_line("exception %s" % (str(e)))
                 pass

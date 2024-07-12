@@ -1,6 +1,5 @@
 import lspcpp
 from lspcpp import SymbolKindName, Token, WorkSpaceSymbol, from_file, lspcppclient, lspcppserver, project_config, to_file
-from os import path
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
 
 DEFAULT_ROOT = "/home/z/dev/lsp/pylspclient/tests/cpp/test-workspace"
@@ -10,9 +9,20 @@ cfg = project_config(
     compile_database="/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json")
 
 
+def SubLine(begin, end, lines):
+    subline = lines[begin.line:end.line+1]
+    if begin.line == end.line:
+        subline[0] = subline[0][begin.character:end.character+1]
+    else:
+        subline[0] = subline[0][begin.character:]
+        subline[-1] = subline[-1][:end.character+1]
+    return subline
+
+
 class Body:
     subline: list[str] = []
     location: Location
+
     def __init__(self, location: Location) -> None:
         self.data = ""
         self.location = location
@@ -21,13 +31,8 @@ class Body:
         end = range.end
         with open(from_file(location.uri), "r") as fp:
             lines = fp.readlines()
-            subline = lines[begin.line:end.line+1]
-            if begin.line == end.line:
-                subline[0] = subline[0][begin.character:end.character+1]
-            else:
-                subline[0] = subline[0][begin.character:]
-                subline[-1] = subline[-1][:end.character+1]
-            self.subline =subline
+            subline = SubLine(begin, end, lines)
+            self.subline = subline
 
     def __str__(self) -> str:
         return "\n".join(self.subline)
@@ -85,7 +90,7 @@ def test_client_signature_help():
     client.close()
 
 
-class parameter:
+class LspFuncParameter:
     lspsym: SymbolInformation
 
     def __init__(self, sym: SymbolInformation):
@@ -94,27 +99,52 @@ class parameter:
     def parse(self):
         return ""
 
+    def displayname(self):
+        return str(self)
 
-class parameter_cpp(parameter):
+
+def range_before(before: Position, after: Position):
+    if before.line < after.line:
+        return True
+    elif before.line == after.line:
+        return before.character <= after.character
+    else:
+        return False
+
+
+class LspFuncParameter_cpp(LspFuncParameter):
     def __init__(self, sym: SymbolInformation):
         super().__init__(sym)
+        self.__data = ""
         self.parse()
 
     def parse(self):
-        body = Token(self.lspsym.location).data
-        self.param = body[body.index("(")+1:body.index(")")]
+        body = Body(self.lspsym.location)
+        begin = None
+        end = None
+        for i in range(0, len(body.subline)):
+            s = body.subline[i]
+            if begin == None:
+                p = s.find("(")
+                if p >= 0:
+                    begin = Position(line=i, character=p)
+            if end == None:
+                p = s.find(")")
+                if p >= 0:
+                    end = Position(line=i, character=p)
+            if end != None and begin != None:
+                break
+        if begin == None or end == None:
+            return ""
+        if range_before(begin, end) == False:
+            return ""
+        self.param = " ".join(SubLine(begin, end, body.subline))
+
         return ""
 
     def __str__(self) -> str:
         return self.param
 
-def range_before(r1: Position, r2: Position):
-    if r1.line < r2.line:
-        return True
-    elif r1.line == r2.line:
-        return r1.character <= r2.character
-    else:
-        return False
 
 def test_client_symbol_param():
     srv = lspcpp.lspcppserver(cfg.workspace_root)
@@ -128,7 +158,7 @@ def test_client_symbol_param():
         kind = SymbolKindName(s.kind)
         if s.kind == SymbolKind.Method or SymbolKind.Function == s.kind:
             print("name=%s\n kind=%s\n block=++%s--" % (name, kind, str(body)))
-            print("parameters:", name, "(", parameter_cpp(s), ")")
+            print("parameters:", name, "(", LspFuncParameter_cpp(s), ")")
         else:
             # print("xxx name=%s\n kind=%s\n token=%s" % (name, kind, str(body)))
             pass

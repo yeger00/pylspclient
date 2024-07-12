@@ -96,7 +96,7 @@ class LspFuncParameter:
     def __init__(self, sym: SymbolInformation):
         self.lspsym = sym
 
-    def parse(self):
+    def parse(self)->str:
         return ""
 
     def displayname(self):
@@ -139,9 +139,12 @@ class LspFuncParameter_cpp(LspFuncParameter):
         if range_before(begin, end) == False:
             return ""
         self.param = " ".join(SubLine(begin, end, body.subline))
-
-        return ""
-
+        def ss(s):
+            return " ".join(filter(lambda x:len(x)>0,s.split(" ")))
+        self._displayname=",".join(map(ss,self.param.split(",")))
+        return self.param
+    def displayname(self):
+        return self._displayname
     def __str__(self) -> str:
         return self.param
 

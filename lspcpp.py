@@ -11,6 +11,7 @@ import subprocess
 import json
 from time import sleep
 from tkinter import N
+from typing import Optional
 
 from prompt_toolkit.filters import cli
 from pydantic import BaseModel, NatsDsn
@@ -678,17 +679,19 @@ class CallNode:
 
     def uml(self,
             stack: list['CallNode'],
-            wk: 'WorkSpaceSymbol' = None) -> str:
+            wk: Optional['WorkSpaceSymbol'] = None) -> str:
 
         def fix(node: CallNode):
+            if node.symboldefine == None:
+                return node
             try:
                 xx = node.symboldefine.name.rindex("::")
                 clasname = node.symboldefine.name[:xx]
                 fn = node.symboldefine.name[xx + 2:]
                 node.symboldefine.name = fn
                 if node.symboldefine.cls == None:
-                    node.symboldefine.cls = Symbol(node.symboldefine.sym)
-                    node.symboldefine.cls.name = clasname
+                    node.symboldefine.cls = Symbol(node.symboldefine.sym) # type: ignore
+                    node.symboldefine.cls.name = clasname # type: ignore
                     pass
             except:
                 pass

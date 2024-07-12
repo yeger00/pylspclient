@@ -11,6 +11,11 @@ class ErrorType(TypedDict):
     code: ErrorCodes
     message: str
     data: Optional[Any]
+import logging
+logger = logging.getLogger('lsppython')
+print(logger)
+logger.critical("%s begined"%(__file__))
+
 
 
 class LspEndpoint(threading.Thread):
@@ -69,8 +74,9 @@ class LspEndpoint(threading.Thread):
                         self.send_response(rpc_id, result, None)
                     else:
                         # a call for notify
+                        logger.info("notify: {method}.".format(method=method))
                         if method not in self.notify_callbacks:
-                            # print(method,json.dumps(params,indent=4))
+                            # logger.info(method,json.dumps(params,indent=4))
                             if method=="textDocument/clangd.fileStatus" :
                                 pass
                             elif method=='textDocument/publishDiagnostics':
@@ -81,7 +87,7 @@ class LspEndpoint(threading.Thread):
                                 self.on_work_done_progress_create(params)
                             else:
                             # Have nothing to do with this.
-                                print("Notify method not found: {method}.".format(method=method))
+                                logger.warn("Notify method not found: {method}.".format(method=method))
                         else:
                             self.notify_callbacks[method](params)
                 else:

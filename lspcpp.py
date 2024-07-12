@@ -21,8 +21,22 @@ from os import link, path, system
 from pylspclient import LspClient, LspEndpoint
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
 
-logger = logging.getLogger('lsp_log')
-
+import logging
+logger = logging.getLogger('lsppython')
+print(logger)
+logger.critical("lspcpp begined")
+pipelog = open("pipe.log","w")
+# DEFAULT_CAPABILITIES = {
+#     'textDocument': {
+#         'completion': {
+#             'completionItem': {
+#                 'commitCharactersSupport': True,
+#                 'documentationFormat': ['markdown', 'plaintext'],
+#                 'snippetSupport': True
+#             }
+#         }
+#     }
+# }
 # DEFAULT_CAPABILITIES = {
 #     'textDocument': {
 #         'completion': {
@@ -261,7 +275,9 @@ class ReadPipe(threading.Thread):
     def run(self):
         line = self.pipe.readline().decode('utf-8')
         while line:
-            # print('pipe:', line)
+            # pipelog.write('pipe:'+ line)
+            # pipelog.write("\n")
+            logger.info(line)
             line = self.pipe.readline().decode('utf-8')
 
 

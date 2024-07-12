@@ -31,6 +31,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
 
+import pylspclient
 from pylspclient.lsp_pydantic_strcuts import SymbolInformation
 
 find_key = "find "
@@ -40,8 +41,6 @@ input_command_options = [
     "history", "symbol", "open", "find", "refer", "callin", "ctrl-c", "copy",
     "save", "log", "quit", "grep", "view", "clear"
 ]
-
-
 class ResultItem:
 
     def __init__(self) -> None:

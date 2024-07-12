@@ -163,7 +163,7 @@ class SymbolLocation:
 class Symbol:
     sym: SymbolInformation
     members: list['Symbol']
-
+    cls :Optional['Symbol']
     def all_call_symbol(self):
         ret: list[Symbol] = [self]
         ret.extend(self.members)
@@ -651,15 +651,23 @@ class CallNode:
     detail: str = ""
     line: str = ""
     callee: Optional['CallNode'] = None
-
     def __init__(self, sym: PrepareReturn) -> None:
         self.sym = sym
         self.callee = None
         self.param = ""
-
+    def get_cls_name(self)->str:
+        cls = self.get_cls()
+        if cls != None:
+            return cls.name
+        return ""
+    def get_cls(self)->Optional[Symbol]:
+        if self.symboldefine == None:
+            return None
+        return self.symboldefine.cls 
     def printstack(self, level=0, fp=None):
-        classname = self.symboldefine.cls.name + \
-            "::" if self.symboldefine.cls != None else ""
+        cls = self.get_cls()
+        classname = cls.name + \
+            "::" if cls != None else ""
         sss = " " * level + "->" + classname + self.sym.name + self.param + " " + "%s:%d" % (
             from_file(self.sym.uri), self.sym.range.start.line)
         print(sss)
@@ -695,7 +703,7 @@ class CallNode:
                 clasname = node.symboldefine.name[:xx]
                 fn = node.symboldefine.name[xx + 2:]
                 node.symboldefine.name = fn
-                if node.symboldefine.cls == None:
+                if node.symboldefine.cls == None and node.symboldefine!=None:
                     node.symboldefine.cls = Symbol(
                         node.symboldefine.sym)  # type: ignore
                     node.symboldefine.cls.name = clasname  # type: ignore
@@ -713,7 +721,8 @@ class CallNode:
 
         def is_function(caller: CallNode):
             r = caller.sym.kind == SymbolKind.Function
-            if r == False and caller.symboldefine.cls == None:
+            cls = caller.get_cls()
+            if r == False and cls == None:
                 if wk != None:
                     caller.symboldefine = None
                     wk.find(caller)

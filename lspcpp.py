@@ -10,6 +10,7 @@ import argparse
 import subprocess
 import json
 from time import sleep
+from tkinter import N
 
 from prompt_toolkit.filters import cli
 from pydantic import BaseModel, NatsDsn
@@ -697,7 +698,7 @@ class CallNode:
 
         ret = []
         index = 0
-        caller: CallNode = None
+        caller: CallNode|None = None
 
         def is_function(caller: CallNode):
             r = caller.sym.kind == SymbolKind.Function
@@ -723,7 +724,7 @@ class CallNode:
                     if is_function(caller):
                         left = caller.symboldefine.name
                     else:
-                        if caller.symboldefine.cls.name != s.symboldefine.cls.name:
+                        if caller.symboldefine.cls.name != s.symboldefine.cls.name: 
                             left = caller.symboldefine.cls.name
                 ret.append("%s -> %s" % (left.replace("::", "."), right))
             else:

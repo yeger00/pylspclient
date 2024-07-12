@@ -3,23 +3,18 @@
 
 """
 
-from io import TextIOWrapper
 import logging
-import sys
 import os
 import argparse
 import subprocess
 import json
-from time import sleep
 from typing import Optional
 
-from prompt_toolkit.filters import cli
-from pydantic import BaseModel, NatsDsn
+from pydantic import BaseModel
 import pylspclient
 import threading
-from os import link, path, system
 from pylspclient import LspClient, LspEndpoint
-from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
+from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, SymbolInformation, Location,SymbolKind
 
 import logging
 logger = logging.getLogger('lsppython')
@@ -383,7 +378,7 @@ class LspClient2(LspClient):
                                      uri=from_["uri"],
                                      name=from_["name"])
             except Exception as e:
-                print(e)
+                logger.exception(str(e))
                 return None
 
         return [x for x in map(convert, ret) if x is not None]
@@ -410,7 +405,8 @@ class LspClient2(LspClient):
         def convert(s):
             try:
                 return Location.parse_obj(s)
-            except:
+            except Exception as e:
+                logger.exception(str(e))
                 return None
 
         ret = self.endpoint.call_method(
@@ -551,7 +547,8 @@ class lspcppclient:
         try:
             file = from_file(symbol.location.uri)
             is_cpp = file.split(".")[-1].lower() in ["cc", "cpp", "cxx"]
-        except:
+        except Exception as e:
+            logger.exception(str(e))
             pass
         decal = None
         if is_cpp:
@@ -732,7 +729,6 @@ class CallNode:
         stack = list(map(fix, stack))
 
         ret = []
-        index = 0
         caller: CallNode | None = None
 
         def is_function(caller: CallNode):
@@ -850,8 +846,6 @@ class CallerWalker:
             return callser
         return []
 
-    def walk(self, node: CallNode):
-        pass
 
 
 class SourceCode:
@@ -865,6 +859,7 @@ class SourceCode:
         try:
             self.token = self.syntax_full_refresh()
         except Exception as e:
+            logger.exception(str(e))
             pass
         pass
 
@@ -944,7 +939,7 @@ class WorkSpaceSymbol:
 
             return "(%s)" % (",".join(map(formatspace, ss)))
         except Exception as e:
-            print(e)
+            logger.exception(str(e))
         return ""
 
     def find(self, node: CallNode) -> Symbol | None:
@@ -953,11 +948,12 @@ class WorkSpaceSymbol:
             code = self.source_list[key]
             return code.find(node)
         except Exception as e:
-            print(e)
+            logger.exception(str(e))
         try:
             self.add(self.client.open_file(key))
             return self.find(node)
         except Exception as e:
+            logger.exception(str(e))
             return None
 
 
@@ -1010,7 +1006,8 @@ class SymbolFile:
             self.file = file
             source = self.client.open_file(file)
             self.wk.add(source)
-        except:
+        except Exception as e:
+            logger.exception(str(e))
             pass
 
     def reset(self):
@@ -1137,7 +1134,8 @@ class SymbolFile:
                         toUml.write(s)
                         toUml.write("\n")
                         toUml.flush()
-            except:
+            except Exception as e:
+                logger.exception(str(e))
                 pass
 
     def call(self,
@@ -1163,7 +1161,8 @@ class SymbolFile:
                         toUml.write(s)
                         toUml.write("\n")
                         toUml.flush()
-            except:
+            except Exception as e:
+                logger.exception(str(e))
                 pass
 
 
@@ -1268,7 +1267,6 @@ if __name__ == "__main__":
                 args = parser.parse_args(cmd.split(" "))
             except:
                 continue
-                pass
             if args.file != None:
                 _run = runMain.changefile(args.file)
                 _run.print()

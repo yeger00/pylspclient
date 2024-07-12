@@ -1067,11 +1067,8 @@ class SymbolFile:
 
     def print(self):
         for s in self.get_symbol_list():
-            print("%s %s" %
-                  ("Method" if s.is_method() else "Member" if s.is_member()
-                   else "Class" if s.is_class_define() else "Function" if s.
-                   is_function() else "Construct" if s.is_construct(
-                   ) else "Unknown", s.symbol_sidebar_displayname()))
+            print("%s %-10s" %
+                  (SymbolKindName(s.sym.kind), s.symbol_sidebar_displayname()))
 
     def refer_symbolinformation(self,
                                 sym: SymbolInformation,

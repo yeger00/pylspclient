@@ -1,7 +1,12 @@
-from tokenize import Pointfloat
-from lspcpp import from_file
 from pylspclient.lsp_pydantic_strcuts import Location, Position, SymbolInformation
+def from_file(path: str) -> str:
+    return path.replace("file://", "").replace("file:", "")
 
+
+def to_file(path: str) -> str:
+    if path.startswith("file://"):
+        return path
+    return f"file://{path}"
 
 def range_before(before: Position, after: Position):
     if before.line < after.line:
@@ -84,7 +89,7 @@ class LspFuncParameter_cpp(LspFuncParameter):
 
         def ss(s):
             return " ".join(filter(lambda x: len(x) > 0, s.split(" ")))
-        self._displayname = ",".join(map(ss, self.param.split(",")))
+        self._displayname = ",".join(map(ss, self.param.split(","))).replace("\n","")
         return self.param
 
     def displayname(self):

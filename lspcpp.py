@@ -17,6 +17,7 @@ from pylspclient import LspClient, LspEndpoint
 from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, SymbolInformation, Location, SymbolKind
 
 import logging
+
 logger = logging.getLogger('lsppython')
 print(logger)
 logger.critical("lspcpp begined")
@@ -334,7 +335,7 @@ class SemanticTokens(BaseModel):
 class SemanticTokensEdit(BaseModel):
     start: int
     deleteCount: int
-    data:  Optional[list[int]]
+    data: Optional[list[int]]
 
 
 class SemanticTokensDelta(BaseModel):
@@ -344,6 +345,7 @@ class SemanticTokensDelta(BaseModel):
 
 class LspClient2(LspClient):
     endpoint: LspEndpoint
+
     def __init__(self, lsp_endpoint: LspEndpoint):
         """
 
@@ -352,7 +354,6 @@ class LspClient2(LspClient):
         """
         LspClient.__init__(self, lsp_endpoint)
         self.endpoint = lsp_endpoint
-        
 
     def process(self):
         return self.endpoint.send_notification("$/progress")
@@ -361,10 +362,14 @@ class LspClient2(LspClient):
         ret = self.endpoint.call_method("textDocument/index")
         return ret
 
-    def document_semantictokens_delta(self, file, token: SemanticTokens)->SemanticTokens|SemanticTokensDelta|None:
+    def document_semantictokens_delta(
+            self, file, token: SemanticTokens
+    ) -> SemanticTokens | SemanticTokensDelta | None:
         method = "textDocument/semanticTokens/full/delta"
-        ret = self.endpoint.call_method(method, textDocument=TextDocumentIdentifier(
-            uri=to_file(file)), previousResultId=token.resultId)
+        ret = self.endpoint.call_method(
+            method,
+            textDocument=TextDocumentIdentifier(uri=to_file(file)),
+            previousResultId=token.resultId)
         try:
             return SemanticTokens.parse_obj(ret)
         except:
@@ -373,7 +378,7 @@ class LspClient2(LspClient):
             return SemanticTokensDelta.parse_obj(ret)
         except:
             pass
-        return None 
+        return None
 
     def document_semantictokens_full(self, file) -> SemanticTokens:
         method = "textDocument/semanticTokens/full"
@@ -382,14 +387,13 @@ class LspClient2(LspClient):
         return SemanticTokens.parse_obj(ret)
 
     def code_action(self, file):
-        return self.endpoint.call_method("textDocument/codeAction",
-                                         textDocument=TextDocumentIdentifier(
-                                             uri=to_file(file),
-                                             range=Range(  # type: ignore
-                                                 start=Position(line=0,
-                                                                character=0),
-                                                 end=Position(line=0,
-                                                              character=0))))
+        return self.endpoint.call_method(
+            "textDocument/codeAction",
+            textDocument=TextDocumentIdentifier(
+                uri=to_file(file),
+                range=Range(  # type: ignore
+                    start=Position(line=0, character=0),
+                    end=Position(line=0, character=0))))
 
     def workspace_symbol(self, query: str):
         return self.endpoint.call_method("workspace/symbol", query=query)
@@ -480,9 +484,10 @@ class project_config:
     #         for a in dd:
     #             client.open_file(a["file"])
 
-    def create_workspace(self,
-                         client: 'lspcppclient',
-                         ) -> 'WorkSpaceSymbol':
+    def create_workspace(
+        self,
+        client: 'lspcppclient',
+    ) -> 'WorkSpaceSymbol':
         wk = WorkSpaceSymbol(self.workspace_root, client=client)
         # if add == False:
         #     return wk
@@ -781,8 +786,9 @@ class CallNode:
         for s in stack:
             right_prefix = ""
             if is_function(s) == False:
-                right_prefix = s.symboldefine.cls.name.replace("::",  # type: ignore
-                                                               ".") + "::"
+                right_prefix = s.symboldefine.cls.name.replace(
+                    "::",  # type: ignore
+                    ".") + "::"
             right = right_prefix + s.symboldefine.name  # type: ignore
             if len(ret) == 0:
                 title = "==%s==" % (right)
@@ -798,7 +804,8 @@ class CallNode:
             else:
                 if caller != None:
                     left = caller.symboldefine.cls.name if is_function(  # type: ignore
-                        caller) == False else caller.symboldefine.name  # type: ignore
+                        caller
+                    ) == False else caller.symboldefine.name  # type: ignore
                     ret.append("%s -> %s" % (left.replace("::", "."), right))
                 else:
                     pass
@@ -884,6 +891,9 @@ class CallerWalker:
 
 
 class SourceCode:
+    tokenFull: Optional[SemanticTokens] = None
+    tokenDelta: SemanticTokens | SemanticTokensDelta | None = None
+    file: str
 
     def __init__(self, file, client: lspcppclient) -> None:
         self.file = file
@@ -892,14 +902,14 @@ class SourceCode:
         self.class_symbol = client.get_class_symbol(file)
         self.client = client
         try:
-            self.token = self.syntax_full_refresh()
+            self.tokenFull = self.client.lsp_client.document_semantictokens_full(
+                self.file)
+            self.tokenDelta = self.client.lsp_client.document_semantictokens_delta(
+                self.file, self.tokenFull)
         except Exception as e:
             logger.exception(str(e))
             pass
         pass
-
-    def syntax_full_refresh(self):
-        return self.client.lsp_client.document_semantictokens_full(self.file)
 
     def find(self, node: CallNode) -> Symbol | None:
         ret = self.__find(node)

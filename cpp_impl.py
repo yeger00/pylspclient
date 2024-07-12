@@ -17,7 +17,7 @@ def range_before(before: Position, after: Position):
         return False
 
 
-def SubLine(begin, end, lines):
+def SubLine(begin, end, lines:list[str])->list[str]:
     subline = lines[begin.line:end.line+1]
     if begin.line == end.line:
         subline[0] = subline[0][begin.character:end.character+1]
@@ -85,11 +85,18 @@ class LspFuncParameter_cpp(LspFuncParameter):
             return ""
         if range_before(begin, end) == False:
             return ""
-        self.param = " ".join(SubLine(begin, end, body.subline))
-
+        subline :list[str]= SubLine(begin, end, body.subline)
+        subline[0]=subline[0][1:]
+        subline[-1]=subline[-1][:-1]
+        self.param = " ".join(subline)
+    
+        def justtype(s):
+            sss = list(filter(lambda x: len(x) > 0, s.split(" ")))
+            return " ".join(sss[:-1])
         def ss(s):
             return " ".join(filter(lambda x: len(x) > 0, s.split(" ")))
-        self._displayname = ",".join(map(ss, self.param.split(","))).replace("\n","")
+        d  = ",".join(map(justtype, self.param.split(","))).replace("\n","")
+        self._displayname = "(%s)"%(d)
         return self.param
 
     def displayname(self):

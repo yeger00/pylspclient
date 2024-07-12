@@ -5,12 +5,12 @@ from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentif
 
 DEFAULT_ROOT = "/home/z/dev/lsp/pylspclient/tests/cpp/test-workspace"
 
-
-def test_client_init():
-    cfg = lspcpp.project_config(
-        workspace_root=DEFAULT_ROOT,
+cfg = project_config(
+        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
         compile_database=
         "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json")
+
+def test_client_init():
     lspcppserver = lspcpp.lspcppserver(cfg.workspace_root)
     client = lspcppserver.newclient(cfg)
     assert (client != None)
@@ -18,10 +18,6 @@ def test_client_init():
 
 
 def test_client_compile_database():
-    cfg = lspcpp.project_config(
-        workspace_root=DEFAULT_ROOT,
-        compile_database=
-        "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json")
     srv = lspcpp.lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
     assert (client != None)
@@ -31,10 +27,6 @@ def test_client_compile_database():
 
 
 def test_client_symbol():
-    cfg = lspcpp.project_config(
-        workspace_root=DEFAULT_ROOT,
-        compile_database=
-        "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json")
     srv = lspcpp.lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
@@ -52,10 +44,6 @@ def test_client_symbol():
 
 
 def test_client_reference():
-    cfg = project_config(
-        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
-        compile_database=None)
-    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
@@ -71,10 +59,6 @@ def test_client_reference():
 
 
 def test_client_reference_extern():
-    cfg = project_config(
-        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
-        compile_database=None)
-    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp"
@@ -90,12 +74,7 @@ def test_client_reference_extern():
 
     client.close()
 
-
 def test_client_call_extern():
-    cfg = project_config(
-        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
-        compile_database=
-        "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json")
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
     wk = cfg.create_workspace(client=client)
@@ -112,9 +91,6 @@ def test_client_call_extern():
 
 
 def test_client_code_action():
-    cfg = project_config(
-        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
-        compile_database=None)
     srv = lspcppserver(cfg.workspace_root)
     # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = srv.newclient(cfg)
@@ -123,10 +99,6 @@ def test_client_code_action():
     client.close()
 
 def test_client_index():
-    cfg = project_config(
-        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
-        compile_database=None)
-    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
     ret = client.lsp_client.process()
@@ -147,7 +119,7 @@ def test_client_index():
 #     client.close()
  
 def test_client_open():
-    open='/chrome/buildcef/chromium/src/chrome/browser/first_party_sets/first_party_sets_navigation_throttle.cc'
+    # open='/chrome/buildcef/chromium/src/chrome/browser/first_party_sets/first_party_sets_navigation_throttle.cc'
     cfg = project_config(
         workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
         compile_database=None)
@@ -156,29 +128,30 @@ def test_client_open():
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     ss = client.open_file(file).symbols
-    ret = client.lsp_client.workspace_symbol()
+    ret = client.lsp_client.workspace_symbol("a")
     client.close()
+def test_client_synax_full():
+    srv = lspcppserver(cfg.workspace_root)
+    client = srv.newclient(cfg)
+    file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
+    ss = client.open_file(file).symbols
+    token = client.lsp_client.document_semantictokens_full(file)
+    ret = client.lsp_client.document_semantictokens_delta(file,token)
+    client.close()
+
 
    
 def test_client_workspacesymbol():
-    cfg = project_config(
-        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
-        compile_database=None)
-    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     ss = client.open_file(file).symbols
-    ret = client.lsp_client.workspace_symbol()
+    ret = client.lsp_client.workspace_symbol("a")
     client.close()
 
 
 def test_client_prepare():
-    cfg = project_config(
-        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
-        compile_database=None)
     srv = lspcppserver(cfg.workspace_root)
-    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     ss = client.open_file(file).symbols

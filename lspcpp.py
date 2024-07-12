@@ -14,13 +14,13 @@ from pydantic import BaseModel
 import pylspclient
 import threading
 from pylspclient import LspClient, LspEndpoint
-from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, SymbolInformation, Location,SymbolKind
+from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, SymbolInformation, Location, SymbolKind
 
 import logging
 logger = logging.getLogger('lsppython')
 print(logger)
 logger.critical("lspcpp begined")
-pipelog = open("pipe.log","w")
+pipelog = open("pipe.log", "w")
 # DEFAULT_CAPABILITIES = {
 #     'textDocument': {
 #         'completion': {
@@ -172,7 +172,8 @@ class SymbolLocation:
 class Symbol:
     sym: SymbolInformation
     members: list['Symbol']
-    cls :Optional['Symbol']
+    cls: Optional['Symbol']
+
     def all_call_symbol(self):
         ret: list[Symbol] = [self]
         ret.extend(self.members)
@@ -325,9 +326,24 @@ class SymbolParser:
                 name) + self.location.range.start.character
 
 
+class SemanticTokens(BaseModel):
+    resultId: Optional[str]
+    data: list[int]
+
+
+class SemanticTokensEdit(BaseModel):
+    start: int
+    deleteCount: int
+    data:  Optional[list[int]]
+
+
+class SemanticTokensDelta(BaseModel):
+    resultId: Optional[str]
+    edits: list[SemanticTokensEdit]
+
+
 class LspClient2(LspClient):
     endpoint: LspEndpoint
-
     def __init__(self, lsp_endpoint: LspEndpoint):
         """
 
@@ -336,6 +352,7 @@ class LspClient2(LspClient):
         """
         LspClient.__init__(self, lsp_endpoint)
         self.endpoint = lsp_endpoint
+        
 
     def process(self):
         return self.endpoint.send_notification("$/progress")
@@ -344,23 +361,38 @@ class LspClient2(LspClient):
         ret = self.endpoint.call_method("textDocument/index")
         return ret
 
-    def document_semantictokens_full(self, file):
+    def document_semantictokens_delta(self, file, token: SemanticTokens)->SemanticTokens|SemanticTokensDelta|None:
+        method = "textDocument/semanticTokens/full/delta"
+        ret = self.endpoint.call_method(method, textDocument=TextDocumentIdentifier(
+            uri=to_file(file)), previousResultId=token.resultId)
+        try:
+            return SemanticTokens.parse_obj(ret)
+        except:
+            pass
+        try:
+            return SemanticTokensDelta.parse_obj(ret)
+        except:
+            pass
+        return None 
+
+    def document_semantictokens_full(self, file) -> SemanticTokens:
         method = "textDocument/semanticTokens/full"
-        return self.endpoint.call_method(
+        ret = self.endpoint.call_method(
             method, textDocument=TextDocumentIdentifier(uri=to_file(file)))
+        return SemanticTokens.parse_obj(ret)
 
     def code_action(self, file):
         return self.endpoint.call_method("textDocument/codeAction",
                                          textDocument=TextDocumentIdentifier(
                                              uri=to_file(file),
-                                             range=Range( # type: ignore
+                                             range=Range(  # type: ignore
                                                  start=Position(line=0,
                                                                 character=0),
                                                  end=Position(line=0,
                                                               character=0))))
 
-    def workspace_symbol(self):
-        return self.endpoint.call_method("workspace/symbol", query="run")
+    def workspace_symbol(self, query: str):
+        return self.endpoint.call_method("workspace/symbol", query=query)
 
     def callIncoming(self, param: PrepareReturn) -> list[PrepareReturn]:
         sss = dict(param)
@@ -538,7 +570,7 @@ class lspcppclient:
     def get_document_symbol(self, file: str) -> list[SymbolInformation]:
         x = TextDocumentIdentifier(uri=to_file(file))
         symbol = self.lsp_client.documentSymbol(x)
-        return symbol # type: ignore
+        return symbol  # type: ignore
 
     def get_symbol_reference(self,
                              symbol: SymbolInformation) -> list[Location]:
@@ -590,7 +622,7 @@ class lspcppclient:
         uri = to_file(relative_file_path)
         text = open(relative_file_path, "r").read()
         version = 2
-        self.lsp_client.didOpen(
+        ret = self.lsp_client.didOpen(
             TextDocumentItem(uri=uri,
                              languageId=LanguageIdentifier.CPP,
                              version=version,
@@ -664,19 +696,23 @@ class CallNode:
     detail: str = ""
     line: str = ""
     callee: Optional['CallNode'] = None
+
     def __init__(self, sym: PrepareReturn) -> None:
         self.sym = sym
         self.callee = None
         self.param = ""
-    def get_cls_name(self)->str:
+
+    def get_cls_name(self) -> str:
         cls = self.get_cls()
         if cls != None:
             return cls.name
         return ""
-    def get_cls(self)->Optional[Symbol]:
+
+    def get_cls(self) -> Optional[Symbol]:
         if self.symboldefine == None:
             return None
-        return self.symboldefine.cls 
+        return self.symboldefine.cls
+
     def printstack(self, level=0, fp=None):
         cls = self.get_cls()
         classname = cls.name + \
@@ -716,7 +752,7 @@ class CallNode:
                 clasname = node.symboldefine.name[:xx]
                 fn = node.symboldefine.name[xx + 2:]
                 node.symboldefine.name = fn
-                if node.symboldefine.cls == None and node.symboldefine!=None:
+                if node.symboldefine.cls == None and node.symboldefine != None:
                     node.symboldefine.cls = Symbol(
                         node.symboldefine.sym)  # type: ignore
                     node.symboldefine.cls.name = clasname  # type: ignore
@@ -745,24 +781,24 @@ class CallNode:
         for s in stack:
             right_prefix = ""
             if is_function(s) == False:
-                right_prefix = s.symboldefine.cls.name.replace("::", # type: ignore
+                right_prefix = s.symboldefine.cls.name.replace("::",  # type: ignore
                                                                ".") + "::"
-            right = right_prefix + s.symboldefine.name # type: ignore
+            right = right_prefix + s.symboldefine.name  # type: ignore
             if len(ret) == 0:
                 title = "==%s==" % (right)
             if is_function(s) == False:
-                left = s.symboldefine.cls.name # type: ignore
+                left = s.symboldefine.cls.name  # type: ignore
                 if caller != None:
                     if is_function(caller):
-                        left = caller.symboldefine.name # type: ignore
+                        left = caller.symboldefine.name  # type: ignore
                     else:
-                        if caller.symboldefine.cls.name != s.symboldefine.cls.name: # type: ignore
-                            left = caller.symboldefine.cls.name # type: ignore
+                        if caller.symboldefine.cls.name != s.symboldefine.cls.name:  # type: ignore
+                            left = caller.symboldefine.cls.name  # type: ignore
                 ret.append("%s -> %s" % (left.replace("::", "."), right))
             else:
                 if caller != None:
-                    left = caller.symboldefine.cls.name if is_function( # type: ignore
-                        caller) == False else caller.symboldefine.name # type: ignore
+                    left = caller.symboldefine.cls.name if is_function(  # type: ignore
+                        caller) == False else caller.symboldefine.name  # type: ignore
                     ret.append("%s -> %s" % (left.replace("::", "."), right))
                 else:
                     pass
@@ -845,7 +881,6 @@ class CallerWalker:
                 callser.extend(self.__get_caller_next(c, once, level=0))
             return callser
         return []
-
 
 
 class SourceCode:

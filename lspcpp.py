@@ -162,7 +162,6 @@ class SymbolLocation:
 
     def __init__(self, loc: Location, s: 'Symbol') -> None:
         self.file = from_file(loc.uri)
-        self.token = Token(loc)
         self.range = loc.range
         self.symbol = s
 

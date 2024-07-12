@@ -14,7 +14,7 @@ from pydantic import BaseModel
 import pylspclient
 import threading
 from pylspclient import LspClient, LspEndpoint
-from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, SymbolInformation, Location, SymbolKind
+from pylspclient.lsp_pydantic_strcuts import SignatureHelp, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, SymbolInformation, Location, SymbolKind
 
 import logging
 
@@ -385,7 +385,6 @@ class LspClient2(LspClient):
         ret = self.endpoint.call_method(
             method, textDocument=TextDocumentIdentifier(uri=to_file(file)))
         return SemanticTokens.parse_obj(ret)
-
     def code_action(self, file):
         return self.endpoint.call_method(
             "textDocument/codeAction",
@@ -786,7 +785,7 @@ class CallNode:
         for s in stack:
             right_prefix = ""
             if is_function(s) == False:
-                right_prefix = s.symboldefine.cls.name.replace(
+                right_prefix = s.symboldefine.cls.name.replace( # type: ignore
                     "::",  # type: ignore
                     ".") + "::"
             right = right_prefix + s.symboldefine.name  # type: ignore
@@ -894,7 +893,8 @@ class SourceCode:
     tokenFull: Optional[SemanticTokens] = None
     tokenDelta: SemanticTokens | SemanticTokensDelta | None = None
     file: str
-
+    symbols:list [SymbolInformation] 
+    class_symbol  :list[Symbol]
     def __init__(self, file, client: lspcppclient) -> None:
         self.file = file
         self.lines = open(file, 'r').readlines()
@@ -940,7 +940,11 @@ class WorkSpaceSymbol:
         self.root = root
         self.client = client
         pass
-
+    
+    def create_source(self,file)->'SourceCode':
+        if file in self.source_list.keys():
+            return self.source_list[file]
+        return self.client.open_file(file)
     def add(self, s: SourceCode):
         self.source_list[s.file] = s
 
@@ -1038,22 +1042,16 @@ class SymbolFile:
     save_uml_file: Output | None
     save_stack_file: Output | None
     symbols_list: list[Symbol] = []
-
+    wk: WorkSpaceSymbol
+    sourcecode:SourceCode
+    file:str
     def __init__(self, file, wk: WorkSpaceSymbol) -> None:
         self.save_stack_file = None
         self.save_uml_file = None
         self.wk = wk
-        self.client = wk.client
-        self.file = file
-        self.root = wk.root
-        self.symbols_list = []
-        try:
-            self.file = file
-            source = self.client.open_file(file)
-            self.wk.add(source)
-        except Exception as e:
-            logger.exception(str(e))
-            pass
+        # self.root = wk.root
+        self.sourcecode = wk.create_source(file)
+        self.file = self.sourcecode.file
 
     def reset(self):
         if self.save_stack_file != None:
@@ -1068,7 +1066,7 @@ class SymbolFile:
             return self.symbols_list
         symbols_list = []
         cimpl = {}
-        for a in self.client.get_class_symbol(file=self.file):
+        for a in self.sourcecode.class_symbol:
             if a.is_class_define():
                 if len(a.members):
                     symbols_list.append(a)
@@ -1116,7 +1114,7 @@ class SymbolFile:
                                 sym: SymbolInformation,
                                 toFile: Output | None = None):
         s = Symbol(sym)
-        refs = self.client.get_symbol_reference(sym)
+        refs = self.sourcecode.client.get_symbol_reference(sym)
         ret = []
         for r in refs:
             ret.append(SymbolLocation(r, s))
@@ -1134,7 +1132,7 @@ class SymbolFile:
             toFile.write("Symbol number:%d" % (len(symbo)))
         ret = []
         for s in symbo:
-            refs = self.client.get_symbol_reference(s.sym)
+            refs = self.sourcecode.client.get_symbol_reference(s.sym)
             for r in refs:
                 ret.append(SymbolLocation(r, s))
                 v = "Reference " + s.name + " %s:%d" % (from_file(
@@ -1163,7 +1161,7 @@ class SymbolFile:
                once=True,
                toFile: Output | None = None,
                toUml: Output | None = None):
-        walk = CallerWalker(self.client, self.wk)
+        walk = CallerWalker(self.sourcecode.client, self.wk)
         ret = walk.get_caller(Symbol(method), once=once)
         for a in ret:
             a.resolve_all(self.wk)
@@ -1190,7 +1188,7 @@ class SymbolFile:
              toFile: Output | None = None,
              toUml: Output | None = None):
         symbo = self.find(method)
-        walk = CallerWalker(self.client, self.wk)
+        walk = CallerWalker(self.sourcecode.client, self.wk)
         ret = walk.get_caller(Symbol(symbo[0].sym), once=once)
         for a in ret:
             a.resolve_all(self.wk)
@@ -1232,7 +1230,7 @@ class LspMain:
 
     def changefile(self, file) -> SymbolFile:
         for f in self.opened_files:
-            if f.file == file:
+            if f.sourcecode.file == file:
                 self.currentfile = f
                 return self.currentfile
         self.currentfile = SymbolFile(file=file, wk=self.wk)
@@ -1280,7 +1278,7 @@ if __name__ == "__main__":
             history = FileHistory('history.txt')
             session = PromptSession(history=history)
             _run: SymbolFile = runMain.currentfile
-            cmd = session.prompt("%s >\n" % (_run.file), completer=colors)
+            cmd = session.prompt("%s >\n" % (_run.sourcecode.file), completer=colors)
             # session.history.save()
             _run.reset()
             try:

@@ -358,7 +358,7 @@ class LspClient2(LspClient):
         return self.endpoint.call_method("textDocument/codeAction",
                                          textDocument=TextDocumentIdentifier(
                                              uri=to_file(file),
-                                             range=Range(
+                                             range=Range( # type: ignore
                                                  start=Position(line=0,
                                                                 character=0),
                                                  end=Position(line=0,
@@ -443,31 +443,31 @@ class project_config:
             self.compile_database = os.path.join(self.workspace_root,
                                                  "compile_commands.json")
 
-    def open_all(self, client: 'lspcppclient'):
-        if self.compile_database is None:
-            raise Exception("compile_database is None")
-        fp = open(self.compile_database, "r")
-        if fp != None:
-            dd = json.load(fp)
-            for a in dd:
-                client.open_file(a["file"])
+    # def open_all(self, client: 'lspcppclient'):
+    #     if self.compile_database is None:
+    #         raise Exception("compile_database is None")
+    #     fp = open(self.compile_database, "r")
+    #     if fp != None:
+    #         dd = json.load(fp)
+    #         for a in dd:
+    #             client.open_file(a["file"])
 
     def create_workspace(self,
                          client: 'lspcppclient',
-                         add: bool = True) -> 'WorkSpaceSymbol':
+                         ) -> 'WorkSpaceSymbol':
         wk = WorkSpaceSymbol(self.workspace_root, client=client)
-        if add == False:
-            return wk
-        if self.compile_database is None:
-            logger.warning("compile_database is None")
-            return wk
-        fp = open(self.compile_database, "r")
-        if fp != None:
-            dd = json.load(fp)
-            for a in dd:
-                # print(a)
-                code = client.open_file(a["file"])
-                wk.add(code)
+        # if add == False:
+        #     return wk
+        # if self.compile_database is None:
+        #     logger.warning("compile_database is None")
+        #     return wk
+        # fp = open(self.compile_database, "r")
+        # if fp != None:
+        #     dd = json.load(fp)
+        #     for a in dd:
+        #         # print(a)
+        #         code = client.open_file(a["file"])
+        #         wk.add(code)
         return wk
 
 
@@ -542,7 +542,7 @@ class lspcppclient:
     def get_document_symbol(self, file: str) -> list[SymbolInformation]:
         x = TextDocumentIdentifier(uri=to_file(file))
         symbol = self.lsp_client.documentSymbol(x)
-        return symbol
+        return symbol # type: ignore
 
     def get_symbol_reference(self,
                              symbol: SymbolInformation) -> list[Location]:
@@ -589,7 +589,7 @@ class lspcppclient:
         relative_file_path = file
         import os
         if os.path.isabs(file) == False:
-            relative_file_path = path.join(DEFAULT_ROOT, file)
+            raise Exception("path should be absolute path")
         uri = to_file(relative_file_path)
         text = open(relative_file_path, "r").read()
         version = 2
@@ -624,7 +624,7 @@ class lspcppserver:
         return lspcppclient(confg, self.json_rpc_endpoint)
 
 
-DEFAULT_ROOT = path.abspath("./tests/test-workspace/cpp")
+# DEFAULT_ROOT = path.abspath("./tests/test-workspace/cpp")
 
 
 class ICON:
@@ -749,24 +749,24 @@ class CallNode:
         for s in stack:
             right_prefix = ""
             if is_function(s) == False:
-                right_prefix = s.symboldefine.cls.name.replace("::",
+                right_prefix = s.symboldefine.cls.name.replace("::", # type: ignore
                                                                ".") + "::"
-            right = right_prefix + s.symboldefine.name
+            right = right_prefix + s.symboldefine.name # type: ignore
             if len(ret) == 0:
                 title = "==%s==" % (right)
             if is_function(s) == False:
-                left = s.symboldefine.cls.name
+                left = s.symboldefine.cls.name # type: ignore
                 if caller != None:
                     if is_function(caller):
-                        left = caller.symboldefine.name
+                        left = caller.symboldefine.name # type: ignore
                     else:
-                        if caller.symboldefine.cls.name != s.symboldefine.cls.name:
-                            left = caller.symboldefine.cls.name
+                        if caller.symboldefine.cls.name != s.symboldefine.cls.name: # type: ignore
+                            left = caller.symboldefine.cls.name # type: ignore
                 ret.append("%s -> %s" % (left.replace("::", "."), right))
             else:
                 if caller != None:
-                    left = caller.symboldefine.cls.name if is_function(
-                        caller) == False else caller.symboldefine.name
+                    left = caller.symboldefine.cls.name if is_function( # type: ignore
+                        caller) == False else caller.symboldefine.name # type: ignore
                     ret.append("%s -> %s" % (left.replace("::", "."), right))
                 else:
                     pass
@@ -1178,7 +1178,7 @@ class LspMain:
         cfg = project_config(workspace_root=root)
         srv = lspcppserver(cfg.workspace_root)
         client = srv.newclient(cfg)
-        wk = cfg.create_workspace(client, add=False)
+        wk = cfg.create_workspace(client)
         s = client.lsp_client.process()
         print(s)
         self.wk = wk

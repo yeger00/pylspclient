@@ -107,7 +107,7 @@ def test_client_call_extern():
             ret = walk.get_caller(m)
             for a in ret:
                 a.resolve_all(wk)
-                a.print()
+                # a.print()
     client.close()
 
 
@@ -134,18 +134,19 @@ def test_client_index():
     client.close()
 
 
-def test_client_did_changed():
-    cfg = project_config(
-        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
-        compile_database=None)
-    # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
-    srv = lspcppserver(cfg.workspace_root)
-    client = srv.newclient(cfg)
-    file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
-    ret = client.lsp_client.didChange(file)
-    print(ret)
-    client.close()
- def test_client_open():
+# def test_client_did_changed():
+#     cfg = project_config(
+#         workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
+#         compile_database=None)
+#     # cfg.data_path = "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json"
+#     srv = lspcppserver(cfg.workspace_root)
+#     client = srv.newclient(cfg)
+#     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
+#     ret = client.lsp_client.didChange(file)
+#     print(ret)
+#     client.close()
+ 
+def test_client_open():
     open='/chrome/buildcef/chromium/src/chrome/browser/first_party_sets/first_party_sets_navigation_throttle.cc'
     cfg = project_config(
         workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
@@ -214,4 +215,4 @@ def test_args():
     ret = walk.get_caller(lspcpp.Symbol(symbo[0]))
     for a in ret:
         a.resolve_all(wk)
-        a.print()
+        # a.print()

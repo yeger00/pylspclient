@@ -1,5 +1,5 @@
 import lspcpp
-from lspcpp import WorkSpaceSymbol, lspcppclient, lspcppserver, project_config
+from lspcpp import SymbolKindName, Token, WorkSpaceSymbol, lspcppclient, lspcppserver, project_config, to_file
 from os import path
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
 
@@ -23,6 +23,37 @@ def test_client_compile_database():
     assert (client != None)
     wk = cfg.create_workspace(client)
     assert (len(wk.source_list) == 2)
+    client.close()
+
+def test_client_signature_help():
+    srv = lspcpp.lspcppserver(cfg.workspace_root)
+    client = srv.newclient(cfg)
+    file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
+    source = client.open_file(file)
+    ss = source.symbols
+    assert (len(ss) > 0)
+    for i in ss:
+        print(i)
+    s3 = client.get_document_symbol(file)
+    file = to_file(file)
+    for s in s3:
+        if s.kind == SymbolKind.Function or s.kind==SymbolKind.Method:
+            tt = Token(s.location).data
+            name = s.name
+            begin =s.location.range.start.character
+            sss = []
+            while begin<s.location.range.end.character:
+                ret = client.lsp_client.signatureHelp(textDocument=TextDocumentIdentifier(uri=file), position=Position(character=begin, line=s.location.range.start.line))
+                if len(ret.signatures):
+                    print(tt,name,s.location.range.start.character,begin, "-------%s------"%(tt[begin:]), ret.signatures)
+                    sss = ret.signatures
+                    begin=10000
+                    break
+                begin = begin+1
+            
+            if len(sss)==0:
+                print("!!!!",name,tt,":",s.location.uri, s.location.range.start.line+1,SymbolKindName(s.kind))
+            
     client.close()
 
 

@@ -1,14 +1,37 @@
 import lspcpp
-from lspcpp import SymbolKindName, Token, WorkSpaceSymbol, lspcppclient, lspcppserver, project_config, to_file
+from lspcpp import SymbolKindName, Token, WorkSpaceSymbol, from_file, lspcppclient, lspcppserver, project_config, to_file
 from os import path
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
 
 DEFAULT_ROOT = "/home/z/dev/lsp/pylspclient/tests/cpp/test-workspace"
 
 cfg = project_config(
-        workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
-        compile_database=
-        "/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json")
+    workspace_root="/home/z/dev/lsp/pylspclient/tests/cpp/",
+    compile_database="/home/z/dev/lsp/pylspclient/tests/cpp/compile_commands.json")
+
+
+class Body:
+    subline: list[str] = []
+    location: Location
+    def __init__(self, location: Location) -> None:
+        self.data = ""
+        self.location = location
+        range = location.range
+        begin = range.start
+        end = range.end
+        with open(from_file(location.uri), "r") as fp:
+            lines = fp.readlines()
+            subline = lines[begin.line:end.line+1]
+            if begin.line == end.line:
+                subline[0] = subline[0][begin.character:end.character+1]
+            else:
+                subline[0] = subline[0][begin.character:]
+                subline[-1] = subline[-1][:end.character+1]
+            self.subline =subline
+
+    def __str__(self) -> str:
+        return "\n".join(self.subline)
+
 
 def test_client_init():
     lspcppserver = lspcpp.lspcppserver(cfg.workspace_root)
@@ -25,6 +48,7 @@ def test_client_compile_database():
     assert (len(wk.source_list) == 2)
     client.close()
 
+
 def test_client_signature_help():
     srv = lspcpp.lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
@@ -37,24 +61,70 @@ def test_client_signature_help():
     s3 = client.get_document_symbol(file)
     file = to_file(file)
     for s in s3:
-        if s.kind == SymbolKind.Function or s.kind==SymbolKind.Method:
+        if s.kind == SymbolKind.Function or s.kind == SymbolKind.Method:
             tt = Token(s.location).data
             name = s.name
-            begin =s.location.range.start.character
+            begin = s.location.range.start.character
             sss = []
-            while begin<s.location.range.end.character:
-                ret = client.lsp_client.signatureHelp(textDocument=TextDocumentIdentifier(uri=file), position=Position(character=begin, line=s.location.range.start.line))
+            while begin < s.location.range.end.character:
+                ret = client.lsp_client.signatureHelp(textDocument=TextDocumentIdentifier(
+                    uri=file), position=Position(character=begin, line=s.location.range.start.line))
                 if len(ret.signatures):
-                    print("+++%s+++ {%s} begin=%d find=%s ****%s*****"%(tt,name,s.location.range.start.character,begin, tt[begin:]))
+                    print("+++%s+++ {%s} begin=%d find=%s ****%s*****" %
+                          (tt, name, s.location.range.start.character, begin, tt[begin:]))
                     print(ret.signatures)
                     sss = ret.signatures
-                    begin=10000
+                    begin = 10000
                     break
                 begin = begin+1
-            
-            if len(sss)==0:
-                print("!!!!","%s +++%s+++"%(name,tt),":",s.location.uri, s.location.range.start.line+1,SymbolKindName(s.kind))
-            
+
+            if len(sss) == 0:
+                print("!!!!", "%s +++%s+++" % (name, tt), ":", s.location.uri,
+                      s.location.range.start.line+1, SymbolKindName(s.kind))
+
+    client.close()
+
+
+class parameter:
+    lspsym: SymbolInformation
+
+    def __init__(self, sym: SymbolInformation):
+        self.lspsym = sym
+
+    def parse(self):
+        return ""
+
+
+class parameter_cpp(parameter):
+    def __init__(self, sym: SymbolInformation):
+        super().__init__(sym)
+        self.parse()
+
+    def parse(self):
+        body = Token(self.lspsym.location).data
+        self.param = body[body.index("(")+1:body.index(")")]
+        return ""
+
+    def __str__(self) -> str:
+        return self.param
+
+
+def test_client_symbol_param():
+    srv = lspcpp.lspcppserver(cfg.workspace_root)
+    client = srv.newclient(cfg)
+    file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
+    source = client.open_file(file)
+    s3 = client.get_document_symbol(file)
+    for s in s3:
+        body = Body(s.location)
+        name = s.name
+        kind = SymbolKindName(s.kind)
+        if s.kind == SymbolKind.Method or SymbolKind.Function == s.kind:
+            print("name=%s\n kind=%s\n block=++%s--" % (name, kind, str(body)))
+            print(name, "(", parameter_cpp(s), ")")
+        else:
+            # print("xxx name=%s\n kind=%s\n token=%s" % (name, kind, str(body)))
+            pass
     client.close()
 
 
@@ -63,15 +133,12 @@ def test_client_symbol():
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     source = client.open_file(file)
-    ss = source.symbols
-    assert (len(ss) > 0)
-    for i in ss:
-        print(i)
-
     s3 = client.get_document_symbol(file)
-
     for s in s3:
-        print(s.name, s.kind)
+        name = s.name
+        kind = SymbolKindName(s.kind)
+        token = Token(s.location)
+        print("name=%s\n kind=%s\n token=%s" % (name, kind, token.data))
     client.close()
 
 
@@ -106,6 +173,7 @@ def test_client_reference_extern():
 
     client.close()
 
+
 def test_client_call_extern():
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
@@ -130,6 +198,7 @@ def test_client_code_action():
     ret = client.lsp_client.code_action(file)
     client.close()
 
+
 def test_client_index():
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
@@ -149,7 +218,7 @@ def test_client_index():
 #     ret = client.lsp_client.didChange(file)
 #     print(ret)
 #     client.close()
- 
+
 def test_client_open():
     # open='/chrome/buildcef/chromium/src/chrome/browser/first_party_sets/first_party_sets_navigation_throttle.cc'
     cfg = project_config(
@@ -162,17 +231,18 @@ def test_client_open():
     ss = client.open_file(file).symbols
     ret = client.lsp_client.workspace_symbol("a")
     client.close()
+
+
 def test_client_synax_full():
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)
     file = "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
     ss = client.open_file(file).symbols
     token = client.lsp_client.document_semantictokens_full(file)
-    ret = client.lsp_client.document_semantictokens_delta(file,token)
+    ret = client.lsp_client.document_semantictokens_delta(file, token)
     client.close()
 
 
-   
 def test_client_workspacesymbol():
     srv = lspcppserver(cfg.workspace_root)
     client = srv.newclient(cfg)

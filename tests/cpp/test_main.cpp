@@ -29,8 +29,8 @@ int b::run_2_declare(int a, int b) { return run_1(a, b); }
 int main()
 {
   send_notification();
-  b().run_2();
-  b().run_1();
+  b().run_2_declare(1,1);
+  b().run_1(1,1);
   b().run_1_1();
   class_c bb;
   bb.run_class_c();

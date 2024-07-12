@@ -804,7 +804,7 @@ class CallerWalker:
         return ret
 
     def get_caller(self, sym: Symbol, once=False):
-        if sym.is_function():
+        if sym.is_function() or sym.is_method():
             ctx = self.client.lsp_client.callHierarchyPrepare(sym.sym)
             callser: list[CallNode] = []
             for a in ctx:
@@ -958,6 +958,7 @@ class OutputFile(Output):
 class SymbolFile:
     save_uml_file: Output | None
     save_stack_file: Output | None
+    symbols_list: list[Symbol] = []
 
     def __init__(self, file, wk: WorkSpaceSymbol) -> None:
         self.save_stack_file = None
@@ -986,8 +987,7 @@ class SymbolFile:
         if (len(self.symbols_list)):
             return self.symbols_list
         symbols_list = []
-        cimpl = {
-        }
+        cimpl = {}
         for a in self.client.get_class_symbol(file=self.file):
             if a.is_class_define():
                 if len(a.members):
@@ -1033,9 +1033,11 @@ class SymbolFile:
                   ("Method" if s.is_method() else "Member" if s.is_member()
                    else "Class" if s.is_class_define() else "Function" if s.
                    is_function() else "Construct" if s.is_construct(
-                  ) else "Unknown", s.symbol_sidebar_displayname()))
+                   ) else "Unknown", s.symbol_sidebar_displayname()))
 
-    def refer_symbolinformation(self, sym: SymbolInformation, toFile: Output | None = None):
+    def refer_symbolinformation(self,
+                                sym: SymbolInformation,
+                                toFile: Output | None = None):
         s = Symbol(sym)
         refs = self.client.get_symbol_reference(sym)
         ret = []
@@ -1078,6 +1080,31 @@ class SymbolFile:
                 print(i)
         return symbo
 
+    def callin(self,
+               method: SymbolInformation,
+               uml=False,
+               once=True,
+               toFile: Output | None = None,
+               toUml: Output | None = None):
+        walk = CallerWalker(self.client, self.wk)
+        ret = walk.get_caller(Symbol(method), once=once)
+        for a in ret:
+            a.resolve_all(self.wk)
+            stack = a.callstack()
+            a.printstack(fp=toFile)
+            for ss in stack:
+                ss.resolve(self.wk)
+            try:
+                if uml:
+                    s = a.uml(stack, wk=self.wk)
+                    print(s)
+                    if toUml != None:
+                        toUml.write(s)
+                        toUml.write("\n")
+                        toUml.flush()
+            except:
+                pass
+
     def call(self,
              method,
              uml=False,
@@ -1107,6 +1134,7 @@ class SymbolFile:
 
 class LspMain:
     opened_files: list[SymbolFile] = []
+    currentfile: SymbolFile
 
     def __init__(self, root, file) -> None:
         if file != None and os.path.isabs(file) == False:

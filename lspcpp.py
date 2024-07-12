@@ -187,6 +187,16 @@ class Symbol:
         self.name = sym.name
         self.members = []
         self.cls = None
+        
+    def contain(self, node: 'Symbol'):
+        if self.end.line < node.end.line:
+            return False 
+        if self.end.line == node.end.line:
+            return self.end.character >= node.end.character
+        return True
+        
+        
+
         # self.othercls = []
 
     def find(self, node: 'CallNode') -> Optional['Symbol']:
@@ -247,7 +257,7 @@ class Symbol:
         while len(syms):
             s = syms[0]
             s1 = Symbol(s)
-            if s1.end.line > self.end.line:
+            if self.contain(s1)==False:
                 return syms
             elif s.kind == SymbolKind.Method or s.kind == SymbolKind.Constructor:
                 s1.cls = self

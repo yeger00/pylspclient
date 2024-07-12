@@ -45,14 +45,15 @@ def test_client_signature_help():
             while begin<s.location.range.end.character:
                 ret = client.lsp_client.signatureHelp(textDocument=TextDocumentIdentifier(uri=file), position=Position(character=begin, line=s.location.range.start.line))
                 if len(ret.signatures):
-                    print(tt,name,s.location.range.start.character,begin, "-------%s------"%(tt[begin:]), ret.signatures)
+                    print("+++%s+++ {%s} begin=%d find=%s ****%s*****"%(tt,name,s.location.range.start.character,begin, tt[begin:]))
+                    print(ret.signatures)
                     sss = ret.signatures
                     begin=10000
                     break
                 begin = begin+1
             
             if len(sss)==0:
-                print("!!!!",name,tt,":",s.location.uri, s.location.range.start.line+1,SymbolKindName(s.kind))
+                print("!!!!","%s +++%s+++"%(name,tt),":",s.location.uri, s.location.range.start.line+1,SymbolKindName(s.kind))
             
     client.close()
 

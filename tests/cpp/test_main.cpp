@@ -13,15 +13,19 @@ public:
   int run() { return 1; }
 };
 void send_notification() { return; }
+void send_notification_define() { return; }
+void send_notification_declare();
 class b : public a
 {
 public:
   b() : a() {}
-  int run_2(int a, int b);
+  int run_2_declare(int a, int b);
   int run_1_1() { return a::run(); }
+  int run_1_break() 
+  { return a::run(); }
   int run_1(int a1, int b1) { return a::run(); }
 };
-int b::run_2(int a, int b) { return run_1(a, b); }
+int b::run_2_declare(int a, int b) { return run_1(a, b); }
 int main()
 {
   send_notification();

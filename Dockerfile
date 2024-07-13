@@ -28,11 +28,23 @@ RUN apt-get install sudo -y
 RUN apt-get install git -y
 
 RUN apt install python3.11-venv -y
-RUN apt install openssh-server -y
 RUN apt install net-tools -y
 RUN apt install inetutils-ping -y
 RUN echo "ubuntu:1" | chpasswd
 
+
+
+# 更新包列表并安装 openssh-server 和其他依赖
+RUN apt install openssh-server -y
+# 将 SSH 服务所需的密钥文件添加到容器中
+# RUN sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config
+
+# 暴露 SSH 端口
+EXPOSE 22
+
+# 启动 SSH 服务
+COPY init.sh /init2.sh
 # 添加用户并设置密码
 RUN useradd -ms /bin/bash z && echo "z:1" | chpasswd
-ENTRYPOINT ["/usr/bin/zsh"]
+# ENTRYPOINT ["/usr/bin/zsh"]
+ENTRYPOINT ["/usr/bin/bash","/init2.sh"]

@@ -1,4 +1,17 @@
 from pylspclient.lsp_pydantic_strcuts import Location, Position, SymbolInformation
+
+
+import subprocess
+
+def where_is_bin(clangd):
+    try:
+        result = subprocess.run(['/usr/bin/whereis', clangd], capture_output=True, text=True, check=True)
+        ret = result.stdout.split('\n')[0]
+        return ret[ret.find("/"):]
+    except subprocess.CalledProcessError:
+        return None
+
+
 def from_file(path: str) -> str:
     return path.replace("file://", "").replace("file:", "")
 

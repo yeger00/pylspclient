@@ -24,4 +24,8 @@ RUN apt-get update
 RUN apt-get upgrade  -y
 RUN apt-get install python3 clangd pip -y
 RUN apt-get install zsh fish -y
-ENTRYPOINT ["/usr/bin/bash"]
+RUN apt-get install sudo -y
+RUN apt-get install git -y
+# 添加用户并设置密码
+RUN useradd -ms /bin/bash z && echo "z:1" | chpasswd
+ENTRYPOINT ["/usr/bin/zsh"]

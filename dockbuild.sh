@@ -18,7 +18,13 @@ if [[ $1 == "create" ]]; then
   sudo docker build -t $dock_name .
   exit
 fi
-
-sudo docker run --user "$uid:$gid" \
+uid=$(id -u)
+gid=$(id -g)
+home=$(pwd)/home
+if [[ ! -d "$home" ]]; then
+  mkdir -p $home
+fi
+docker run --user "$uid:$gid" \
   -v /home/z/dev:/home/z/dev \
+  -v $home:/home/ubuntu \
   --workdir "$(realpath ..)" -it $dock_name

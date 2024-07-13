@@ -47,4 +47,6 @@ COPY init.sh /init2.sh
 # 添加用户并设置密码
 RUN useradd -ms /bin/bash z && echo "z:1" | chpasswd
 # ENTRYPOINT ["/usr/bin/zsh"]
+
+RUN apt install cmake -y
 ENTRYPOINT ["/usr/bin/bash","/init2.sh"]

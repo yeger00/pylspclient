@@ -26,6 +26,13 @@ RUN apt-get install python3 clangd pip -y
 RUN apt-get install zsh fish -y
 RUN apt-get install sudo -y
 RUN apt-get install git -y
+
+RUN apt install python3.11-venv -y
+RUN apt install openssh-server -y
+RUN apt install net-tools -y
+RUN apt install inetutils-ping -y
+RUN echo "ubuntu:1" | chpasswd
+
 # 添加用户并设置密码
 RUN useradd -ms /bin/bash z && echo "z:1" | chpasswd
 ENTRYPOINT ["/usr/bin/zsh"]

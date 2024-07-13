@@ -24,7 +24,8 @@ home=$(pwd)/home
 if [[ ! -d "$home" ]]; then
   mkdir -p $home
 fi
+# docker run  \
 docker run --user "$uid:$gid" \
-  -v /home/z/dev:/home/z/dev \
+  -v /home/z/dev:/home/ubuntu/dev \
   -v $home:/home/ubuntu \
   --workdir "$(realpath ..)" -it $dock_name

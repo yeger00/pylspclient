@@ -2,10 +2,10 @@ from __future__ import print_function
 import threading
 from pylspclient.lsp_errors import ErrorCodes, ResponseError
 from pylspclient import JsonRpcEndpoint
-from typing import Any, Dict, Callable, Union, Optional, Tuple, TypeAlias, TypedDict
+from typing import Any, Dict, Callable, Union, Optional, Tuple, TypedDict
 import json
 
-ResultType: TypeAlias = Optional[Dict[str, Any]]
+ResultType = Optional[Dict[str, Any]]
 
 class ErrorType(TypedDict):
     code: ErrorCodes

@@ -2,7 +2,7 @@
 
 
 """
-
+from typing import Union
 import logging
 import os
 import argparse
@@ -15,7 +15,7 @@ import pylspclient
 import threading
 from pylspclient import LspClient, LspEndpoint
 from pylspclient.lsp_pydantic_strcuts import SignatureHelp, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, SymbolInformation, Location, SymbolKind
-from cpp_impl import from_file, to_file, LspFuncParameter, LspFuncParameter_cpp
+from cpp_impl import from_file, to_file, LspFuncParameter, LspFuncParameter_cpp, where_is_bin
 import logging
 
 logger = logging.getLogger('lsppython')
@@ -367,7 +367,7 @@ class LspClient2(LspClient):
 
     def document_semantictokens_delta(
             self, file, token: SemanticTokens
-    ) -> SemanticTokens | SemanticTokensDelta | None:
+    ) -> Union[ SemanticTokens ,SemanticTokensDelta ,None]:
         method = "textDocument/semanticTokens/full/delta"
         ret = self.endpoint.call_method(
             method,
@@ -422,7 +422,7 @@ class LspClient2(LspClient):
 
         return [x for x in map(convert, ret) if x is not None]
 
-    def callHierarchyPrepare(self, sym: SymbolInformation):
+    def callHierarchyPrepare(self, sym: SymbolInformation)->list[PrepareReturn]:
         s = SymbolParser(sym)
         col = s.symbol_col
         line = s.symbol_line
@@ -436,8 +436,8 @@ class LspClient2(LspClient):
         ret = list(map(lambda x: PrepareReturn.create(x, sym), ret))
         return ret
 
-    def call_hierarchy_incoming_calls(self):
-        self.endpoint.call_method("callHierarchy/incomingCalls")
+    # def call_hierarchy_incoming_calls(self):
+    #     self.endpoint.call_method("callHierarchy/incomingCalls")
 
     def references(self, file, col: int, line: int) -> list[Location]:
 
@@ -466,12 +466,12 @@ class LspClient2(LspClient):
 
 
 class project_config:
-    compile_database: None | str
+    compile_database:Union [None , str]
     workspace_root: str
 
     def __init__(self,
                  workspace_root: str,
-                 compile_database: None | str = None) -> None:
+                 compile_database:Union [None , str] = None) -> None:
         self.workspace_root = workspace_root
         self.compile_database = compile_database
         if compile_database is None:
@@ -636,14 +636,12 @@ class lspcppclient:
                              version=version,
                              text=text))
         return SourceCode(relative_file_path, self)
-
-
 class lspcppserver:
     process = None
 
     def __init__(self, root):
         cmd = [
-            "/home/z/.local/share/nvim/mason/bin/clangd",
+            where_is_bin("clangd"),
             "--compile-commands-dir=%s" % (root),
             # "--log=verbose",
             # "--background-index"
@@ -700,7 +698,7 @@ class ICON:
 
 
 class CallNode:
-    symboldefine: Symbol | None = None
+    symboldefine: Union[Symbol , None] = None
     detail: str = ""
     line: str = ""
     callee: Optional['CallNode'] = None
@@ -773,7 +771,7 @@ class CallNode:
         stack = list(map(fix, stack))
 
         ret = []
-        caller: CallNode | None = None
+        caller:Union [CallNode , None] = None
 
         def is_function(caller: CallNode):
             r = caller.sym.kind == SymbolKind.Function
@@ -883,7 +881,7 @@ class CallerWalker:
         return ret
 
     def get_caller(self, sym: Symbol, once=False):
-        if sym.is_function() or sym.is_method():
+        if sym.is_function() or sym.is_method() or sym.is_construct():
             ctx = self.client.lsp_client.callHierarchyPrepare(sym.sym)
             callser: list[CallNode] = []
             for a in ctx:
@@ -895,7 +893,7 @@ class CallerWalker:
 
 class SourceCode:
     tokenFull: Optional[SemanticTokens] = None
-    tokenDelta: SemanticTokens | SemanticTokensDelta | None = None
+    tokenDelta: Union[SemanticTokens, SemanticTokensDelta, None] = None
     file: str
     symbols: list[SymbolInformation]
     class_symbol: list[Symbol]
@@ -916,7 +914,7 @@ class SourceCode:
             pass
         pass
 
-    def find(self, node: CallNode) -> Symbol | None:
+    def find(self, node: CallNode) -> Union[Symbol , None]:
         ret = self.__find(node)
         if ret != None:
             if ret.name != node.sym.name:
@@ -924,7 +922,7 @@ class SourceCode:
                 pass
         return ret
 
-    def __find(self, node: CallNode) -> Symbol | None:
+    def __find(self, node: CallNode) -> Union[Symbol , None]:
         for a in self.class_symbol:
             r = a.find(node)
             if r != None:
@@ -997,7 +995,7 @@ class WorkSpaceSymbol:
             logger.exception(str(e))
         return ""
 
-    def find(self, node: CallNode) -> Symbol | None:
+    def find(self, node: CallNode) ->Union[ Symbol ,None]:
         key = from_file(node.sym.uri)
         try:
             code = self.source_list[key]
@@ -1045,8 +1043,8 @@ class OutputFile(Output):
 
 
 class SymbolFile:
-    save_uml_file: Output | None
-    save_stack_file: Output | None
+    save_uml_file: Union[Output ,None]
+    save_stack_file:Union [Output ,None]
     symbols_list: list[Symbol] = []
     wk: WorkSpaceSymbol
     sourcecode: SourceCode
@@ -1119,7 +1117,7 @@ class SymbolFile:
 
     def refer_symbolinformation(self,
                                 sym: SymbolInformation,
-                                toFile: Output | None = None):
+                                toFile:Union[ Output ,None ]= None):
         s = Symbol(sym)
         refs = self.sourcecode.client.get_symbol_reference(sym)
         ret = []
@@ -1132,7 +1130,7 @@ class SymbolFile:
                 toFile.write(v)
         return ret
 
-    def refer(self, method, toFile: Output | None = None):
+    def refer(self, method, toFile: Union[Output ,None ]= None):
         symbo = self.find(method, False)
         print("Symbol number:", len(symbo))
         if toFile != None:
@@ -1166,8 +1164,8 @@ class SymbolFile:
                method: SymbolInformation,
                uml=False,
                once=True,
-               toFile: Output | None = None,
-               toUml: Output | None = None):
+               toFile: Union[Output ,None ]= None,
+               toUml: Union [Output , None ]= None):
         walk = CallerWalker(self.sourcecode.client, self.wk)
         ret = walk.get_caller(Symbol(method), once=once)
         for a in ret:
@@ -1192,8 +1190,8 @@ class SymbolFile:
              method,
              uml=False,
              once=True,
-             toFile: Output | None = None,
-             toUml: Output | None = None):
+             toFile: Union [Output ,None ]= None,
+             toUml: Union [Output , None ]= None):
         symbo = self.find(method)
         walk = CallerWalker(self.sourcecode.client, self.wk)
         ret = walk.get_caller(Symbol(symbo[0].sym), once=once)

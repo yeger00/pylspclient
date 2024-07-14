@@ -24,6 +24,12 @@ public:
   int run_1_break() 
   { return a::run(); }
   int run_1(int a1, int b1) { return a::run(); }
+  int call_3(){
+    class_c c;
+    c.call_2();
+    return 0;
+  }
+
 };
 int b::run_2_declare(int a, int b) { return run_1(a, b); }
 int main()
@@ -34,4 +40,5 @@ int main()
   b().run_1_1();
   class_c bb;
   bb.run_class_c();
+  b().call_3();
 }

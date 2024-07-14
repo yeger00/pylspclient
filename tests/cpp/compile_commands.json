@@ -1,12 +1,14 @@
 [
 {
-  "directory": "/home/z/dev/lsp/pylspclient/tests/cpp",
-  "command": "/usr/bin/c++   -g -o CMakeFiles/xx.dir/test_main.cpp.o -c /home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp",
-  "file": "/home/z/dev/lsp/pylspclient/tests/cpp/test_main.cpp"
+  "directory": "/home/ubuntu/dev/pyclient/tests/cpp",
+  "command": "/usr/bin/c++    -o CMakeFiles/xx.dir/test_main.cpp.o -c /home/ubuntu/dev/pyclient/tests/cpp/test_main.cpp",
+  "file": "/home/ubuntu/dev/pyclient/tests/cpp/test_main.cpp",
+  "output": "CMakeFiles/xx.dir/test_main.cpp.o"
 },
 {
-  "directory": "/home/z/dev/lsp/pylspclient/tests/cpp",
-  "command": "/usr/bin/c++   -g -o CMakeFiles/xx.dir/d.cpp.o -c /home/z/dev/lsp/pylspclient/tests/cpp/d.cpp",
-  "file": "/home/z/dev/lsp/pylspclient/tests/cpp/d.cpp"
+  "directory": "/home/ubuntu/dev/pyclient/tests/cpp",
+  "command": "/usr/bin/c++    -o CMakeFiles/xx.dir/d.cpp.o -c /home/ubuntu/dev/pyclient/tests/cpp/d.cpp",
+  "file": "/home/ubuntu/dev/pyclient/tests/cpp/d.cpp",
+  "output": "CMakeFiles/xx.dir/d.cpp.o"
 }
 ]

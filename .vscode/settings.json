@@ -4,5 +4,6 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
-    "python.defaultInterpreterPath": "/home/z/dev/lsp/pylspclient/.venv/bin/python3"
+    "python.defaultInterpreterPath": "/home/z/dev/lsp/pylspclient/.venv/bin/python3",
+    "cmake.ignoreCMakeListsMissing": true
 }

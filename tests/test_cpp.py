@@ -116,6 +116,56 @@ def test_client_reference():
 
     client.close()
 
+def test_callin_2():
+    srv = lspcppserver(cfg.workspace_root)
+    client = srv.newclient(cfg)
+    file = os.path.join(workspace_root,"d.h")
+    client.open_file(file)    
+    symbols = client.get_document_symbol(file)
+    for s in symbols:
+        print(s.name)
+        if s.name.find("call_1")>-1:
+            prepare = client.lsp_client.callHierarchyPrepare(sym=s)
+            def print_prepare(prepare):
+                print(prepare[0].name,
+                  prepare[0].range.start.line,
+                  prepare[0].selectionRange.start.line)
+            
+            assert(len(prepare)==1)
+            print_prepare(prepare)
+            prepare = client.lsp_client.callIncoming(prepare[0])
+            assert(len(prepare)==1)
+            print_prepare(prepare)
+            
+            prepare = client.lsp_client.callIncoming(prepare[0])
+            assert(len(prepare)==1)
+            print_prepare(prepare)
+            prepare = client.lsp_client.callIncoming(prepare[0])
+            assert(len(prepare)==1)
+            print_prepare(prepare)
+            return
+    assert(False)
+
+
+def test_callin_3():
+    srv = lspcppserver(cfg.workspace_root)
+    client = srv.newclient(cfg)
+    file = os.path.join(workspace_root,"test_main.cpp")
+    client.open_file(file)
+    symbols = client.get_document_symbol(file)
+    for s in symbols:
+        print(s.name)
+        if s.name.find("call_3")>-1:
+            prepare = client.lsp_client.callHierarchyPrepare(sym=s)
+            assert(len(prepare)==1)
+            prepare = client.lsp_client.callIncoming(prepare[0])
+            print(prepare[0].name)
+            assert(len(prepare)==1)
+            print(prepare[0].name)
+            return
+
+    assert(False)
+
 
 def test_client_reference_extern():
     srv = lspcppserver(cfg.workspace_root)

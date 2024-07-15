@@ -155,9 +155,17 @@ class ResultItemSymbo(ResultItem):
 
 class SearchResults:
     data: list[ResultItem]
-    def on_select(self,index):
+
+    def isType(self, Class):
+        if len(self.data) == 0:
+            return False
+        index = 0
+        return isinstance(self.data[index], Class)
+
+    def on_select(self, index):
         self.index = index
         return self.data[index]
+
     def __init__(self, data: list[ResultItem] = []):
         self.data = data
         self.index = 0
@@ -761,10 +769,10 @@ class CodeBrowser(App):
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:
-            if args[0] in set(["cn","cp"]):
-                self.search_prev_next(args[0]=="cp")
+            if args[0] in set(["cn", "cp"]):
+                self.search_prev_next(args[0] == "cp")
                 pass
-                
+
             if args[0] == "search":
                 if len(args) > 1 and self.soucecode.search.pattern == args[1]:
                     if len(args) > 2 and args[2] == "-":
@@ -838,16 +846,16 @@ class CodeBrowser(App):
         self.code_to_search_position(self.search_result.data[0])
 
     def search_prev_next(self, prev):
-        if len(self.search_result.data)==0:return
-        item = self.search_result.data[0]
-        if isinstance(item, ResultItemSearch):
+        if self.search_result.isType(ResultItemSearch):
             data = self.search_result.search_next(
-        ) if prev == False else self.search_result.search_prev()
+            ) if prev == False else self.search_result.search_prev()
             self.code_to_search_position(data)
-        elif isinstance(item, ResultItemRefer):
-            s  = self.search_result.search_next() if prev == False else self.search_result.search_prev()           
-            self.code_to_refer(s) # type: ignore
-            pass 
+        elif self.search_result.isType(ResultItemRefer):
+            s = self.search_result.search_next(
+            ) if prev == False else self.search_result.search_prev()
+            self.code_to_refer(s)  # type: ignore
+            pass
+
     def focus_to_viewid(self, view):
         try:
             v = self.query_one("#" + view)

@@ -163,7 +163,7 @@ class Token:
 
 class SymbolLocation:
 
-    def __init__(self, loc: Location, symbol: Optional['Symbol'] = None,name ="") -> None:
+    def __init__(self, loc: Location, symbol: Optional['Symbol'] = None, name="") -> None:
         self.file = from_file(loc.uri)
         self.range = loc.range
         if len(name):
@@ -172,7 +172,7 @@ class SymbolLocation:
             self.name = symbol.name if symbol != None else ""
 
     def __str__(self) -> str:
-        return  self.name + " %s:%d" % (self.file, self.range.start.line)
+        return self.name + " %s:%d" % (self.file, self.range.start.line)
 
 
 class Symbol:
@@ -526,9 +526,19 @@ class lspcppclient:
         col = loc.range.start.character
         line = loc.range.start.line
         ret = self.lsp_client.references(file, col, line)
-        name = str(Body(loc))
-        kind = SymbolKind.Function
-        return list(map(lambda x: SymbolLocation(loc=x), ret))
+        decl = self.get_decl(loc=loc)
+        name = str(Body(decl)) if decl != None else "" 
+        return list(map(lambda x: SymbolLocation(loc=x,name=name), ret))
+
+    def get_decl(self, loc: Location) -> Location | None:
+        ret = self.lsp_client.declaration(
+            textDocument=TextDocumentIdentifier(uri=loc.uri), position=loc.range.start)
+        if isinstance(ret, Location):
+            return ret
+        if isinstance(ret, list) and len(ret) > 0:
+            if isinstance(ret[0], Location):
+                return ret[0]
+        return None
 
     def __init__(self, config: project_config,
                  json_rpc_endpoint: pylspclient.JsonRpcEndpoint) -> None:

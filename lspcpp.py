@@ -170,9 +170,20 @@ class SymbolLocation:
             self.name = name
         else:
             self.name = symbol.name if symbol != None else ""
+        self.code =""
+        if len(self.name):
+            xx = loc.copy()
+            xx.range.start.character =0
+            code = str(Body(xx))
+            code = code.replace("\n","")
+            pos = code.find(self.name)
+            if pos>0:
+                code = code[max(pos-20,0):min(pos+20,len(code))]
+                self.code = "  "+code.replace(self.name,'''[u]%s[/u]'''%(self.name))
+                
 
     def __str__(self) -> str:
-        return self.name + " %s:%d" % (self.file, self.range.start.line)
+        return  " %s:%d" % (self.file, self.range.start.line) + self.code
 
 
 class Symbol:
@@ -527,8 +538,8 @@ class lspcppclient:
         line = loc.range.start.line
         ret = self.lsp_client.references(file, col, line)
         decl = self.get_decl(loc=loc)
-        name = str(Body(decl)) if decl != None else "" 
-        return list(map(lambda x: SymbolLocation(loc=x,name=name), ret))
+        name = str(Body(decl)) if decl != None else ""
+        return list(map(lambda x: SymbolLocation(loc=x, name=name), ret))
 
     def get_impl(self, loc: Location) -> Location | None:
         ret = self.lsp_client.definition(
@@ -539,7 +550,6 @@ class lspcppclient:
             if isinstance(ret[0], Location):
                 return ret[0]
         return None
-
 
     def get_decl(self, loc: Location) -> Location | None:
         ret = self.lsp_client.declaration(

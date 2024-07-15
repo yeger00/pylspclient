@@ -653,7 +653,7 @@ class CodeBrowser(App):
     BINDINGS = [
         ("f", "toggle_files", "Toggle Files"),
         ("q", "quit", "Quit"),
-        ("i", "focus_input", "Focus to cmdline"),
+        ("i", "focus_to_code", "Focus to cmdline"),
         ("k", "key_up", "up"),
         ("j", "key_down", "down"),
         ("escape", "focus_input", "Focus to cmdline"),
@@ -662,7 +662,7 @@ class CodeBrowser(App):
         ("c", "callin", "CallIn"),
         ("o", "open_file", "Open"),
         ("d", "go_declare", "Go to declare"),
-        ("i", "go_impl", "Go to Define"),
+        ("D", "go_impl", "Go to Define"),
         ("r", "refer", "Reference"),
     ]
 
@@ -676,6 +676,12 @@ class CodeBrowser(App):
     def action_key_up(self) -> None:
         if self.CodeView.is_focused():
             self.CodeView.key_down(False)
+        pass
+
+    def action_focus_to_code(self) -> None:
+        if self.CodeView.textarea is None:
+            return
+        self.CodeView.textarea.focus()
         pass
 
     def action_focus_input(self) -> None:

@@ -163,16 +163,19 @@ class ResultItemSymbo(ResultItem):
 
 class SearchResults:
     data: list[ResultItem]
-    def get(self,i):
+
+    def get(self, i):
         try:
             return self.data[i]
         except:
             return None
-    
+
     def result_number(self):
         return len(self.data)
+
     def is_empyt(self):
-        return len(self.data)>0
+        return len(self.data) > 0
+
     def isType(self, Class):
         if len(self.data) == 0:
             return False
@@ -625,6 +628,7 @@ class CodeBrowser(App):
     symbol_listview: MyListView
     history_view: MyListView
     lsp: LspMain
+
     def on_refermessage(self, message: refermessage) -> None:
         self.search_result = SearchResults(
             list(map(lambda x: ResultItemRefer(x), message.s)))
@@ -769,7 +773,7 @@ class CodeBrowser(App):
             self.refresh_symbol_view()
         if msg.loc != None:
             line = msg.loc.range.start.line
-            self.code_editor_scroll_view().scroll_to(y=line, animate=False)
+            self.code_editor_scroll_view().scroll_to(y=max(line-10,0), animate=False)
             range = msg.loc.range
             y = range.start.line
             b = range.start.character
@@ -886,14 +890,14 @@ class CodeBrowser(App):
             self.udpate_search_result_view()
             self.focus_to_viewid("fzf")
             f: Label = self.query_one("#f1", Label)
-            f.update("Search Result to <%d>" % (self.search_result.result_number())+word)
+            f.update("Search Result to <%d>" %
+                     (self.search_result.result_number())+word)
             search = self.search_result.get(0)
-            if search!=None:
+            if search != None:
                 self.code_to_search_position(search)
         except Exception as e:
             self.logview.write_line(str(e))
             pass
-        
 
     def search_prev_next(self, prev):
         if self.search_result.isType(ResultItemSearch):
@@ -1179,7 +1183,9 @@ class CodeBrowser(App):
                         self.codeview_file), range=s.range)
                     ret = self.lsp.client.get_refer_from_cursor(
                         loc, s.text)
-                    key = str(Body(loc)).replace("\n", "") + \
+                    key1 = str(Body(loc)).replace("\n", "")
+                    key2 = self.CodeView.get_select_wholeword()
+                    key = key1 if len(key1) > len(key2) else key2 + \
                         " %s:%d" % (from_file(loc.uri), loc.range.start.line)
                     self.post_message(refermessage(ret, key))
                 ThreadPoolExecutor(1).submit(cursor_refer)

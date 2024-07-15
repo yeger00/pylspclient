@@ -579,18 +579,20 @@ class mymessage(Message):
 class changelspmessage(Message):
     loc: Optional[Location] = None
 
-    def __init__(self, loc: Optional[Location] = None, refresh=True) -> None:
+    def __init__(self,file, loc: Optional[Location] = None, refresh=True) -> None:
         super().__init__()
         self.loc = loc
+        self.file = file
         self.refresh_symbol_view = refresh
     pass
 
 
 class symbolsmessage(Message):
     data = []
-
-    def __init__(self, data) -> None:
+    file :str
+    def __init__(self, data,file:str) -> None:
         super().__init__()
+        self.file = file
         self.data = data
 
 
@@ -769,6 +771,8 @@ class CodeBrowser(App):
         pass
 
     def on_changelspmessage(self, msg: changelspmessage) -> None:
+        if self.codeview_file!=msg.file:
+            return
         if msg.refresh_symbol_view == True:
             self.refresh_symbol_view()
         if msg.loc != None:
@@ -785,7 +789,7 @@ class CodeBrowser(App):
 
         def lsp_change(lsp: LspMain, file: str):
             lsp.changefile(file)
-            self.post_message(changelspmessage(loc))
+            self.post_message(changelspmessage(file,loc))
 
         self.symbol_listview.clear()
         self.symbol_listview.loading = True
@@ -998,6 +1002,8 @@ class CodeBrowser(App):
 
     def on_symbolsmessage(self, message: symbolsmessage) -> None:
         try:
+            if message.file != self.codeview_file:
+                return
             self.symbol_listview.clear()
             self.symbol_listview.extend(message.data)
             self.logview.write_line(
@@ -1025,7 +1031,7 @@ class CodeBrowser(App):
             self.symbol_listview.loading = False
             if file2 != file:
                 return
-            self.post_message(symbolsmessage(list(aa)))
+            self.post_message(symbolsmessage(list(aa),file))
 
         ThreadPoolExecutor(1).submit(my_function)
 
@@ -1043,14 +1049,14 @@ class CodeBrowser(App):
 
     def on_choose_file_from_event(self, path: str, loc: Optional[Location] = None, backforward=False):
         if self.codeview_file == path:
-            self.post_message(changelspmessage(loc, False))
+            self.post_message(changelspmessage(path,loc, False))
             return
         code_view = self.code_editor_view()
 
         TEXT = open(str(path), "r").read()
         # code_view.document = Document(TEXT)
         code_view.load_text(TEXT)
-        self.post_message(changelspmessage(loc, False))
+        self.post_message(changelspmessage(path,loc, False))
         self.soucecode = SourceCode(self.codeview_file)
         self.code_editor_view().scroll_home(animate=False)
         self.sub_title = str(path)

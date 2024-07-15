@@ -6,6 +6,7 @@ Run with:
     python code_browser.py PATH
 """
 
+from typing import Optional
 from textual.message import Message
 from textual.widgets.text_area import Selection
 from concurrent.futures import ThreadPoolExecutor
@@ -25,7 +26,7 @@ from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
 from codesearch import SourceCode, SourceCodeSearch
-from cpp_impl import to_file
+from cpp_impl import from_file, to_file
 from lspcpp import LspMain, Symbol, OutputFile, SymbolLocation
 import lspcpp
 from textual.app import App, ComposeResult
@@ -483,6 +484,11 @@ class mymessage(Message):
 
 
 class changelspmessage(Message):
+    loc: Optional[Location] = None
+
+    def __init__(self, loc: Optional[Location] = None) -> None:
+        super().__init__()
+        self.loc = loc
     pass
 
 
@@ -641,15 +647,18 @@ class CodeBrowser(App):
             self.code_editor_scroll_view().scroll_to(y=line, animate=False)
         pass
 
-    def on_changelspmessage(self, _: changelspmessage) -> None:
+    def on_changelspmessage(self, msg: changelspmessage) -> None:
         self.refresh_symbol_view()
+        if msg.loc != None:
+            line = msg.loc.range.start.line
+            self.code_editor_scroll_view().scroll_to(y=line, animate=False)
         pass
 
-    def change_lsp_file(self, file):
+    def change_lsp_file(self, file: str, loc: Optional[Location] = None):
 
         def lsp_change(lsp: LspMain, file: str):
             lsp.changefile(file)
-            self.post_message(changelspmessage())
+            self.post_message(changelspmessage(loc))
 
         self.symbol_listview.clear()
         self.symbol_listview.loading = True
@@ -868,7 +877,7 @@ class CodeBrowser(App):
     def code_editor_scroll_view(self):
         return self.query_one("#code-view")
 
-    def on_choose_file_from_event(self, path):
+    def on_choose_file_from_event(self, path: str, loc: Optional[Location] = None):
         code_view = self.code_editor_view()
 
         TEXT = open(str(path), "r").read()
@@ -881,7 +890,7 @@ class CodeBrowser(App):
         self.logview.write_line("tree open %s" % (self.sub_title))
         self.history.add_to_history(self.codeview_file)
         self.refresh_history_view()
-        self.change_lsp_file(self.codeview_file)
+        self.change_lsp_file(self.codeview_file, loc)
 
     def on_choose_file_from_event_static(self, path):
         code_view = self.query_one("#code", Static)
@@ -923,9 +932,24 @@ class CodeBrowser(App):
             return False
 
     def action_go_declare(self) -> None:
+        if self.lsp.client is None:
+            return
+        if self.CodeView.is_focused():
+            range = self.CodeView.get_select_range()
+            if range is None:
+                return
+            loc = Location(uri=to_file(self.codeview_file), range=range.range)
+            file_location = self.lsp.client.get_decl(loc)
+            if file_location is None:
+                return
+            self.on_choose_file_from_event(
+                from_file(file_location.uri), file_location)
+            pass
         pass
-    def action_go_impl(self)->None:
+
+    def action_go_impl(self) -> None:
         pass
+
     def action_refer(self) -> None:
         try:
 
@@ -935,11 +959,12 @@ class CodeBrowser(App):
                 s = self.CodeView.get_select_range()
                 if s is None:
                     return
+
                 def cursor_refer():
                     if self.lsp.client is None:
                         return
                     ret = self.lsp.client.get_refer_from_cursor(
-                    Location(uri=to_file(self.codeview_file), range=s.range), s.text)
+                        Location(uri=to_file(self.codeview_file), range=s.range), s.text)
                     self.post_message(refermessage(ret))
                 ThreadPoolExecutor(1).submit(cursor_refer)
                 pass

@@ -25,6 +25,7 @@ from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
 from codesearch import SourceCode, SourceCodeSearch
+from cpp_impl import to_file
 from lspcpp import LspMain, Symbol, OutputFile, SymbolLocation
 import lspcpp
 from textual.app import App, ComposeResult
@@ -32,7 +33,7 @@ from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
 
 import pylspclient
-from pylspclient.lsp_pydantic_strcuts import SymbolInformation
+from pylspclient.lsp_pydantic_strcuts import Location, Position, Range, SymbolInformation, TextDocumentIdentifier
 
 find_key = "find "
 view_key = "view "
@@ -41,6 +42,40 @@ input_command_options = [
     "history", "symbol", "open", "find", "refer", "callin", "ctrl-c", "copy",
     "save", "log", "quit", "grep", "view", "clear"
 ]
+
+
+class CodeView:
+    textarea: TextArea | None = None
+
+    def __init__(self, textarea: TextArea | None = None) -> None:
+        self.textarea = textarea
+        pass
+
+    def is_focused(self):
+        if self.textarea is None:
+            return False
+        return self.textarea.screen.focused == self.textarea
+
+    class Selection:
+        range: Range
+        text: str
+
+    def get_select_range(self) -> Selection | None:
+        if self.textarea is None:
+            return None
+        begin = self.textarea.selection.start
+        end = self.textarea.selection.end
+        r = Range(start=Position(line=begin[0], character=begin[1]),
+                  end=Position(line=end[0], character=end[1]))
+        s = CodeView.Selection()
+        s.range = r
+        s.text = self.textarea.selected_text
+        return s
+
+    def get_select(self) -> str:
+        if self.textarea is None:
+            return ""
+        return self.textarea.selected_text
 
 
 class ResultItem:
@@ -519,6 +554,7 @@ class CodeBrowser(App):
         self.history = history()
         self.history.add_to_history(self.codeview_file)
         self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE
+        self.CodeView = CodeView(None)
         # self.lsp.currentfile.save_uml_file = self.print_recieved
         # self.lsp.currentfile.save_stack_file = self.print_recieved
 
@@ -733,6 +769,7 @@ class CodeBrowser(App):
             code = TextArea.code_editor(Path(self.codeview_file).read_text(),
                                         id="code-view",
                                         read_only=True)
+            self.CodeView.textarea = code
             try:
                 cpp = get_language("cpp")
                 cpp_highlight_query = (Path(__file__).parent /
@@ -888,7 +925,15 @@ class CodeBrowser(App):
 
             if self.is_foucused(self.symbol_listview):
                 self.get_refer_for_symbol_list()
-            elif self.is_foucused(self.code_editor_view()):
+            elif self.CodeView.is_focused():
+                s = self.CodeView.get_select_range()
+                if s is None:
+                    return
+                if self.lsp.client is None:
+                    return
+                ret = self.lsp.client.get_refer_from_cursor(
+                    Location(uri=to_file(self.codeview_file), range=s.range), s.text)
+                self.post_message(refermessage(ret))
                 pass
 
         except Exception as e:

@@ -855,6 +855,7 @@ class CodeBrowser(App):
             ) if prev == False else self.search_result.search_prev()
             self.code_to_refer(s)  # type: ignore
             pass
+        self.searchview.index=self.search_result.index
 
     def focus_to_viewid(self, view):
         try:

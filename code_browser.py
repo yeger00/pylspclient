@@ -86,6 +86,7 @@ class ResultItem:
 
 
 class ResultItemRefer(ResultItem):
+    item: SymbolLocation
 
     def __init__(self, item: SymbolLocation) -> None:
         super().__init__()
@@ -93,6 +94,9 @@ class ResultItemRefer(ResultItem):
 
     def __str__(self) -> str:
         return str(self.item)
+
+    def loc(self) -> Location:
+        return Location(uri=to_file(self.item.file), range=self.item.range)
 
 
 class ResultItemString(ResultItem):
@@ -313,29 +317,33 @@ class history:
                 pass
         pass
 
-    def add_to_history(self, data,barckforward=False):
+    def add_to_history(self, data, barckforward=False):
         self._data.add(data)
         self.datalist = list(filter(lambda x: x != data, self.datalist))
-        self.datalist.insert(0,data)
+        self.datalist.insert(0, data)
         if self.file != None:
             open(self.file, "w").write("\n".join(self.datalist))
 
+
 class BackFoward:
-    def __init__(self,h:history) -> None:
+    def __init__(self, h: history) -> None:
         self.history = h
         self.index = 0
         pass
-    def goback(self)->str:
+
+    def goback(self) -> str:
         self.index += 1
-        self.index = min(len(self.history.datalist)-1,self.index)
+        self.index = min(len(self.history.datalist)-1, self.index)
         ret = self.history.datalist[self.index]
         return ret
-    def goforward(self)->str:
+
+    def goforward(self) -> str:
         self.index -= 1
-        self.index = max(0,self.index)
+        self.index = max(0, self.index)
         ret = self.history.datalist[self.index]
         return ret
-        
+
+
 class input_suggestion(SuggestFromList):
     _history: history
     dircomplete: dir_complete_db
@@ -636,12 +644,12 @@ class CodeBrowser(App):
         pass
 
     def code_to_refer(self, refer: ResultItemRefer):
-        self.on_choose_file_from_event(refer.item.file)
-        y = refer.item.range.start.line
-        b = refer.item.range.start.character
-        e = refer.item.range.end.character
-        self.code_editor_scroll_view().scroll_to(y=y - 10, animate=False)
-        self.hightlight_code_line(y, colbegin=b, colend=e)
+        self.on_choose_file_from_event(refer.item.file, loc=refer.loc())
+        # y = refer.item.range.start.line
+        # b = refer.item.range.start.character
+        # e = refer.item.range.end.character
+        # self.code_editor_scroll_view().scroll_to(y=y - 10, animate=False)
+        # self.hightlight_code_line(y, colbegin=b, colend=e)
         pass
 
     def code_to_search_position(self, search):
@@ -671,6 +679,11 @@ class CodeBrowser(App):
         if msg.loc != None:
             line = msg.loc.range.start.line
             self.code_editor_scroll_view().scroll_to(y=line, animate=False)
+            range = msg.loc.range 
+            y = range.start.line
+            b = range.start.character
+            e = range.end.character
+            self.hightlight_code_line(y, colbegin=b, colend=e)
         pass
 
     def change_lsp_file(self, file: str, loc: Optional[Location] = None):
@@ -896,8 +909,8 @@ class CodeBrowser(App):
     def code_editor_scroll_view(self):
         return self.query_one("#code-view")
 
-    def on_choose_file_from_event(self, path: str, loc: Optional[Location] = None,backforward=False):
-        if self.codeview_file==path:
+    def on_choose_file_from_event(self, path: str, loc: Optional[Location] = None, backforward=False):
+        if self.codeview_file == path:
             self.post_message(symbolsmessage(loc))
             return
         code_view = self.code_editor_view()
@@ -952,15 +965,17 @@ class CodeBrowser(App):
             return dom.screen.focused == dom
         except:
             return False
-    def action_goback(self)->None:
+
+    def action_goback(self) -> None:
         url = self.backforward.goback()
-        self.on_choose_file_from_event(url,backforward=True)
+        self.on_choose_file_from_event(url, backforward=True)
         pass
-    def action_goforward(self)->None:
+
+    def action_goforward(self) -> None:
         url = self.backforward.goforward()
-        self.on_choose_file_from_event(url,backforward=True)
+        self.on_choose_file_from_event(url, backforward=True)
         pass
-        
+
     def action_go_declare(self) -> None:
         if self.lsp.client is None:
             return

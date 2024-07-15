@@ -929,11 +929,13 @@ class CodeBrowser(App):
                 s = self.CodeView.get_select_range()
                 if s is None:
                     return
-                if self.lsp.client is None:
-                    return
-                ret = self.lsp.client.get_refer_from_cursor(
+                def cursor_refer():
+                    if self.lsp.client is None:
+                        return
+                    ret = self.lsp.client.get_refer_from_cursor(
                     Location(uri=to_file(self.codeview_file), range=s.range), s.text)
-                self.post_message(refermessage(ret))
+                    self.post_message(refermessage(ret))
+                ThreadPoolExecutor(1).submit(cursor_refer)
                 pass
 
         except Exception as e:

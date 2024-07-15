@@ -174,6 +174,7 @@ class SymbolLocation:
         if len(self.name):
             xx = loc.copy()
             xx.range.start.character =0
+            xx.range.end.character =-1
             code = str(Body(xx))
             code = code.replace("\n","")
             pos = code.find(self.name)

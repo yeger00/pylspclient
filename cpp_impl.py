@@ -33,10 +33,12 @@ def range_before(before: Position, after: Position):
 def SubLine(begin, end, lines:list[str])->list[str]:
     subline = lines[begin.line:end.line+1]
     if begin.line == end.line:
-        subline[0] = subline[0][begin.character:end.character+1]
+        e =  end.character+1 if end.character >-1 else -1 
+        subline[0] = subline[0][begin.character:e]
     else:
         subline[0] = subline[0][begin.character:]
-        subline[-1] = subline[-1][:end.character+1]
+        e =  end.character+1 if end.character >-1 else -1 
+        subline[-1] = subline[-1][:e]
     return subline
 
 

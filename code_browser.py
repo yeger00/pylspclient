@@ -846,7 +846,7 @@ class CodeBrowser(App):
         self.code_to_search_position(self.search_result.data[0])
 
     def search_prev_next(self, prev):
-        if self.search_result.isType(ResultItemSearch):
+        if self.search_result.isType( ResultItemSearch):
             data = self.search_result.search_next(
             ) if prev == False else self.search_result.search_prev()
             self.code_to_search_position(data)

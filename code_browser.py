@@ -877,13 +877,19 @@ class CodeBrowser(App):
 
     def action_refer(self) -> None:
         try:
-            self.__action_refer()
+            self.__action_refer_symbol_list()
         except Exception as e:
             self.log.error("exception %s" % (str(e)))
             self.logview.write_line("exception %s" % (str(e)))
             pass
 
-    def __action_refer(self) -> None:
+    def __action_refer_symbol_list(self) -> None:
+        if self.symbol_listview.index is None:
+            return None
+        sym: Symbol = self.lsp.currentfile.symbols_list[
+            self.symbol_listview.index]
+        self.__action_refer(sym=sym)
+    def __action_refer(self,sym: Symbol) -> None:
 
         def my_function(lsp: LspMain, sym: SymbolInformation, toFile):
             ret = []
@@ -897,10 +903,6 @@ class CodeBrowser(App):
             self.post_message(refermessage(ret))
             return ret
 
-        if self.symbol_listview.index is None:
-            return
-        sym: Symbol = self.lsp.currentfile.symbols_list[
-            self.symbol_listview.index]
         q = LspQuery(sym.sym.name, "r")
         if q != self.symbol_query:
             if self.tofile != None:

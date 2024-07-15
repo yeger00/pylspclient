@@ -582,6 +582,7 @@ class CodeBrowser(App):
         self.tofile = None
         self.toUml = None
         self.codeview_file = self.sub_title = file
+        self.soucecode = SourceCode(self.codeview_file)
         self.history = history()
         self.backforward = BackFoward(self.history)
         self.history.add_to_history(self.codeview_file)
@@ -719,7 +720,7 @@ class CodeBrowser(App):
         self.logview.write_line(value)
         if len(args) > 0:
             if args[0] == "search":
-                if self.soucecode.search.pattern == args[1]:
+                if len(args) > 1 and self.soucecode.search.pattern == args[1]:
                     if len(args) > 2 and args[2] == "-":
                         self.soucecode.search.index = self.soucecode.search.index + \
                             len(self.search_result.data)-1
@@ -732,7 +733,12 @@ class CodeBrowser(App):
                     self.code_to_search_position(search)
                     pass
                 else:
-                    ret = self.soucecode.search.search(args[1])
+                    word = args[1]  if len(args)==2 else ""
+                    if  word == "":
+                            range = self.CodeView.get_select_range()
+                            word = range.text if range!=None else ""
+                    if len(word)==0:return
+                    ret = self.soucecode.search.search(word)
                     self.search_result = SearchResults(
                         list(map(lambda x: ResultItemSearch(x), ret)))
                     self.udpate_search_result_view()

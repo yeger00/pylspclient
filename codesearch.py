@@ -28,7 +28,7 @@ class SourceCodeSearch(object):
                 pos = line.find(pattern)
                 if pos > 1:
                     result = SourceCodeSearch.Pos(
-                        index, pos, line[pos - 20:pos + len(pattern)+20])
+                        index, pos, line[max(pos - 20,0):min(pos + len(pattern)+20,len(line))])
                     ret.append(result)
                 index = index + 1
         self.index = 0

@@ -26,7 +26,7 @@ from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
 from codesearch import SourceCode, SourceCodeSearch
-from cpp_impl import from_file, to_file
+from cpp_impl import Body, from_file, to_file
 from lspcpp import LspMain, Symbol, OutputFile, SymbolLocation
 import lspcpp
 from textual.app import App, ComposeResult
@@ -72,6 +72,23 @@ class CodeView:
         s.range = r
         s.text = self.textarea.selected_text
         return s
+
+    def get_select_wholeword(self) -> str:
+        r = self.get_select_range()
+        if self.textarea is None:
+            return ""
+        if r is None:
+            return ""
+        linenum = r.range.start.line
+        b = r.range.start.character
+        e = r.range.end.character
+        line = self.textarea.document.lines[linenum]
+        ignore_set = set([" ", "{", "-", "}", ";", "(", ")"])
+        while e < len(line):
+            if line[e] in ignore_set:
+                break
+            e += 1
+        return line[b:e]
 
     def get_select(self) -> str:
         if self.textarea is None:
@@ -510,7 +527,7 @@ class mymessage(Message):
 class changelspmessage(Message):
     loc: Optional[Location] = None
 
-    def __init__(self, loc: Optional[Location] = None,refresh=True) -> None:
+    def __init__(self, loc: Optional[Location] = None, refresh=True) -> None:
         super().__init__()
         self.loc = loc
         self.refresh_symbol_view = refresh
@@ -677,12 +694,12 @@ class CodeBrowser(App):
         pass
 
     def on_changelspmessage(self, msg: changelspmessage) -> None:
-        if msg.refresh_symbol_view==True:
+        if msg.refresh_symbol_view == True:
             self.refresh_symbol_view()
         if msg.loc != None:
             line = msg.loc.range.start.line
             self.code_editor_scroll_view().scroll_to(y=line, animate=False)
-            range = msg.loc.range 
+            range = msg.loc.range
             y = range.start.line
             b = range.start.character
             e = range.end.character
@@ -733,11 +750,12 @@ class CodeBrowser(App):
                     self.code_to_search_position(search)
                     pass
                 else:
-                    word = args[1]  if len(args)==2 else ""
-                    if  word == "":
-                            range = self.CodeView.get_select_range()
-                            word = range.text if range!=None else ""
-                    if len(word)==0:return
+                    word = args[1] if len(args) == 2 else ""
+                    if word == "":
+                        word = self.CodeView.get_select_wholeword()
+                        self.logview.write_line("search word is [%s]" % (word))
+                    if len(word) == 0:
+                        return
                     ret = self.soucecode.search.search(word)
                     self.search_result = SearchResults(
                         list(map(lambda x: ResultItemSearch(x), ret)))
@@ -919,14 +937,14 @@ class CodeBrowser(App):
 
     def on_choose_file_from_event(self, path: str, loc: Optional[Location] = None, backforward=False):
         if self.codeview_file == path:
-            self.post_message(changelspmessage(loc,False))
+            self.post_message(changelspmessage(loc, False))
             return
         code_view = self.code_editor_view()
 
         TEXT = open(str(path), "r").read()
         # code_view.document = Document(TEXT)
         code_view.load_text(TEXT)
-        self.post_message(changelspmessage(loc,False))
+        self.post_message(changelspmessage(loc, False))
         self.soucecode = SourceCode(self.codeview_file)
         self.code_editor_view().scroll_home(animate=False)
         self.sub_title = str(path)

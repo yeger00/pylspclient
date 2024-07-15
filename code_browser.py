@@ -83,12 +83,21 @@ class CodeView:
         b = r.range.start.character
         e = r.range.end.character
         line = self.textarea.document.lines[linenum]
-        ignore_set = set([" ", "{", "-", "}", ";", "(", ")"])
-        while e < len(line):
-            if line[e] in ignore_set:
+        ignore_set = set(
+            [' ', ',', '{', '-', '}', ';', '.', '(', ')', '/', '"'])
+        while b-1 >= 0 :
+            if line[b-1] in ignore_set:
                 break
-            e += 1
-        return line[b:e]
+            else:
+                b = b-1
+
+
+        while e+1 < len(line):
+            if line[e+1] in ignore_set:
+                break
+            else:
+                e += 1
+        return line[b:e+1]
 
     def get_select(self) -> str:
         if self.textarea is None:
@@ -756,12 +765,7 @@ class CodeBrowser(App):
                         self.logview.write_line("search word is [%s]" % (word))
                     if len(word) == 0:
                         return
-                    ret = self.soucecode.search.search(word)
-                    self.search_result = SearchResults(
-                        list(map(lambda x: ResultItemSearch(x), ret)))
-                    self.udpate_search_result_view()
-                    self.focus_to_viewid("fzf")
-                    self.code_to_search_position(self.search_result.data[0])
+                    self.search_word(word)
                 pass
             elif args[0] == "view":
                 view = args[1]
@@ -804,6 +808,14 @@ class CodeBrowser(App):
                 return False
             return True
         return False
+
+    def search_word(self, word):
+        ret = self.soucecode.search.search(word)
+        self.search_result = SearchResults(
+            list(map(lambda x: ResultItemSearch(x), ret)))
+        self.udpate_search_result_view()
+        self.focus_to_viewid("fzf")
+        self.code_to_search_position(self.search_result.data[0])
 
     def focus_to_viewid(self, view):
         try:
@@ -1139,6 +1151,11 @@ class CodeBrowser(App):
 
     def action_toggle_files(self) -> None:
         """Called in response to key binding."""
+        if self.CodeView.is_focused():
+            w = self.CodeView.get_select_wholeword()
+            if len(w):
+                self.search_word(w)
+            return
         self.show_tree = not self.show_tree
 
     def __del__(self):

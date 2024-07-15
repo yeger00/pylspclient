@@ -36,7 +36,6 @@ class SourceCodeSearch(object):
         self.index = 0
         return ret
 
-
 class SourceCode:
     #
     search: SourceCodeSearch

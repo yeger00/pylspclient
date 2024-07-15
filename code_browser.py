@@ -85,12 +85,11 @@ class CodeView:
         line = self.textarea.document.lines[linenum]
         ignore_set = set(
             [' ', ',', '{', '-', '}', ';', '.', '(', ')', '/', '"'])
-        while b-1 >= 0 :
+        while b-1 >= 0:
             if line[b-1] in ignore_set:
                 break
             else:
                 b = b-1
-
 
         while e+1 < len(line):
             if line[e+1] in ignore_set:
@@ -158,6 +157,19 @@ class SearchResults:
 
     def __init__(self, data: list[ResultItem] = []):
         self.data = data
+        self.index = 0
+
+    def search_prev(self) -> ResultItem:
+        self.index -= 1
+        if self.index < 0:
+            self.index = len(self.data)-1
+        return self.data[self.index]
+
+    def search_next(self) -> ResultItem:
+        self.index += 1
+        if self.index > len(self.data)-1:
+            self.index = 0
+        return self.data[self.index]
 
 
 def convert_command_args(value):
@@ -624,6 +636,7 @@ class CodeBrowser(App):
         ("f", "toggle_files", "Toggle Files"),
         ("q", "quit", "Quit"),
         ("i", "focus_input", "Focus to cmdline"),
+        ("escape", "focus_input", "Focus to cmdline"),
         ("ctrl+o", "goback", "Go Back"),
         ("ctrl+b", "goforward", "Go Forward"),
         ("c", "callin", "CallIn"),
@@ -745,6 +758,10 @@ class CodeBrowser(App):
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:
+            if args[0] in set(["cn","cp"]):
+                self.search_prev_next(args[0]=="cp")
+                pass
+                
             if args[0] == "search":
                 if len(args) > 1 and self.soucecode.search.pattern == args[1]:
                     if len(args) > 2 and args[2] == "-":
@@ -817,6 +834,10 @@ class CodeBrowser(App):
         self.focus_to_viewid("fzf")
         self.code_to_search_position(self.search_result.data[0])
 
+    def search_prev_next(self, prev):
+        data = self.search_result.search_next(
+        ) if prev == False else self.search_result.search_prev()
+        self.code_to_search_position(data)
     def focus_to_viewid(self, view):
         try:
             v = self.query_one("#" + view)

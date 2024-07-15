@@ -7,6 +7,7 @@ Run with:
 """
 
 from inspect import istraceback
+import sys
 from typing import Optional
 from textual.message import Message
 from textual.widgets.text_area import Selection
@@ -583,9 +584,11 @@ class symbolsmessage(Message):
 
 class refermessage(Message):
     s: list[SymbolLocation]
+    query: str
 
-    def __init__(self, s: list[SymbolLocation]) -> None:
+    def __init__(self, s: list[SymbolLocation], key: str) -> None:
         super().__init__()
+        self.query = key
         self.s = s
 
 
@@ -619,6 +622,8 @@ class CodeBrowser(App):
             list(map(lambda x: ResultItemRefer(x), message.s)))
         self.udpate_search_result_view()
         self.searchview.focus()
+        f: Label = self.query_one("#f1", Label)
+        f.update("Refer to "+message.query)
         pass
 
     def on_mymessage(self, message: mymessage) -> None:
@@ -938,7 +943,7 @@ class CodeBrowser(App):
                     self.symbol_listview = MyListView(id="symbol")
                     self.symbol_listview.mainui = self
                     yield self.symbol_listview
-        yield Footer()
+        yield Label(id="f1")
         # self.text = TextArea.code_editor("xxxx")
         # yield self.text
 
@@ -956,7 +961,7 @@ class CodeBrowser(App):
         v = CommandInput(self, root=self.lsp.root)
         self.cmdline = v
         yield v
-        yield Footer()
+        yield Footer(id="f2")
 
     def on_mount(self) -> None:
         self.query_one(DirectoryTree).focus()
@@ -1152,9 +1157,13 @@ class CodeBrowser(App):
                 def cursor_refer():
                     if self.lsp.client is None:
                         return
+
+                    loc = Location(uri=to_file(
+                        self.codeview_file), range=s.range)
                     ret = self.lsp.client.get_refer_from_cursor(
-                        Location(uri=to_file(self.codeview_file), range=s.range), s.text)
-                    self.post_message(refermessage(ret))
+                        loc, s.text)
+                    key = str(Body(loc))
+                    self.post_message(refermessage(ret, key))
                 ThreadPoolExecutor(1).submit(cursor_refer)
                 pass
 
@@ -1181,7 +1190,9 @@ class CodeBrowser(App):
                 self.logview.write_line(str(e))
                 pass
             self.logview.write_line("Call Job finished")
-            self.post_message(refermessage(ret))
+            key = '''[u]%s[/u]''' % (str(Body(sym.location)))+"%s:%d" % (from_file(sym.location.uri),
+                                                                         sym.location.range.start.line)
+            self.post_message(refermessage(ret, key))
             return ret
 
         q = LspQuery(sym.sym.name, "r")

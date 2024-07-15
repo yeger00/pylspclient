@@ -769,6 +769,9 @@ class CodeBrowser(App):
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:
+            if args[0] == "help":
+                self.help()
+                return
             if args[0] in set(["cn", "cp"]):
                 self.search_prev_next(args[0] == "cp")
                 pass
@@ -1005,7 +1008,27 @@ class CodeBrowser(App):
         self.history.add_to_history(self.codeview_file, backforward)
         self.refresh_history_view()
         self.change_lsp_file(self.codeview_file, loc)
-
+    def help(self):
+        help =[
+            "help",
+            "opeh filepath",
+            "history|code-view|fzf|symbol",
+            "view history|code-view|fzf|symbol",
+            "cn",
+            "cp",
+            "find       find file under directory \"find xx yy\"",
+            "search     find word",
+            "Ctrl Key:",
+            "   o  goback",
+            "   b  goforward",
+            "Key:",
+            "   f find current word",
+            "   c CallIncomming",
+            "   d goto declaration",
+            "   i goto impl",
+            "   r Refere"
+        ] 
+        self.logview.write_lines(help)
     def on_choose_file_from_event_static(self, path):
         code_view = self.query_one("#code", Static)
         try:

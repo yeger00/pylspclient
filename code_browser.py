@@ -18,7 +18,7 @@ from textual.widgets import Log, TextArea
 
 from rich.syntax import Syntax
 from rich.traceback import Traceback
-
+from textual.dom import DOMNode
 from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.reactive import var
@@ -41,6 +41,8 @@ input_command_options = [
     "history", "symbol", "open", "find", "refer", "callin", "ctrl-c", "copy",
     "save", "log", "quit", "grep", "view", "clear"
 ]
+
+
 class ResultItem:
 
     def __init__(self) -> None:
@@ -875,21 +877,33 @@ class CodeBrowser(App):
         self.lsp.close()
         await App.action_quit(self)
 
+    def is_foucused(self, dom: DOMNode):
+        try:
+            return dom.screen.focused == dom
+        except:
+            return False
+
     def action_refer(self) -> None:
         try:
-            self.__action_refer_symbol_list()
+
+            if self.is_foucused(self.symbol_listview):
+                self.get_refer_for_symbol_list()
+            elif self.is_foucused(self.code_editor_view()):
+                pass
+
         except Exception as e:
             self.log.error("exception %s" % (str(e)))
             self.logview.write_line("exception %s" % (str(e)))
             pass
 
-    def __action_refer_symbol_list(self) -> None:
+    def get_refer_for_symbol_list(self) -> None:
         if self.symbol_listview.index is None:
             return None
         sym: Symbol = self.lsp.currentfile.symbols_list[
             self.symbol_listview.index]
-        self.__action_refer(sym=sym)
-    def __action_refer(self,sym: Symbol) -> None:
+        self.get_symbol_refer(sym=sym)
+
+    def get_symbol_refer(self, sym: Symbol) -> None:
 
         def my_function(lsp: LspMain, sym: SymbolInformation, toFile):
             ret = []
@@ -915,26 +929,35 @@ class CodeBrowser(App):
                                          toFile=self.tofile)
 
     def action_callin(self) -> None:
+        if self.is_foucused(self.symbol_listview):
+            self.action_callin_symlist()
+        else:
+            pass
+
+    def action_callin_symlist(self) -> None:
+        if self.symbol_listview.index is None:
+            return
+        sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
+        self.action_callin_sym(sym)
+
+    def action_callin_sym(self, sym: Symbol) -> None:
         # if self.thread!=None:
         #     if self.thread.is_alive():
         #         self.logview.write_line("Wait for previous call finished")
         #         return
         def my_function(lsp: LspMain, sym: SymbolInformation, toFile, toUml):
             try:
-                self.logview.write_line("Callin Job %s Started"%(sym.name))
+                self.logview.write_line("Callin Job %s Started" % (sym.name))
                 lsp.currentfile.callin(sym,
-                                   once=False,
-                                   uml=True,
-                                   toFile=toFile,
-                                   toUml=toUml)
-                self.logview.write_line("Callin Job %s Stopped"%(sym.name))
+                                       once=False,
+                                       uml=True,
+                                       toFile=toFile,
+                                       toUml=toUml)
+                self.logview.write_line("Callin Job %s Stopped" % (sym.name))
             except Exception as e:
                 self.logview.write_line("exception %s" % (str(e)))
                 pass
 
-        if self.symbol_listview.index is None:
-            return
-        sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
         q = LspQuery(sym.symbol_display_name(), "callin")
         if q != self.symbol_query:
             if self.tofile != None:

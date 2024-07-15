@@ -283,7 +283,7 @@ def test_args():
     client = srv.newclient(cfg)
 
     wk = cfg.create_workspace(client=client)
-
+    client.open_file(file)
     symbols_list = client.get_document_symbol(file)
 
     def find_fn(x: SymbolInformation):

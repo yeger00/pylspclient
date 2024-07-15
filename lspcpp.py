@@ -530,6 +530,17 @@ class lspcppclient:
         name = str(Body(decl)) if decl != None else "" 
         return list(map(lambda x: SymbolLocation(loc=x,name=name), ret))
 
+    def get_impl(self, loc: Location) -> Location | None:
+        ret = self.lsp_client.definition(
+            textDocument=TextDocumentIdentifier(uri=loc.uri), position=loc.range.start)
+        if isinstance(ret, Location):
+            return ret
+        if isinstance(ret, list) and len(ret) > 0:
+            if isinstance(ret[0], Location):
+                return ret[0]
+        return None
+
+
     def get_decl(self, loc: Location) -> Location | None:
         ret = self.lsp_client.declaration(
             textDocument=TextDocumentIdentifier(uri=loc.uri), position=loc.range.start)

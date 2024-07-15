@@ -315,7 +315,8 @@ class history:
 
     def add_to_history(self, data):
         self._data.add(data)
-        self.datalist = list(self._data)
+        self.datalist = list(filter(lambda x: x != data, self.datalist))
+        self.datalist.insert(0,data)
         if self.file != None:
             open(self.file, "w").write("\n".join(self.datalist))
 
@@ -878,6 +879,9 @@ class CodeBrowser(App):
         return self.query_one("#code-view")
 
     def on_choose_file_from_event(self, path: str, loc: Optional[Location] = None):
+        if self.codeview_file==path:
+            self.post_message(symbolsmessage(loc))
+            return
         code_view = self.code_editor_view()
 
         TEXT = open(str(path), "r").read()
@@ -948,6 +952,20 @@ class CodeBrowser(App):
         pass
 
     def action_go_impl(self) -> None:
+        if self.lsp.client is None:
+            return
+        if self.CodeView.is_focused():
+            range = self.CodeView.get_select_range()
+            if range is None:
+                return
+            loc = Location(uri=to_file(self.codeview_file), range=range.range)
+            file_location = self.lsp.client.get_impl(loc)
+            if file_location is None:
+                return
+            self.on_choose_file_from_event(
+                from_file(file_location.uri), file_location)
+            pass
+        pass
         pass
 
     def action_refer(self) -> None:

@@ -579,7 +579,7 @@ class mymessage(Message):
 class changelspmessage(Message):
     loc: Optional[Location] = None
 
-    def __init__(self,file, loc: Optional[Location] = None, refresh=True) -> None:
+    def __init__(self, file, loc: Optional[Location] = None, refresh=True) -> None:
         super().__init__()
         self.loc = loc
         self.file = file
@@ -589,8 +589,9 @@ class changelspmessage(Message):
 
 class symbolsmessage(Message):
     data = []
-    file :str
-    def __init__(self, data,file:str) -> None:
+    file: str
+
+    def __init__(self, data, file: str) -> None:
         super().__init__()
         self.file = file
         self.data = data
@@ -620,6 +621,33 @@ class MyListView(ListView):
 
     def action_select_cursor(self):
         self.mainui.on_select_list(self)
+
+
+class TaskBase:
+    def __init__(self) -> None:
+        pass
+
+    def run(self):
+        pass
+
+
+class TaskCallIn(TaskBase):
+    def __init__(self, job: lspcpp.callinjob) -> None:
+        self.func = job
+
+    def run(self):
+        self.func.run()
+
+
+class TaskManager:
+    tasklist: list[TaskBase] = []
+
+    def __init__(self) -> None:
+        pass
+
+    def add(self, task: TaskBase) -> TaskBase:
+        self.tasklist.append(task)
+        return task 
 
 
 class CodeBrowser(App):
@@ -663,6 +691,7 @@ class CodeBrowser(App):
         self.history.add_to_history(self.codeview_file)
         self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE
         self.CodeView = CodeView(None)
+        self.taskmanager = TaskManager()
         # self.lsp.currentfile.save_uml_file = self.print_recieved
         # self.lsp.currentfile.save_stack_file = self.print_recieved
 
@@ -771,13 +800,13 @@ class CodeBrowser(App):
         pass
 
     def on_changelspmessage(self, msg: changelspmessage) -> None:
-        if self.codeview_file!=msg.file:
+        if self.codeview_file != msg.file:
             return
         if msg.refresh_symbol_view == True:
             self.refresh_symbol_view()
         if msg.loc != None:
             line = msg.loc.range.start.line
-            self.code_editor_scroll_view().scroll_to(y=max(line-10,0), animate=False)
+            self.code_editor_scroll_view().scroll_to(y=max(line-10, 0), animate=False)
             range = msg.loc.range
             y = range.start.line
             b = range.start.character
@@ -789,7 +818,7 @@ class CodeBrowser(App):
 
         def lsp_change(lsp: LspMain, file: str):
             lsp.changefile(file)
-            self.post_message(changelspmessage(file,loc))
+            self.post_message(changelspmessage(file, loc))
 
         self.symbol_listview.clear()
         self.symbol_listview.loading = True
@@ -1031,7 +1060,7 @@ class CodeBrowser(App):
             self.symbol_listview.loading = False
             if file2 != file:
                 return
-            self.post_message(symbolsmessage(list(aa),file))
+            self.post_message(symbolsmessage(list(aa), file))
 
         ThreadPoolExecutor(1).submit(my_function)
 
@@ -1049,14 +1078,14 @@ class CodeBrowser(App):
 
     def on_choose_file_from_event(self, path: str, loc: Optional[Location] = None, backforward=False):
         if self.codeview_file == path:
-            self.post_message(changelspmessage(path,loc, False))
+            self.post_message(changelspmessage(path, loc, False))
             return
         code_view = self.code_editor_view()
 
         TEXT = open(str(path), "r").read()
         # code_view.document = Document(TEXT)
         code_view.load_text(TEXT)
-        self.post_message(changelspmessage(path,loc, False))
+        self.post_message(changelspmessage(path, loc, False))
         self.soucecode = SourceCode(self.codeview_file)
         self.code_editor_view().scroll_home(animate=False)
         self.sub_title = str(path)
@@ -1256,11 +1285,13 @@ class CodeBrowser(App):
         def my_function(lsp: LspMain, sym: SymbolInformation, toFile, toUml):
             try:
                 self.logview.write_line("Callin Job %s Started" % (sym.name))
-                lsp.currentfile.callin(sym,
-                                       once=False,
-                                       uml=True,
-                                       toFile=toFile,
-                                       toUml=toUml)
+                task = lsp.currentfile.callin(sym,
+                                              once=False,
+                                              uml=True,
+                                              toFile=toFile,
+                                              toUml=toUml)
+                t = self.taskmanager.add(TaskCallIn(task))
+                t.run()
                 self.logview.write_line("Callin Job %s Stopped" % (sym.name))
             except Exception as e:
                 self.logview.write_line("exception %s" % (str(e)))

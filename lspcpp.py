@@ -170,21 +170,21 @@ class SymbolLocation:
             self.name = name
         else:
             self.name = symbol.name if symbol != None else ""
-        self.code =""
+        self.code = ""
         if len(self.name):
             xx = loc.copy()
-            xx.range.start.character =0
-            xx.range.end.character =-1
+            xx.range.start.character = 0
+            xx.range.end.character = -1
             code = str(Body(xx))
-            code = code.replace("\n","")
+            code = code.replace("\n", "")
             pos = code.find(self.name)
-            if pos>0:
-                code = code[max(pos-20,0):min(pos+len(self.name)+20,len(code))]
-                self.code = "  "+code.replace(self.name,'''[u]%s[/u]'''%(self.name))
-                
+            if pos > 0:
+                code = code[max(pos-20, 0)                            :min(pos+len(self.name)+20, len(code))]
+                self.code = "  " + \
+                    code.replace(self.name, '''[u]%s[/u]''' % (self.name))
 
     def __str__(self) -> str:
-        return  " %s:%d" % (self.file, self.range.start.line) + self.code
+        return " %s:%d" % (self.file, self.range.start.line) + self.code
 
 
 class Symbol:
@@ -1096,6 +1096,47 @@ class OutputFile(Output):
         self.fp.close()
 
 
+class callinjob:
+    def __init__(self, wk: WorkSpaceSymbol, client: lspcppclient, method, toFile, toUml, uml, once) -> None:
+        self.client = client
+        self.wk = wk
+        self.method = method
+        self.toFile = toFile
+        self.uml = uml
+        self.toUml = toUml
+        self.once = once
+        self.callin_all =[]
+        pass
+
+    def run(self):
+        walk = CallerWalker(self.client, self.wk)
+        ret = walk.get_caller(Symbol(self.method), once=False)
+        self.callin_all = ret
+        for a in ret:
+            stack = a.callstack()
+            a.printstack(fp=self.toFile)
+            
+        for a in ret:
+            a.resolve_all(self.wk)
+            stack = a.callstack()
+            a.printstack(fp=self.toFile)
+            for ss in stack:
+                ss.resolve(self.wk)
+            try:
+                uml = self.uml
+                if uml:
+                    s = a.uml(stack, wk=self.wk)
+                    print(s)
+                    toUml = self.toUml
+                    if toUml != None:
+                        toUml.write(s)
+                        toUml.write("\n")
+                        toUml.flush()
+            except Exception as e:
+                logger.exception(str(e))
+                pass
+
+
 class SymbolFile:
     save_uml_file: Union[Output, None]
     save_stack_file: Union[Output, None]
@@ -1219,26 +1260,8 @@ class SymbolFile:
                uml=False,
                once=True,
                toFile: Union[Output, None] = None,
-               toUml: Union[Output, None] = None):
-        walk = CallerWalker(self.sourcecode.client, self.wk)
-        ret = walk.get_caller(Symbol(method), once=once)
-        for a in ret:
-            a.resolve_all(self.wk)
-            stack = a.callstack()
-            a.printstack(fp=toFile)
-            for ss in stack:
-                ss.resolve(self.wk)
-            try:
-                if uml:
-                    s = a.uml(stack, wk=self.wk)
-                    print(s)
-                    if toUml != None:
-                        toUml.write(s)
-                        toUml.write("\n")
-                        toUml.flush()
-            except Exception as e:
-                logger.exception(str(e))
-                pass
+               toUml: Union[Output, None] = None) -> callinjob:
+        return callinjob(self.wk, self.sourcecode.client, method=method, toFile=toFile, toUml=toUml, uml=uml, once=once)
 
     def call(self,
              method,

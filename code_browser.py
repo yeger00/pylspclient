@@ -313,14 +313,29 @@ class history:
                 pass
         pass
 
-    def add_to_history(self, data):
+    def add_to_history(self, data,barckforward=False):
         self._data.add(data)
         self.datalist = list(filter(lambda x: x != data, self.datalist))
         self.datalist.insert(0,data)
         if self.file != None:
             open(self.file, "w").write("\n".join(self.datalist))
 
-
+class BackFoward:
+    def __init__(self,h:history) -> None:
+        self.history = h
+        self.index = 0
+        pass
+    def goback(self)->str:
+        self.index += 1
+        self.index = min(len(self.history.datalist)-1,self.index)
+        ret = self.history.datalist[self.index]
+        return ret
+    def goforward(self)->str:
+        self.index -= 1
+        self.index = max(0,self.index)
+        ret = self.history.datalist[self.index]
+        return ret
+        
 class input_suggestion(SuggestFromList):
     _history: history
     dircomplete: dir_complete_db
@@ -559,6 +574,7 @@ class CodeBrowser(App):
         self.toUml = None
         self.codeview_file = self.sub_title = file
         self.history = history()
+        self.backforward = BackFoward(self.history)
         self.history.add_to_history(self.codeview_file)
         self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE
         self.CodeView = CodeView(None)
@@ -572,6 +588,8 @@ class CodeBrowser(App):
         ("f", "toggle_files", "Toggle Files"),
         ("q", "quit", "Quit"),
         ("i", "focus_input", "Focus to cmdline"),
+        ("ctrl+o", "goback", "Go Back"),
+        ("ctrl+b", "goforward", "Go Forward"),
         ("c", "callin", "CallIn"),
         ("o", "open_file", "Open"),
         ("d", "go_declare", "Go to declare"),
@@ -878,7 +896,7 @@ class CodeBrowser(App):
     def code_editor_scroll_view(self):
         return self.query_one("#code-view")
 
-    def on_choose_file_from_event(self, path: str, loc: Optional[Location] = None):
+    def on_choose_file_from_event(self, path: str, loc: Optional[Location] = None,backforward=False):
         if self.codeview_file==path:
             self.post_message(symbolsmessage(loc))
             return
@@ -892,7 +910,7 @@ class CodeBrowser(App):
         self.sub_title = str(path)
         self.codeview_file = self.sub_title
         self.logview.write_line("tree open %s" % (self.sub_title))
-        self.history.add_to_history(self.codeview_file)
+        self.history.add_to_history(self.codeview_file, backforward)
         self.refresh_history_view()
         self.change_lsp_file(self.codeview_file, loc)
 
@@ -934,7 +952,15 @@ class CodeBrowser(App):
             return dom.screen.focused == dom
         except:
             return False
-
+    def action_goback(self)->None:
+        url = self.backforward.goback()
+        self.on_choose_file_from_event(url,backforward=True)
+        pass
+    def action_goforward(self)->None:
+        url = self.backforward.goforward()
+        self.on_choose_file_from_event(url,backforward=True)
+        pass
+        
     def action_go_declare(self) -> None:
         if self.lsp.client is None:
             return

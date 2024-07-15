@@ -6,6 +6,7 @@ Run with:
     python code_browser.py PATH
 """
 
+from inspect import istraceback
 from typing import Optional
 from textual.message import Message
 from textual.widgets.text_area import Selection
@@ -154,7 +155,9 @@ class ResultItemSymbo(ResultItem):
 
 class SearchResults:
     data: list[ResultItem]
-
+    def on_select(self,index):
+        self.index = index
+        return self.data[index]
     def __init__(self, data: list[ResultItem] = []):
         self.data = data
         self.index = 0
@@ -656,7 +659,7 @@ class CodeBrowser(App):
         if self.searchview == list:
             if list.index == None:
                 return
-            result = self.search_result.data[list.index]
+            result = self.search_result.on_select(list.index)
             if isinstance(result, ResultItemString):
                 self.on_choose_file_from_event(str(result))
             elif isinstance(result, ResultItemRefer):
@@ -835,9 +838,16 @@ class CodeBrowser(App):
         self.code_to_search_position(self.search_result.data[0])
 
     def search_prev_next(self, prev):
-        data = self.search_result.search_next(
+        if len(self.search_result.data)==0:return
+        item = self.search_result.data[0]
+        if isinstance(item, ResultItemSearch):
+            data = self.search_result.search_next(
         ) if prev == False else self.search_result.search_prev()
-        self.code_to_search_position(data)
+            self.code_to_search_position(data)
+        elif isinstance(item, ResultItemRefer):
+            s  = self.search_result.search_next() if prev == False else self.search_result.search_prev()           
+            self.code_to_refer(s) # type: ignore
+            pass 
     def focus_to_viewid(self, view):
         try:
             v = self.query_one("#" + view)

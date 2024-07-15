@@ -567,6 +567,8 @@ class CodeBrowser(App):
         ("i", "focus_input", "Focus to cmdline"),
         ("c", "callin", "CallIn"),
         ("o", "open_file", "Open"),
+        ("d", "go_declare", "Go to declare"),
+        ("i", "go_impl", "Go to Define"),
         ("r", "refer", "Reference"),
     ]
 
@@ -920,6 +922,10 @@ class CodeBrowser(App):
         except:
             return False
 
+    def action_go_declare(self) -> None:
+        pass
+    def action_go_impl(self)->None:
+        pass
     def action_refer(self) -> None:
         try:
 

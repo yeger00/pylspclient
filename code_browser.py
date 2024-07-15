@@ -623,7 +623,7 @@ class CodeBrowser(App):
         self.udpate_search_result_view()
         self.searchview.focus()
         f: Label = self.query_one("#f1", Label)
-        f.update("Refer to "+message.query)
+        f.update("Refer to <%d>" % (len(message.s))+message.query)
         pass
 
     def on_mymessage(self, message: mymessage) -> None:
@@ -1162,7 +1162,8 @@ class CodeBrowser(App):
                         self.codeview_file), range=s.range)
                     ret = self.lsp.client.get_refer_from_cursor(
                         loc, s.text)
-                    key = str(Body(loc))
+                    key = str(Body(loc)).replace("\n", "") + \
+                        " %s:%d" % (from_file(loc.uri), loc.range.start.line)
                     self.post_message(refermessage(ret, key))
                 ThreadPoolExecutor(1).submit(cursor_refer)
                 pass
@@ -1190,8 +1191,8 @@ class CodeBrowser(App):
                 self.logview.write_line(str(e))
                 pass
             self.logview.write_line("Call Job finished")
-            key = '''[u]%s[/u]''' % (str(Body(sym.location)))+"%s:%d" % (from_file(sym.location.uri),
-                                                                         sym.location.range.start.line)
+            key = '''[u]%s[/u]''' % (str(Body(sym.location)).replace("\n", ""))+"%s:%d" % (from_file(sym.location.uri),
+                                                                                           sym.location.range.start.line)
             self.post_message(refermessage(ret, key))
             return ret
 

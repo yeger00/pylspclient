@@ -179,7 +179,7 @@ class SymbolLocation:
             code = code.replace("\n","")
             pos = code.find(self.name)
             if pos>0:
-                code = code[max(pos-20,0):min(pos+20,len(code))]
+                code = code[max(pos-20,0):min(pos+len(self.name)+20,len(code))]
                 self.code = "  "+code.replace(self.name,'''[u]%s[/u]'''%(self.name))
                 
 

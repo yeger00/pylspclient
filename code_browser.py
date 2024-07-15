@@ -510,9 +510,10 @@ class mymessage(Message):
 class changelspmessage(Message):
     loc: Optional[Location] = None
 
-    def __init__(self, loc: Optional[Location] = None) -> None:
+    def __init__(self, loc: Optional[Location] = None,refresh=True) -> None:
         super().__init__()
         self.loc = loc
+        self.refresh_symbol_view = refresh
     pass
 
 
@@ -675,7 +676,8 @@ class CodeBrowser(App):
         pass
 
     def on_changelspmessage(self, msg: changelspmessage) -> None:
-        self.refresh_symbol_view()
+        if msg.refresh_symbol_view==True:
+            self.refresh_symbol_view()
         if msg.loc != None:
             line = msg.loc.range.start.line
             self.code_editor_scroll_view().scroll_to(y=line, animate=False)
@@ -911,13 +913,14 @@ class CodeBrowser(App):
 
     def on_choose_file_from_event(self, path: str, loc: Optional[Location] = None, backforward=False):
         if self.codeview_file == path:
-            self.post_message(symbolsmessage(loc))
+            self.post_message(changelspmessage(loc,False))
             return
         code_view = self.code_editor_view()
 
         TEXT = open(str(path), "r").read()
         # code_view.document = Document(TEXT)
         code_view.load_text(TEXT)
+        self.post_message(changelspmessage(loc,False))
         self.soucecode = SourceCode(self.codeview_file)
         self.code_editor_view().scroll_home(animate=False)
         self.sub_title = str(path)

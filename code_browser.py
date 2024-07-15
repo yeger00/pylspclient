@@ -53,6 +53,13 @@ class CodeView:
         self.textarea = textarea
         pass
 
+    def key_down(self, down=True):
+        if self.textarea is None:
+            return
+        begin = self.textarea.selection.start[0]
+        # self.textarea.selection.start.
+        self.textarea.select_line(begin+1 if down else begin-1)
+
     def is_focused(self):
         if self.textarea is None:
             return False
@@ -647,6 +654,8 @@ class CodeBrowser(App):
         ("f", "toggle_files", "Toggle Files"),
         ("q", "quit", "Quit"),
         ("i", "focus_input", "Focus to cmdline"),
+        ("k", "key_up", "up"),
+        ("j", "key_down", "down"),
         ("escape", "focus_input", "Focus to cmdline"),
         ("ctrl+o", "goback", "Go Back"),
         ("ctrl+b", "goforward", "Go Forward"),
@@ -658,6 +667,16 @@ class CodeBrowser(App):
     ]
 
     show_tree = var(True)
+
+    def action_key_down(self) -> None:
+        if self.CodeView.is_focused():
+            self.CodeView.key_down()
+        pass
+
+    def action_key_up(self) -> None:
+        if self.CodeView.is_focused():
+            self.CodeView.key_down(False)
+        pass
 
     def action_focus_input(self) -> None:
         self.cmdline.focus()
@@ -849,7 +868,7 @@ class CodeBrowser(App):
         self.code_to_search_position(self.search_result.data[0])
 
     def search_prev_next(self, prev):
-        if self.search_result.isType( ResultItemSearch):
+        if self.search_result.isType(ResultItemSearch):
             data = self.search_result.search_next(
             ) if prev == False else self.search_result.search_prev()
             self.code_to_search_position(data)
@@ -858,7 +877,7 @@ class CodeBrowser(App):
             ) if prev == False else self.search_result.search_prev()
             self.code_to_refer(s)  # type: ignore
             pass
-        self.searchview.index=self.search_result.index
+        self.searchview.index = self.search_result.index
 
     def focus_to_viewid(self, view):
         try:
@@ -1008,8 +1027,9 @@ class CodeBrowser(App):
         self.history.add_to_history(self.codeview_file, backforward)
         self.refresh_history_view()
         self.change_lsp_file(self.codeview_file, loc)
+
     def help(self):
-        help =[
+        help = [
             "help",
             "opeh filepath",
             "history|code-view|fzf|symbol",
@@ -1022,13 +1042,15 @@ class CodeBrowser(App):
             "   o  goback",
             "   b  goforward",
             "Key:",
+            "   j/k  down/up",
             "   f find current word",
             "   c CallIncomming",
             "   d goto declaration",
             "   i goto impl",
             "   r Refere"
-        ] 
+        ]
         self.logview.write_lines(help)
+
     def on_choose_file_from_event_static(self, path):
         code_view = self.query_one("#code", Static)
         try:

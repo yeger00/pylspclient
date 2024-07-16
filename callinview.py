@@ -140,8 +140,8 @@ class callinview:
                                   data=job.method)
         for a in job.callin_all:
             node = root.add(a.displayname(),
-                            data=CallTreeNode(a, True),
-                            expand=True)
+                            data=CallTreeNode(a, False),
+                            expand=False)
             a = a.callee
             while a != None:
                 if a.callee is None:

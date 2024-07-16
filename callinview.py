@@ -42,7 +42,7 @@ class CallTreeNode:
         pass
 
 
-class _calltree(Tree):
+class _calltree(Tree,uicallback):
     BINDINGS = [
         ("enter", "open_file", "Open"),
     ]

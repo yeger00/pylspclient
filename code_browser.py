@@ -404,7 +404,7 @@ class input_suggestion(SuggestFromList):
 
 
 class CommandInput(Input):
-    mainui: 'CodeBrowser'
+    mainui: uicallback
 
     def __init__(self, mainui: 'CodeBrowser', root) -> None:
         suggestion = input_suggestion(input_command_options)
@@ -416,6 +416,12 @@ class CommandInput(Input):
         self.mainui = mainui
         self.suggestion = suggestion
         suggestion._history = self.history
+
+    @on(Input.Changed)
+    def on_input_changed(self, message: Message):
+        if self.mainui != None:
+            self.mainui.on_vi_command(self.value)
+        pass
 
     def on_input_submitted(self) -> None:
         if self.mainui != None:
@@ -824,6 +830,11 @@ class CodeBrowser(App, uicallback):
         pass
 
     def change_lsp_file(self, file: str, loc: Optional[Location] = None):
+        try:
+            self.__change_lsp_file(file, loc)
+        except Exception as e:
+            self.logview.write_line(str(e))
+    def __change_lsp_file(self, file: str, loc: Optional[Location] = None):
 
         def lsp_change(lsp: LspMain, file: str):
             lsp.changefile(file)
@@ -897,10 +908,20 @@ class CodeBrowser(App, uicallback):
             pass
         f.update(str(self.generic_search_mgr))
 
+    def on_vi_command(self, value:str):
+        try:
+            args = value.split(" ")
+            if len(args) > 0:
+                if args[0].find(":/")==0:
+                    self.search_preview_ui(args)
+            pass
+        except Exception as e:
+            self.logview.write_line(str(e))
+            pass
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:
-            if args[0].find(":/") != -1:
+            if args[0].find(":/") == 0:
                 self.search_preview_ui(args)
                 return True
             elif args[0] == "help":

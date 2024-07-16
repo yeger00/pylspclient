@@ -7,6 +7,10 @@ from lspcpp import CallNode, task_call_in
 
 
 class uicallback:
+    def on_vi_command(self, value:str):
+        pass
+    def on_command_input(self, value):
+        pass
 
     def on_select_list(self, list: ListView):
         pass

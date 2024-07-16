@@ -135,9 +135,36 @@ class _calltree(Tree, uicallback):
 
 class callinview:
     job: task_call_in
-    status :str=""
+    status: str = ""
+    findresult = []
+    index = 0
+
     def __init__(self) -> None:
         self.tree = _calltree()
+
+    def goto_next(self):
+        if len(self.findresult):
+            self.index += 1
+            self.index = self.index % len(self.findresult)
+            self.tree.select_node(self.findresult[self.index])  # type: ignore
+
+    def find_text(self, text):
+        self.index = 0
+
+        def find_node(node, key) -> list:
+            if node is None:
+                return []
+            ret = []
+            if str(node.label).lower().find(key) > -1:
+                ret.append(node)
+            if node.is_expanded:
+                for c in node.children:
+                    ret.extend(find_node(c, key))
+            return ret
+
+        self.findresult = find_node(self.tree.root, text)
+        if len(self.findresult):
+            self.tree.select_node(self.findresult[self.index])  # type: ignore
 
     # mainui:uicallback
     def update_job(self, job: task_call_in):

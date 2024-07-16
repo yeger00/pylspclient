@@ -888,7 +888,12 @@ class CodeBrowser(App, uicallback):
         elif self.preview_focused == self.CodeView.textarea:
             pass
         elif self.preview_focused == self.callin.tree:
-            
+            if changed:
+                self.callin.find_text(key)
+                for i in range(len(self.callin.findresult)):
+                    self.generic_search_mgr.add(i)
+            else:
+                self.callin.goto_next()
             pass
         f.update(str(self.generic_search_mgr))
 

@@ -1156,9 +1156,12 @@ class task_call_in(taskbase):
         import codetask
         codetask.task_seq = +1
         self.id = codetask.task_seq
+        self.processd = 0
         pass
 
     def run(self):
+        self.processd = 0
+        self.callin_all = []
         walk = CallerWalker(self.client, self.wk)
         ret = walk.get_caller(Symbol(self.method), once=False)
         self.callin_all = ret
@@ -1188,11 +1191,13 @@ class task_call_in(taskbase):
             except Exception as e:
                 logger.exception(str(e))
                 pass
+            self.processd += 1
 
     def displayname(self):
         data = Body(self.method.location).data.replace("\n", "")
-        return data + " %s:%d" % (display_file_path(
-            self.method.location.uri), self.method.location.range.start.line)
+        return data + "[%d/%d] %s:%d" % (self.processd, len(
+            self.callin_all), display_file_path(self.method.location.uri),
+                                         self.method.location.range.start.line)
 
 
 class SymbolFile:

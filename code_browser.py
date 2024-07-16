@@ -28,7 +28,7 @@ from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
 from callinview import CallTreeNode, callinopen, callinview, uicallback
-from codesearch import ResultItem, ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode
+from codesearch import ResultItem, ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode, SourceCodeSearch
 from cpp_impl import Body, from_file, to_file
 from codetask import TaskManager
 from lspcpp import CallNode, LspMain, Symbol, OutputFile, SymbolLocation, task_call_in, task_callback
@@ -834,6 +834,7 @@ class CodeBrowser(App, uicallback):
             self.__change_lsp_file(file, loc)
         except Exception as e:
             self.logview.write_line(str(e))
+
     def __change_lsp_file(self, file: str, loc: Optional[Location] = None):
 
         def lsp_change(lsp: LspMain, file: str):
@@ -897,6 +898,21 @@ class CodeBrowser(App, uicallback):
             self.searchview.index = self.generic_search_mgr.get_index()
             pass
         elif self.preview_focused == self.CodeView.textarea:
+            if self.CodeView.textarea != None:
+                if changed:
+                    index = 0
+                    for item in self.CodeView.textarea.document.lines:
+                        if item.lower().find(key) > -1:
+                            self.generic_search_mgr.add(index)
+                        index += 1
+                    pass
+                else:
+                    self.generic_search_mgr.get_next()
+                    pass
+                line = self.generic_search_mgr.get_index()
+                sss = self.CodeView.textarea.document.lines[line]
+                pos = SourceCodeSearch.Pos(line, col=sss.find(key), text=key)
+                self.code_to_search_position(ResultItemSearch(pos))
             pass
         elif self.preview_focused == self.callin.tree:
             if changed:
@@ -908,16 +924,17 @@ class CodeBrowser(App, uicallback):
             pass
         f.update(str(self.generic_search_mgr))
 
-    def on_vi_command(self, value:str):
+    def on_vi_command(self, value: str):
         try:
             args = value.split(" ")
             if len(args) > 0:
-                if args[0].find(":/")==0:
+                if args[0].find(":/") == 0:
                     self.search_preview_ui(args)
             pass
         except Exception as e:
             self.logview.write_line(str(e))
             pass
+
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:

@@ -8,6 +8,7 @@ Run with:
 
 import sys
 from typing import Optional
+from textual import on
 from textual.message import Message
 from textual.widget import Widget
 from textual.widgets.text_area import Selection
@@ -613,7 +614,30 @@ class CodeBrowser(App, uicallback):
         f: Label = self.query_one("#f1", Label)
         f.update("Refer to <%d> " % (len(message.s)) + message.query)
         pass
-
+    # @on(TextArea.Changed)
+    @on(TextArea.SelectionChanged)
+    def message_received(self, message: Message):
+        if self.CodeView.is_focused()==False:
+            pass
+        if self.CodeView.textarea is None:
+            return
+        selection = self.CodeView.get_select_range()
+        if selection is None:
+            return
+        l = self.lsp.currentfile.symbols_list
+        max =10 
+        index =None
+        closest = None
+        i = 0
+        for item in l:
+            gap =abs(selection.range.start.line-item.sym.location.range.start.line)
+            if gap <max:
+                index = i
+                max = gap 
+                closest = item
+            i+=1
+        if index!=None:
+            self.symbol_listview.index =index
     def on_mymessage(self, message: mymessage) -> None:
         s = message.s
         self.search_result = SearchResults(

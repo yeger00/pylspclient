@@ -1,5 +1,3 @@
-import os
-from pathlib import Path
 from cpp_impl import to_file
 from lspcpp import Symbol, SymbolLocation
 from pylspclient.lsp_pydantic_strcuts import Location

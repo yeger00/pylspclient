@@ -572,6 +572,10 @@ class generic_search:
     def add(self, index: int):
         self.indexlist.append(index)
 
+    def __str__(self) -> str:
+        return "search %s %d/%d" % (self.key, self.currentindex,
+                                    self.result_number())
+
     def result_number(self) -> int:
         return len(self.indexlist)
 
@@ -856,7 +860,13 @@ class CodeBrowser(App, uicallback):
             self.generic_search_mgr.get_next()
         f: Label = self.query_one("#f1", Label)
 
-        if self.preview_focused == self.history:
+        if self.preview_focused == self.history_view:
+            if changed:
+                for i in range(len(self.history.datalist)):
+                    h = self.history.datalist[i].lower()
+                    if h.find(key) > -1:
+                        self.generic_search_mgr.add(i)
+            self.history_view.index = self.generic_search_mgr.get_index()
             pass
         elif self.preview_focused == self.symbol_listview:
             if changed == True:
@@ -878,9 +888,9 @@ class CodeBrowser(App, uicallback):
         elif self.preview_focused == self.CodeView.textarea:
             pass
         elif self.preview_focused == self.callin.tree:
+            
             pass
-        f.update("Search Result to <%d>" %
-                 (self.generic_search_mgr.result_number()) + key)
+        f.update(str(self.generic_search_mgr))
 
     def did_command_opt(self, value, args):
         self.logview.write_line(value)

@@ -34,6 +34,6 @@ class callinview:
     # mainui:uicallback
     def update_job(self, job: task_call_in):
         self.job = job
-        root = self.tree.root.add(job.method.name, expand=True)
+        root = self.tree.root.add(job.method.name, expand=True,data=job.method)
         for a in job.callin_all:
-            root.add_leaf(a.displayname())
+            root.add_leaf(a.displayname(),data=a)

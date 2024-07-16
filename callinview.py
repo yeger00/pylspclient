@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+from math import exp
 from re import sub
 from typing import Optional
 from textual.app import App
@@ -53,8 +55,30 @@ class CallTreeNode:
 
 class _calltree(Tree, uicallback):
     BINDINGS = [
-        ("enter", "open_file", "Open"),
+        ("r", "refer", "Reference"),
     ]
+
+    def action_refer(self) -> None:
+        try:
+            for child in self.root.children:
+                if child.data is None:
+                    continue
+                parent: CallTreeNode = child.data
+                if parent is None or isinstance(parent.callnode, task_call_in) == False:
+                    continue
+                task: task_call_in = parent.callnode  # type: ignore
+                index = child.children.index(self.cursor_node)  # type: ignore
+                if index >= 0:
+                    aa = child.children[index]
+                    if aa.data != None:
+                        def fn(task, index):
+                            task.deep_resolve_at(index)
+                        ThreadPoolExecutor(1).submit(fn, task, index)
+                    break
+
+        except:
+            pass
+        pass
 
     def __init__(self):
         Tree.__init__(self, "call heritage")
@@ -108,9 +132,9 @@ class callinview:
         for child in self.tree.root.children:
             if child.data is None:
                 continue
-            c: CallTreeNode= child.data
+            c: CallTreeNode = child.data
             if isinstance(c.callnode, task_call_in):
-                task :task_call_in= c.callnode
+                task: task_call_in = c.callnode
                 if task.id == job.id:
                     child.remove()
                     break
@@ -119,9 +143,9 @@ class callinview:
                                   data=CallTreeNode(job, True))
         for a in job.callin_all:
             level = 1
-            subroot =node = root.add(a.displayname(),
-                            data=CallTreeNode(a, False),
-                            expand=False)
+            subroot = node = root.add(a.displayname(),
+                                      data=CallTreeNode(a, False),
+                                      expand=False)
             a = a.callee
             while a != None:
                 level += 1
@@ -134,4 +158,4 @@ class callinview:
                                     data=CallTreeNode(a, False))
                 a = a.callee
             ss = subroot.label
-            subroot.label= "%d %s"%(level,ss) 
+            subroot.label = "%d %s" % (level, ss)

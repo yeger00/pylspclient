@@ -1155,17 +1155,41 @@ class task_call_in(taskbase):
         import codetask
         codetask.task_seq = +1
         self.id = codetask.task_seq
-        self.processd = 0
+        self.processed = 0
+        self.pendding = 0
         pass
 
     def run(self):
-        self.processd = 0
+        self.processed = 0
         self.callin_all = []
         walk = CallerWalker(self.client, self.wk)
         ret = walk.get_caller(Symbol(self.method), once=False)
         self.callin_all = ret
         self.cb.update(self)
-        # a.printstack(fp=self.toFile)
+
+    def deep_resolve_at(self, index):
+        a = self.callin_all[index]
+        self.cb.update(self)
+        self.pendding += 1
+        a.resolve_all(self.wk)
+        a.printstack(fp=self.toFile)
+        try:
+            uml = self.uml
+            if uml:
+                s = a.uml(wk=self.wk)
+                print(s)
+                toUml = self.toUml
+                if toUml != None:
+                    toUml.write(s)
+                    toUml.write("\n")
+                    toUml.flush()
+        except Exception as e:
+            logger.exception(str(e))
+            pass
+        self.cb.update(self)
+        self.pendding -= 1
+        self.processed += 1   # a.printstack(fp=self.toFile)
+
     def deep_resolve(self):
         if self.toFile != None:
             self.toFile.write("callin_all %d" % (len(self.callin_all)))
@@ -1187,13 +1211,13 @@ class task_call_in(taskbase):
             except Exception as e:
                 logger.exception(str(e))
                 pass
-            self.processd += 1
+            self.processed += 1
 
     def displayname(self):
         data = Body(self.method.location).data.replace("\n", "")
-        return data + "[%d/%d] %s:%d" % (self.processd, len(
-            self.callin_all), display_file_path(self.method.location.uri),
-                                         self.method.location.range.start.line)
+        return data + "[%d/%d/%d] %s:%d" % (self.processed, len(
+            self.callin_all), self.pendding, display_file_path(self.method.location.uri),
+            self.method.location.range.start.line)
 
 
 class SymbolFile:

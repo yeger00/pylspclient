@@ -830,9 +830,9 @@ class CallNode:
                 self.param = wk.get_parama(self)
             self.detail = str(self.symboldefine)
 
-    def uml(self,
-            wk: Optional['WorkSpaceSymbol'] = None) -> str:
+    def uml(self, wk: Optional['WorkSpaceSymbol'] = None) -> str:
         stack = self.callstack()
+
         def fix(node: CallNode):
             if node.symboldefine == None:
                 return node
@@ -1166,10 +1166,10 @@ class task_call_in(taskbase):
         self.callin_all = ret
         self.cb.update(self)
         # a.printstack(fp=self.toFile)
+    def deep_resolve(self):
         if self.toFile != None:
-            self.toFile.write("callin_all %d" % (len(ret)))
-
-        for a in ret:
+            self.toFile.write("callin_all %d" % (len(self.callin_all)))
+        for a in self.callin_all:
             a.resolve_all(self.wk)
             a.printstack(fp=self.toFile)
             self.cb.update(self)
@@ -1229,7 +1229,7 @@ class SymbolFile:
             if a.is_class_define():
                 if len(a.members):
                     symbols_list.append(a)
-                    x = sorted(a.members,key=lambda x:x.name.lower())
+                    x = sorted(a.members, key=lambda x: x.name.lower())
                     symbols_list.extend(x)
                 else:
                     cimpl[a.name] = a

@@ -1,3 +1,4 @@
+from re import sub
 from typing import Optional
 from textual.app import App
 from textual.message import Message
@@ -117,11 +118,13 @@ class callinview:
                                   expand=True,
                                   data=CallTreeNode(job, True))
         for a in job.callin_all:
-            node = root.add(a.displayname(),
+            level = 1
+            subroot =node = root.add(a.displayname(),
                             data=CallTreeNode(a, False),
                             expand=False)
             a = a.callee
             while a != None:
+                level += 1
                 if a.callee is None:
                     node = node.add_leaf(a.displayname(),
                                          data=CallTreeNode(a, False))
@@ -130,3 +133,5 @@ class callinview:
                     node = node.add(a.displayname(),
                                     data=CallTreeNode(a, False))
                 a = a.callee
+            ss = subroot.label
+            subroot.label= "%d %s"%(level,ss) 

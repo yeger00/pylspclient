@@ -1,3 +1,4 @@
+from typing import Optional
 from textual.validation import Failure
 from textual.widgets import Label, ListItem, ListView, Tree
 
@@ -27,7 +28,7 @@ class MyListView(ListView):
 
 
 CallTreeNodeExpand = 3
-CallTreeNodeFocus = 2
+CallTreeNodeFocused = 2
 CallTreeNodeCollapse = 1
 
 
@@ -37,6 +38,7 @@ class CallTreeNode:
     def __init__(self, callnode: CallNode, expanded: bool) -> None:
         self.callnode = callnode
         self.state = CallTreeNodeExpand if expanded else CallTreeNodeCollapse
+        self.focused = False
         pass
 
 
@@ -55,25 +57,35 @@ class _calltree(Tree):
         pass
 
     def action_select_cursor(self):
-        if self.cursor_node != None and self.cursor_node.data!=None:
-            n:CallTreeNode = self.cursor_node.data
-            if self.cursor_node.is_expanded :
-                if n.state != CallTreeNodeExpand:
-                    n.state = CallTreeNodeExpand
+        if self.cursor_node != None and self.cursor_node.data != None:
+            n: CallTreeNode = self.cursor_node.data
+            if self.cursor_node.is_expanded:
+                c = self.cursor_node
+                child = None
+                if c != None and len(c.children) > 0:
+                    child = c.children[0]
+                yes = None 
+                while child != None:
+                    if  child.is_expanded == False:
+                        yes = child
+                        break
+                    if len(child.children) > 0:
+                        child = child.children[0]
+                    else:
+                        break
+                if yes!=None:
+                    yes.toggle_all()
                     return
-            else:
-                if n.state != CallTreeNodeCollapse:
-                    n.state = CallTreeNodeCollapse
-                    return
-
-            if n.state==CallTreeNodeCollapse:
-                n.state = CallTreeNodeFocus
+                node: Optional[CallTreeNode] = c.data if c != None else None
+                if node != None :
+                     yes = node.focused
+                     node.focused = node.focused == False
+                     if yes==False:
+                         return
+                self.cursor_node.toggle_all()
                 return
-            elif n.state==CallTreeNodeFocus:
-                n.state = CallTreeNodeExpand
-            else :
-                n.state = CallTreeNodeCollapse
             self.cursor_node.toggle_all()
+            n.state = CallTreeNodeExpand if self.cursor_node.is_expanded else CallTreeNodeCollapse
         pass
 
 

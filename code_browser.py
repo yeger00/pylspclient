@@ -847,7 +847,7 @@ class CodeBrowser(App, uicallback):
         self.searchview.setlist(list(m))
 
     def search_preview_ui(self, args: list[str]):
-        key = args[0][2:]
+        key = args[0][2:].lower()
         changed = False
         if self.generic_search_mgr.key != key or self.generic_search_mgr.view != self.preview_focused:
             self.generic_search_mgr = generic_search(self.preview_focused, key)
@@ -862,11 +862,18 @@ class CodeBrowser(App, uicallback):
             if changed == True:
                 for i in range(len(self.symbols_list)):
                     l = self.symbols_list[i]
-                    if l.symbol_display_name().find(key) > -1:
+                    if l.symbol_display_name().lower().find(key) > -1:
                         self.generic_search_mgr.add(i)
             self.symbol_listview.index = self.generic_search_mgr.get_index()
             pass
         elif self.preview_focused == self.searchview:
+            if changed:
+                index = 0
+                for s in self.search_result.data:
+                    if str(s).lower().find(key) > -1:
+                        self.generic_search_mgr.add(index)
+                    index += 1
+            self.searchview.index = self.generic_search_mgr.get_index()
             pass
         elif self.preview_focused == self.CodeView.textarea:
             pass

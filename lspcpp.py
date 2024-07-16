@@ -1233,7 +1233,8 @@ class SymbolFile:
             if a.is_class_define():
                 if len(a.members):
                     symbols_list.append(a)
-                    symbols_list.extend(a.members)
+                    x = sorted(a.members,key=lambda x:x.name.lower())
+                    symbols_list.extend(x)
                 else:
                     cimpl[a.name] = a
             elif a.is_method():

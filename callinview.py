@@ -1,4 +1,6 @@
 from typing import Optional
+from textual.app import App
+from textual.message import Message
 from textual.validation import Failure
 from textual.widgets import Label, ListItem, ListView, Tree
 
@@ -30,14 +32,17 @@ class MyListView(ListView):
 CallTreeNodeExpand = 3
 CallTreeNodeFocused = 2
 CallTreeNodeCollapse = 1
+class callinopen(Message):
+    def __init__(self, node: CallNode) -> None:
+        super().__init__()
+        self.node = node
+
 
 
 class CallTreeNode:
-    state: int
-
+    callnode: CallNode
     def __init__(self, callnode: CallNode, expanded: bool) -> None:
         self.callnode = callnode
-        self.state = CallTreeNodeExpand if expanded else CallTreeNodeCollapse
         self.focused = False
         pass
 
@@ -86,11 +91,11 @@ class _calltree(Tree,uicallback):
                      yes = node.focused
                      node.focused = node.focused == False
                      if yes==False:
-                         return
+                        self.app.post_message(callinopen(node.callnode))
+                        return
                 self.cursor_node.toggle_all()
                 return
             self.cursor_node.toggle_all()
-            n.state = CallTreeNodeExpand if self.cursor_node.is_expanded else CallTreeNodeCollapse
         pass
 
 

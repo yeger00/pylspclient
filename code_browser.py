@@ -25,7 +25,7 @@ from textual.containers import Container
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
-from callinview import callinview, uicallback
+from callinview import callinopen, callinview, uicallback
 from codesearch import ResultItem, ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode
 from cpp_impl import Body, from_file, to_file
 from codetask import TaskManager
@@ -513,7 +513,9 @@ class symbolsmessage(Message):
 class callin_message(Message):
     task: Optional[task_call_in]
 
-    def __init__(self, task: Optional[task_call_in] = None, call: Optional[CallNode] = None) -> None:
+    def __init__(self,
+                 task: Optional[task_call_in] = None,
+                 call: Optional[CallNode] = None) -> None:
         super().__init__()
         self.task = task
         self.call = call
@@ -573,6 +575,14 @@ class CodeBrowser(App, uicallback):
         self.taskmanager = TaskManager()
         # self.lsp.currentfile.save_uml_file = self.print_recieved
         # self.lsp.currentfile.save_stack_file = self.print_recieved
+    def on_callinopen(self, msg: callinopen) -> None:
+        try:
+            node :CallNode= msg.node
+            self.on_choose_file_from_event(
+                from_file(node.sym.uri),
+                Location(uri=node.sym.uri, range=node.sym.selectionRange))
+        except Exception as e:
+            self.logview.write(str(e))
 
     def on_callin_message(self, message: callin_message) -> None:
         if message.task!=None:
@@ -1191,6 +1201,7 @@ class CodeBrowser(App, uicallback):
             try:
                 self.logview.write_line("Callin Job %s Started" % (sym.name))
                 filepath = from_file(sym.location.uri)
+
                 class callin_ui_cb(task_callback):
 
                     def __init__(self, app: App) -> None:

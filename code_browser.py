@@ -9,6 +9,7 @@ Run with:
 import sys
 from typing import Optional
 from textual.message import Message
+from textual.widget import Widget
 from textual.widgets.text_area import Selection
 from concurrent.futures import ThreadPoolExecutor
 import os
@@ -556,6 +557,7 @@ class CodeBrowser(App, uicallback):
     history_view: MyListView
     lsp: LspMain
     callin: callinview
+    preview_focused: Optional[Widget]
 
     def __init__(self, root, file):
         App.__init__(self)
@@ -573,6 +575,7 @@ class CodeBrowser(App, uicallback):
         self.CodeView = CodeView(None)
         self.callin = callinview()
         self.taskmanager = TaskManager()
+        self.preview_focused = None
         # self.lsp.currentfile.save_uml_file = self.print_recieved
         # self.lsp.currentfile.save_stack_file = self.print_recieved
 
@@ -625,7 +628,7 @@ class CodeBrowser(App, uicallback):
     BINDINGS = [
         ("f", "toggle_files", "Toggle Files"),
         ("q", "quit", "Quit"),
-        ("i", "focus_to_code", "Focus to cmdline"),
+        # ("i", "focus_to_code", "Focus to cmdline"),
         ("k", "key_up", "up"),
         ("j", "key_down", "down"),
         ("escape", "focus_input", "Focus to cmdline"),
@@ -657,6 +660,7 @@ class CodeBrowser(App, uicallback):
         pass
 
     def action_focus_input(self) -> None:
+        self.preview_focused = self.screen.focused
         self.cmdline.focus()
         pass
 

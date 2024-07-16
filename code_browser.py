@@ -411,9 +411,11 @@ class refermessage(Message):
         self.query = key
         self.s = s
 
-
+class uicallback:
+    def on_select_list(self, list: ListView):
+        pass
 class MyListView(ListView):
-    mainui: 'CodeBrowser'
+    mainui: uicallback
 
     def setlist(self, data: list[str]):
         self.clear()
@@ -428,7 +430,7 @@ class MyListView(ListView):
         self.mainui.on_select_list(self)
 
 
-class CodeBrowser(App):
+class CodeBrowser(App,uicallback):
     root: str
     symbol_query = LspQuery("", "")
     codeview_file: str

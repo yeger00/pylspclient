@@ -42,8 +42,9 @@ class callinopen(Message):
 
 
 class CallTreeNode:
-    # callnode: Optional[CallNode|task_call_in]
-    def __init__(self, callnode: object, expanded: bool) -> None:
+    callnode: Optional[CallNode | task_call_in]
+
+    def __init__(self, callnode:        Optional[CallNode | task_call_in], expanded: bool) -> None:
         self.callnode = callnode
         self.focused = False
         pass
@@ -93,38 +94,6 @@ class _calltree(Tree, uicallback):
 
                     self.cursor_node.toggle_all()
 
-    def __action_select_cursor_(self):
-        if self.cursor_node != None and self.cursor_node.data != None:
-            n: CallTreeNode = self.cursor_node.data
-            if self.cursor_node.is_expanded:
-                c = self.cursor_node
-                child = None
-                if c != None and len(c.children) > 0:
-                    child = c.children[0]
-                yes = None
-                while child != None:
-                    if child.is_expanded == False:
-                        yes = child
-                        break
-                    if len(child.children) > 0:
-                        child = child.children[0]
-                    else:
-                        break
-                if yes != None:
-                    yes.toggle_all()
-                    return
-                node: Optional[CallTreeNode] = c.data if c != None else None
-                if node != None:
-                    yes = node.focused
-                    node.focused = node.focused == False
-                    if yes == False:
-                        self.app.post_message(callinopen(node.callnode))
-                        return
-                self.cursor_node.toggle_all()
-                return
-            self.cursor_node.toggle_all()
-        pass
-
 
 class callinview:
     job: task_call_in
@@ -136,12 +105,17 @@ class callinview:
     def update_job(self, job: task_call_in):
         self.job = job
         for child in self.tree.root.children:
-            if child.data == job.displayname():
-                child.remove()
-                break
+            if child.data is None:
+                continue
+            c: CallTreeNode= child.data
+            if isinstance(c.callnode, task_call_in):
+                task :task_call_in= c.callnode
+                if task.id == job.id:
+                    child.remove()
+                    break
         root = self.tree.root.add(job.method.name,
                                   expand=True,
-                                  data=CallTreeNode(job,True))
+                                  data=CallTreeNode(job, True))
         for a in job.callin_all:
             node = root.add(a.displayname(),
                             data=CallTreeNode(a, False),

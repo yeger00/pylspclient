@@ -5,7 +5,7 @@ class taskbase:
     def run(self):
         pass
 
-
+task_seq=0
 
 class TaskManager:
     tasklist: list[taskbase] = []

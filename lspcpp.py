@@ -1153,6 +1153,9 @@ class task_call_in(taskbase):
         self.cb = cb
         self.once = once
         self.callin_all = []
+        import codetask
+        codetask.task_seq = +1
+        self.id = codetask.task_seq
         pass
 
     def run(self):
@@ -1170,6 +1173,7 @@ class task_call_in(taskbase):
             a.printstack(fp=self.toFile)
             for ss in stack:
                 ss.resolve(self.wk)
+            self.cb.update(self)
             try:
                 uml = self.uml
                 if uml:
@@ -1180,6 +1184,7 @@ class task_call_in(taskbase):
                         toUml.write(s)
                         toUml.write("\n")
                         toUml.flush()
+                self.cb.update(self)
             except Exception as e:
                 logger.exception(str(e))
                 pass

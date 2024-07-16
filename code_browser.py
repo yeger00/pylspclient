@@ -575,9 +575,10 @@ class CodeBrowser(App, uicallback):
         self.taskmanager = TaskManager()
         # self.lsp.currentfile.save_uml_file = self.print_recieved
         # self.lsp.currentfile.save_stack_file = self.print_recieved
+
     def on_callinopen(self, msg: callinopen) -> None:
         try:
-            node :CallNode= msg.node
+            node: CallNode = msg.node
             self.on_choose_file_from_event(
                 from_file(node.sym.uri),
                 Location(uri=node.sym.uri, range=node.sym.selectionRange))
@@ -585,8 +586,14 @@ class CodeBrowser(App, uicallback):
             self.logview.write(str(e))
 
     def on_callin_message(self, message: callin_message) -> None:
-        if message.task!=None:
-           self.callin.update_job(message.task) 
+        if message.task != None:
+            self.callin.update_job(message.task)
+            f: Label = self.query_one("#f1", Label)
+            f.update("call in to <%d> " % (len(message.task.callin_all)) +
+                     message.task.displayname())
+            if len(message.task.callin_all) > 0:
+                self.callin.tree.focus()
+
         pass
 
     def on_refermessage(self, message: refermessage) -> None:

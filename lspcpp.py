@@ -188,7 +188,8 @@ class SymbolLocation:
                     code.replace(self.name, '''[u]%s[/u]''' % (self.name))
 
     def __str__(self) -> str:
-        return " %s:%d" % (display_file_path(self.file), self.range.start.line) + self.code
+        return " %s:%d" % (display_file_path(
+            self.file), self.range.start.line) + self.code
 
 
 class Symbol:
@@ -760,16 +761,18 @@ class ICON:
         ) else ICON.Function if s.is_function(
         ) else ICON.Constructor if s.is_construct() else "?"
 
-def display_file_path(uri:str)->str:
+
+def display_file_path(uri: str) -> str:
     global work_space_root
-    path= from_file(uri).replace(
-                work_space_root if work_space_root != None else "",
-                "")
+    path = from_file(uri).replace(
+        work_space_root if work_space_root != None else "", "")
 
     i = 0
-    while i<len(path) and path[i]=='/':
-        i+=1
+    while i < len(path) and path[i] == '/':
+        i += 1
     return path[i:]
+
+
 class CallNode:
     symboldefine: Union[Symbol, None] = None
     detail: str = ""
@@ -1180,6 +1183,11 @@ class task_call_in(taskbase):
             except Exception as e:
                 logger.exception(str(e))
                 pass
+
+    def displayname(self):
+        data = Body(self.method.location).data.replace("\n", "")
+        return data + " %s:%d" % (display_file_path(
+            self.method.location.uri), self.method.location.range.start.line)
 
 
 class SymbolFile:

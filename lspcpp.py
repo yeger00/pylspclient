@@ -179,7 +179,8 @@ class SymbolLocation:
             code = code.replace("\n", "")
             pos = code.find(self.name)
             if pos > 0:
-                code = code[max(pos-20, 0)                            :min(pos+len(self.name)+20, len(code))]
+                code = code[max(pos-20, 0)
+                                :min(pos+len(self.name)+20, len(code))]
                 self.code = "  " + \
                     code.replace(self.name, '''[u]%s[/u]''' % (self.name))
 
@@ -1095,17 +1096,25 @@ class OutputFile(Output):
     def close(self):
         self.fp.close()
 
+class TaskCallBack:
+    toFile: Optional[Output] = None
+    toUml: Optional[Output] = None
+
+    def __init__(self) -> None:
+        pass
+
 
 class callinjob:
-    def __init__(self, wk: WorkSpaceSymbol, client: lspcppclient, method, toFile, toUml, uml, once) -> None:
+
+    def __init__(self, wk: WorkSpaceSymbol, client: lspcppclient, method, cb: TaskCallBack, once) -> None:
         self.client = client
         self.wk = wk
         self.method = method
-        self.toFile = toFile
-        self.uml = uml
-        self.toUml = toUml
+        self.toFile = cb.toFile
+        self.uml = cb.toUml != None
+        self.toUml = cb.toUml
         self.once = once
-        self.callin_all =[]
+        self.callin_all = []
         pass
 
     def run(self):
@@ -1114,8 +1123,10 @@ class callinjob:
         self.callin_all = ret
         for a in ret:
             stack = a.callstack()
-            a.printstack(fp=self.toFile)
-            
+            # a.printstack(fp=self.toFile)
+        if self.toFile != None:
+            self.toFile.write("callin_all %d" % (len(ret)))
+
         for a in ret:
             a.resolve_all(self.wk)
             stack = a.callstack()
@@ -1257,11 +1268,10 @@ class SymbolFile:
 
     def callin(self,
                method: SymbolInformation,
-               uml=False,
-               once=True,
-               toFile: Union[Output, None] = None,
-               toUml: Union[Output, None] = None) -> callinjob:
-        return callinjob(self.wk, self.sourcecode.client, method=method, toFile=toFile, toUml=toUml, uml=uml, once=once)
+               cb: TaskCallBack,
+               once=True
+               ) -> callinjob:
+        return callinjob(self.wk, self.sourcecode.client, method=method, cb=cb, once=once)
 
     def call(self,
              method,

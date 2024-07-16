@@ -600,8 +600,8 @@ class CodeBrowser(App, uicallback):
             f: Label = self.query_one("#f1", Label)
             f.update("call in to <%d> " % (len(message.task.callin_all)) +
                      message.task.displayname())
-            if len(message.task.callin_all) > 0:
-                self.callin.tree.focus()
+            # if len(message.task.callin_all) > 0:
+            #     self.callin.tree.focus()
 
         pass
 

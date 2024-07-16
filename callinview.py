@@ -69,6 +69,31 @@ class _calltree(Tree,uicallback):
     def __action_select_cursor(self):
         if self.cursor_node != None and self.cursor_node.data != None:
             n: CallTreeNode = self.cursor_node.data
+            if n!=None:
+                open = n.focused==False
+                if n.focused:
+                    n.focused=False
+                else:
+                    n.focused = True
+                if open:
+                    self.app.post_message(callinopen(n.callnode))
+                else:
+                    if self.cursor_node.is_expanded:
+                        cur = self.cursor_node
+                        child  =   cur.children[0] if len(cur.children) else None
+                        while child!=None:
+                            call= child.data
+                            if call!=None:
+                                call.focused = False
+                            child =  child.children[0] if len(child.children) else None
+
+                    self.cursor_node.toggle_all()
+
+
+
+    def __action_select_cursor_(self):
+        if self.cursor_node != None and self.cursor_node.data != None:
+            n: CallTreeNode = self.cursor_node.data
             if self.cursor_node.is_expanded:
                 c = self.cursor_node
                 child = None

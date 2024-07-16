@@ -42,8 +42,7 @@ class callinopen(Message):
 
 
 class CallTreeNode:
-    callnode: Optional[CallNode,task_call_in]
-
+    # callnode: Optional[CallNode|task_call_in]
     def __init__(self, callnode: object, expanded: bool) -> None:
         self.callnode = callnode
         self.focused = False

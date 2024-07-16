@@ -621,23 +621,26 @@ class CodeBrowser(App, uicallback):
             pass
         if self.CodeView.textarea is None:
             return
-        selection = self.CodeView.get_select_range()
-        if selection is None:
-            return
-        l = self.lsp.currentfile.symbols_list
-        max =10 
-        index =None
-        closest = None
-        i = 0
-        for item in l:
-            gap =abs(selection.range.start.line-item.sym.location.range.start.line)
-            if gap <max:
-                index = i
-                max = gap 
-                closest = item
-            i+=1
-        if index!=None:
-            self.symbol_listview.index =index
+        try:
+            selection = self.CodeView.get_select_range()
+            if selection is None:
+                return
+            l = self.lsp.currentfile.symbols_list
+            max =10 
+            index =None
+            closest = None
+            i = 0
+            for item in l:
+                gap =abs(selection.range.start.line-item.sym.location.range.start.line)
+                if gap <max:
+                    index = i
+                    max = gap 
+                    closest = item
+                i+=1
+            if index!=None:
+                self.symbol_listview.index =index
+        except Exception as e:
+            self.logview.write_line(str(e))
     def on_mymessage(self, message: mymessage) -> None:
         s = message.s
         self.search_result = SearchResults(

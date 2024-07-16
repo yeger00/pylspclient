@@ -37,6 +37,7 @@ from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
 
 from pylspclient.lsp_pydantic_strcuts import Location, Position, Range, SymbolInformation
+
 find_key = "find "
 view_key = "view "
 clear_key = "clear"
@@ -548,6 +549,33 @@ class MyListView(ListView):
         self.mainui.on_select_list(self)
 
 
+class generic_search:
+    indexlist: list[int] = []
+    view: object
+    key: str
+
+    def __init__(self, view: object, key: str = "") -> None:
+        self.view = view
+        self.key = key
+        self.indexlist = []
+        self.currentindex = 0
+        pass
+
+    def get_next(self) -> int:
+        self.currentindex += 1
+        self.currentindex = self.currentindex % len(self.indexlist)
+        return self.indexlist[self.currentindex]
+
+    def get_index(self) -> int:
+        return self.indexlist[self.currentindex]
+
+    def add(self, index: int):
+        self.indexlist.append(index)
+
+    def result_number(self) -> int:
+        return len(self.indexlist)
+
+
 class CodeBrowser(App, uicallback):
     root: str
     symbol_query = LspQuery("", "")
@@ -558,6 +586,8 @@ class CodeBrowser(App, uicallback):
     lsp: LspMain
     callin: callinview
     preview_focused: Optional[Widget]
+    symbols_list: list[Symbol] = []
+    generic_search_mgr: generic_search
 
     def __init__(self, root, file):
         App.__init__(self)
@@ -576,6 +606,7 @@ class CodeBrowser(App, uicallback):
         self.callin = callinview()
         self.taskmanager = TaskManager()
         self.preview_focused = None
+        self.generic_search_mgr = generic_search(None, "")
         # self.lsp.currentfile.save_uml_file = self.print_recieved
         # self.lsp.currentfile.save_stack_file = self.print_recieved
 
@@ -598,8 +629,8 @@ class CodeBrowser(App, uicallback):
         if message.task != None:
             self.callin.update_job(message.task)
             f: Label = self.query_one("#f1", Label)
-            self.callin.status = "call in to <%d> " % (
-                len(message.task.callin_all)) + message.task.displayname()
+            self.callin.status = "call in to <%d> " % (len(
+                message.task.callin_all)) + message.task.displayname()
             f.update(self.callin.status)
             # if len(message.task.callin_all) > 0:
             #     self.callin.tree.focus()
@@ -612,8 +643,8 @@ class CodeBrowser(App, uicallback):
         self.udpate_search_result_view()
         self.searchview.focus()
         f: Label = self.query_one("#f1", Label)
-        self.search_result.status = "Refer to <%d> " % (
-            len(message.s)) + message.query
+        self.search_result.status = "Refer to <%d> " % (len(
+            message.s)) + message.query
         f.update(self.search_result.status)
         pass
 
@@ -704,8 +735,9 @@ class CodeBrowser(App, uicallback):
         pass
 
     def action_focus_input(self) -> None:
-        self.preview_focused = self.screen.focused
-        self.cmdline.focus()
+        if self.screen.focused != self.cmdline:
+            self.preview_focused = self.screen.focused
+            self.cmdline.focus()
         pass
 
     def on_select_list(self, list: ListView):
@@ -814,10 +846,42 @@ class CodeBrowser(App, uicallback):
         m = map(lambda x: str(x), self.search_result.data)
         self.searchview.setlist(list(m))
 
+    def search_preview_ui(self, args: list[str]):
+        key = args[0][2:]
+        changed = False
+        if self.generic_search_mgr.key != key or self.generic_search_mgr.view != self.preview_focused:
+            self.generic_search_mgr = generic_search(self.preview_focused, key)
+            changed = True
+        if changed == False:
+            self.generic_search_mgr.get_next()
+        f: Label = self.query_one("#f1", Label)
+
+        if self.preview_focused == self.history:
+            pass
+        elif self.preview_focused == self.symbol_listview:
+            if changed == True:
+                for i in range(len(self.symbols_list)):
+                    l = self.symbols_list[i]
+                    if l.symbol_display_name().find(key) > -1:
+                        self.generic_search_mgr.add(i)
+            self.symbol_listview.index = self.generic_search_mgr.get_index()
+            pass
+        elif self.preview_focused == self.searchview:
+            pass
+        elif self.preview_focused == self.CodeView.textarea:
+            pass
+        elif self.preview_focused == self.callin.tree:
+            pass
+        f.update("Search Result to <%d>" %
+                 (self.generic_search_mgr.result_number()) + key)
+
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:
-            if args[0] == "help":
+            if args[0].find(":/") != -1:
+                self.search_preview_ui(args)
+                return True
+            elif args[0] == "help":
                 self.help()
                 return
             if args[0] in set(["cn", "cp"]):
@@ -1039,10 +1103,10 @@ class CodeBrowser(App, uicallback):
             self.symbol_listview.loading = True
             aa = map(lambda x: ListItem(Label(x)),
                      self.lsp.currentfile.get_symbol_list_string())
-            file2 = self.lsp.currentfile.file
             self.symbol_listview.loading = False
-            if file2 != file:
+            if file != self.codeview_file:
                 return
+            self.symbols_list = self.lsp.currentfile.symbols_list
             self.post_message(symbolsmessage(list(aa), file))
 
         ThreadPoolExecutor(1).submit(my_function)

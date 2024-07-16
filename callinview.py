@@ -55,9 +55,25 @@ class CallTreeNode:
 
 class _calltree(Tree, uicallback):
     BINDINGS = [
-        ("r", "refer", "Reference"),
+        ("r", "refer", "resolve"),
+        ("a", "resolve_all", "resolve_all"),
     ]
-
+    def action_resolve_all(self)->None:
+        try:
+            for child in self.root.children:
+                if child!=self.cursor_node:
+                    continue
+                if child.data is None:
+                    continue
+                parent: CallTreeNode = child.data
+                if parent is None or isinstance(parent.callnode, task_call_in) == False:
+                    continue
+                task: task_call_in = parent.callnode  # type: ignore
+                ThreadPoolExecutor(1).submit(task.deep_resolve)
+                return
+        except:
+            pass
+        pass
     def action_refer(self) -> None:
         try:
             for child in self.root.children:

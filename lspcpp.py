@@ -1194,9 +1194,10 @@ class task_call_in(taskbase):
         if self.toFile != None:
             self.toFile.write("callin_all %d" % (len(self.callin_all)))
         for a in self.callin_all:
+            self.pendding += 1
+            self.cb.update(self)
             a.resolve_all(self.wk)
             a.printstack(fp=self.toFile)
-            self.cb.update(self)
             try:
                 uml = self.uml
                 if uml:
@@ -1207,11 +1208,12 @@ class task_call_in(taskbase):
                         toUml.write(s)
                         toUml.write("\n")
                         toUml.flush()
-                self.cb.update(self)
             except Exception as e:
                 logger.exception(str(e))
                 pass
+            self.cb.update(self)
             self.processed += 1
+            self.pendding -= 1
 
     def displayname(self):
         data = Body(self.method.location).data.replace("\n", "")

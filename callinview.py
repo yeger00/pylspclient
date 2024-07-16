@@ -1,10 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
-from math import exp
-from re import sub
 from typing import Optional
-from textual.app import App
 from textual.message import Message
-from textual.validation import Failure
 from textual.widgets import Label, ListItem, ListView, Tree
 
 from lspcpp import CallNode, task_call_in
@@ -32,11 +28,6 @@ class MyListView(ListView):
         self.mainui.on_select_list(self)
 
 
-CallTreeNodeExpand = 3
-CallTreeNodeFocused = 2
-CallTreeNodeCollapse = 1
-
-
 class callinopen(Message):
 
     def __init__(self, node: object) -> None:
@@ -47,7 +38,7 @@ class callinopen(Message):
 class CallTreeNode:
     callnode: Optional[CallNode | task_call_in]
 
-    def __init__(self, callnode:        Optional[CallNode | task_call_in], expanded: bool) -> None:
+    def __init__(self, callnode: Optional[CallNode | task_call_in]) -> None:
         self.callnode = callnode
         self.focused = False
         pass
@@ -58,15 +49,17 @@ class _calltree(Tree, uicallback):
         ("r", "refer", "resolve"),
         ("a", "resolve_all", "resolve_all"),
     ]
-    def action_resolve_all(self)->None:
+
+    def action_resolve_all(self) -> None:
         try:
             for child in self.root.children:
-                if child!=self.cursor_node:
+                if child != self.cursor_node:
                     continue
                 if child.data is None:
                     continue
                 parent: CallTreeNode = child.data
-                if parent is None or isinstance(parent.callnode, task_call_in) == False:
+                if parent is None or isinstance(parent.callnode,
+                                                task_call_in) == False:
                     continue
                 task: task_call_in = parent.callnode  # type: ignore
                 ThreadPoolExecutor(1).submit(task.deep_resolve)
@@ -74,21 +67,25 @@ class _calltree(Tree, uicallback):
         except:
             pass
         pass
+
     def action_refer(self) -> None:
         try:
             for child in self.root.children:
                 if child.data is None:
                     continue
                 parent: CallTreeNode = child.data
-                if parent is None or isinstance(parent.callnode, task_call_in) == False:
+                if parent is None or isinstance(parent.callnode,
+                                                task_call_in) == False:
                     continue
                 task: task_call_in = parent.callnode  # type: ignore
                 index = child.children.index(self.cursor_node)  # type: ignore
                 if index >= 0:
                     aa = child.children[index]
                     if aa.data != None:
+
                         def fn(task, index):
                             task.deep_resolve_at(index)
+
                         ThreadPoolExecutor(1).submit(fn, task, index)
                     break
 
@@ -156,22 +153,20 @@ class callinview:
                     break
         root = self.tree.root.add(job.method.name,
                                   expand=True,
-                                  data=CallTreeNode(job, True))
+                                  data=CallTreeNode(job))
         for a in job.callin_all:
             level = 1
             subroot = node = root.add(a.displayname(),
-                                      data=CallTreeNode(a, False),
+                                      data=CallTreeNode(a),
                                       expand=False)
             a = a.callee
             while a != None:
                 level += 1
                 if a.callee is None:
-                    node = node.add_leaf(a.displayname(),
-                                         data=CallTreeNode(a, False))
+                    node = node.add_leaf(a.displayname(), data=CallTreeNode(a))
                     break
                 else:
-                    node = node.add(a.displayname(),
-                                    data=CallTreeNode(a, False))
+                    node = node.add(a.displayname(), data=CallTreeNode(a))
                 a = a.callee
             ss = subroot.label
             subroot.label = "%d %s" % (level, ss)

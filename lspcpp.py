@@ -3,6 +3,7 @@
 
 """
 from pyclbr import Function
+from sys import exc_info
 from codetask import taskbase
 import cpp_impl
 from typing import Union
@@ -808,6 +809,15 @@ class CallNode:
         if self.callee != None:
             self.callee.printstack(level=level + 1, fp=fp)
 
+    def filename(self):
+        f = os.path.basename(from_file(self.sym.uri)).replace(".", "_")
+        cls = self.get_cls()
+        classname = cls.name + \
+            "::" if cls != None else ""
+        sss = classname + self.sym.name + "%s_%d" % (f,
+                                                     self.sym.range.start.line)
+        return sss
+
     def stack_display_name(self, level):
         cls = self.get_cls()
         classname = cls.name + \
@@ -912,12 +922,14 @@ class CallNode:
         #             right = "%s:%s" % (cls.name, right)
         #         ret.append("%s -> %s" % (left, right))
         #     stack = stack[1:]
-        sss = ["\n" * 1, "@startuml", "autoactivate on", title]
+        mark_begin = "```plantuml"
+        sss = [mark_begin, "@startuml", "autoactivate on", title]
         sss.extend(ret)
-        sss.extend(["@enduml", "\n" * 3])
+        mark_end = "```"
+        sss.extend(["@enduml", mark_end, "\n" * 3])
         return "\n".join(sss)
 
-    def callstack(self):
+    def callstack(self) -> list['CallNode']:
         ret: list[CallNode] = [self]
         next = self.callee
         while next != None:
@@ -1177,6 +1189,7 @@ class task_call_in(taskbase):
             uml = self.uml
             if uml:
                 s = a.uml(wk=self.wk)
+                self.save_uml_tofile(a, s)
                 print(s)
                 toUml = self.toUml
                 if toUml != None:
@@ -1188,37 +1201,48 @@ class task_call_in(taskbase):
             pass
         self.cb.update(self)
         self.pendding -= 1
-        self.processed += 1   # a.printstack(fp=self.toFile)
+        self.processed += 1  # a.printstack(fp=self.toFile)
+
+    def ensureroot(self):
+        filename = "%s_%s" % (self.method.name,
+                              os.path.basename(
+                                  from_file(self.method.location.uri)))
+        filename = filename.replace(".", "_")
+        if os.path.exists(filename):
+            return filename
+        try:
+            os.mkdir(filename)
+            if os.path.exists(filename):
+                return filename
+        except:
+            pass
+        return None
 
     def deep_resolve(self):
         if self.toFile != None:
             self.toFile.write("callin_all %d" % (len(self.callin_all)))
-        for a in self.callin_all:
-            self.pendding += 1
-            self.cb.update(self)
-            a.resolve_all(self.wk)
-            a.printstack(fp=self.toFile)
+        for i in range(len(self.callin_all)):
+            self.deep_resolve_at(i)
+
+    def save_uml_tofile(self, a: CallNode, s):
+        root = self.ensureroot()
+        if root != None:
             try:
-                uml = self.uml
-                if uml:
-                    s = a.uml(wk=self.wk)
-                    print(s)
-                    toUml = self.toUml
-                    if toUml != None:
-                        toUml.write(s)
-                        toUml.write("\n")
-                        toUml.flush()
+                name = a.callstack()[0].filename()
+                fp = open(os.path.join(root, name + ".md"), "w")
+                fp.write(s)
             except Exception as e:
-                logger.exception(str(e))
+                logger.error(str(e))
+                if self.toFile != None:
+                    self.toFile.write(str(e) + "\n")
                 pass
-            self.cb.update(self)
-            self.processed += 1
-            self.pendding -= 1
+            pass
 
     def displayname(self):
         data = Body(self.method.location).data.replace("\n", "")
-        return data + "[%d/%d/%d] %s:%d" % (self.processed, len(
-            self.callin_all), self.pendding, display_file_path(self.method.location.uri),
+        return data + "[%d/%d/%d] %s:%d" % (
+            self.processed, len(self.callin_all), self.pendding,
+            display_file_path(self.method.location.uri),
             self.method.location.range.start.line)
 
 

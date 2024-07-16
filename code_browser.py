@@ -745,6 +745,7 @@ class CodeBrowser(App, uicallback):
         pass
 
     def action_focus_input(self) -> None:
+        self.cmdline.clear()
         if self.screen.focused != self.cmdline:
             self.preview_focused = self.screen.focused
             self.cmdline.focus()

@@ -93,7 +93,7 @@ class ResultItemSymbo(ResultItem):
 
 class SearchResults:
     data: list[ResultItem]
-
+    status :str=""
     def get(self, i):
         try:
             return self.data[i]

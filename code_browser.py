@@ -37,7 +37,6 @@ from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
 
 from pylspclient.lsp_pydantic_strcuts import Location, Position, Range, SymbolInformation
-
 find_key = "find "
 view_key = "view "
 clear_key = "clear"
@@ -599,8 +598,9 @@ class CodeBrowser(App, uicallback):
         if message.task != None:
             self.callin.update_job(message.task)
             f: Label = self.query_one("#f1", Label)
-            f.update("call in to <%d> " % (len(message.task.callin_all)) +
-                     message.task.displayname())
+            self.callin.status = "call in to <%d> " % (
+                len(message.task.callin_all)) + message.task.displayname()
+            f.update(self.callin.status)
             # if len(message.task.callin_all) > 0:
             #     self.callin.tree.focus()
 
@@ -612,12 +612,27 @@ class CodeBrowser(App, uicallback):
         self.udpate_search_result_view()
         self.searchview.focus()
         f: Label = self.query_one("#f1", Label)
-        f.update("Refer to <%d> " % (len(message.s)) + message.query)
+        self.search_result.status = "Refer to <%d> " % (
+            len(message.s)) + message.query
+        f.update(self.search_result.status)
         pass
-    # @on(TextArea.Changed)
+
+    @on(TabbedContent.TabActivated)
+    def on_tabpanemessage(self, message: Message):
+        if isinstance(message, TabbedContent.TabActivated):
+            tab: TabbedContent.TabActivated = message
+            id = tab.pane.id
+            f: Label = self.query_one("#f1", Label)
+            if id == "fzf-tab":
+                f.update(self.search_result.status)
+            elif id == "callin-tab":
+                f.update(self.callin.status)
+                pass
+        pass
+
     @on(TextArea.SelectionChanged)
     def message_received(self, message: Message):
-        if self.CodeView.is_focused()==False:
+        if self.CodeView.is_focused() == False:
             pass
         if self.CodeView.textarea is None:
             return
@@ -626,21 +641,23 @@ class CodeBrowser(App, uicallback):
             if selection is None:
                 return
             l = self.lsp.currentfile.symbols_list
-            max =10 
-            index =None
+            max = 10
+            index = None
             closest = None
             i = 0
             for item in l:
-                gap =abs(selection.range.start.line-item.sym.location.range.start.line)
-                if gap <max:
+                gap = abs(selection.range.start.line -
+                          item.sym.location.range.start.line)
+                if gap < max:
                     index = i
-                    max = gap 
+                    max = gap
                     closest = item
-                i+=1
-            if index!=None:
-                self.symbol_listview.index =index
+                i += 1
+            if index != None:
+                self.symbol_listview.index = index
         except Exception as e:
             self.logview.write_line(str(e))
+
     def on_mymessage(self, message: mymessage) -> None:
         s = message.s
         self.search_result = SearchResults(
@@ -958,7 +975,7 @@ class CodeBrowser(App, uicallback):
         # yield self.text
 
         with Container():
-            with TabbedContent(initial="log-tab"):
+            with TabbedContent(initial="log-tab", id="bottom-tab"):
                 with TabPane("Log", id="log-tab"):  # First tab
                     self.logview = MyLogView(id="log")
                     self.logview.mainuui = self

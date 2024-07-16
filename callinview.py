@@ -135,7 +135,7 @@ class _calltree(Tree, uicallback):
 
 class callinview:
     job: task_call_in
-
+    status :str=""
     def __init__(self) -> None:
         self.tree = _calltree()
 

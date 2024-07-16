@@ -888,7 +888,8 @@ class CallNode:
         sss.extend(ret)
         sss.extend(["@enduml", "\n" * 3])
         return "\n".join(sss)
-
+    def displayname(self):
+        return self.sym.name
     def callstack(self):
         ret: list[CallNode] = [self]
         next = self.callee
@@ -935,7 +936,7 @@ class CallerWalker:
             ret.extend(next)
         return ret
 
-    def get_caller(self, sym: Symbol, once=False):
+    def get_caller(self, sym: Symbol, once=False)->list[CallNode]:
         if sym.is_function() or sym.is_method() or sym.is_construct():
             ctx = self.client.lsp_client.callHierarchyPrepare(sym.sym)
             callser: list[CallNode] = []

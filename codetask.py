@@ -13,11 +13,12 @@ class TaskBase:
 
 class TaskCallIn(TaskBase):
     def __init__(self, job: callinjob, cb: TaskCallBack) -> None:
-        self.func = job
+        self.job = job
         self.cb = cb
+        self.name = job.method
 
     def run(self):
-        self.func.run()
+        self.job.run()
 
 
 class TaskManager:

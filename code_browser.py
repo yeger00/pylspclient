@@ -585,7 +585,7 @@ class CodeBrowser(App, uicallback):
         self.udpate_search_result_view()
         self.searchview.focus()
         f: Label = self.query_one("#f1", Label)
-        f.update("Refer to <%d>" % (len(message.s)) + message.query)
+        f.update("Refer to <%d> " % (len(message.s)) + message.query)
         pass
 
     def on_mymessage(self, message: mymessage) -> None:

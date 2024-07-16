@@ -36,15 +36,15 @@ CallTreeNodeCollapse = 1
 
 class callinopen(Message):
 
-    def __init__(self, node: CallNode) -> None:
+    def __init__(self, node: object) -> None:
         super().__init__()
         self.node = node
 
 
 class CallTreeNode:
-    callnode: CallNode
+    callnode: Optional[CallNode,task_call_in]
 
-    def __init__(self, callnode: CallNode, expanded: bool) -> None:
+    def __init__(self, callnode: object, expanded: bool) -> None:
         self.callnode = callnode
         self.focused = False
         pass
@@ -139,10 +139,10 @@ class callinview:
         for child in self.tree.root.children:
             if child.data == job.displayname():
                 child.remove()
-                return
+                break
         root = self.tree.root.add(job.method.name,
                                   expand=True,
-                                  data=job.displayname())
+                                  data=CallTreeNode(job,True))
         for a in job.callin_all:
             node = root.add(a.displayname(),
                             data=CallTreeNode(a, False),

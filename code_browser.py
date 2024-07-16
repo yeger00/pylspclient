@@ -25,7 +25,7 @@ from textual.containers import Container
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
-from callinview import callinopen, callinview, uicallback
+from callinview import CallTreeNode, callinopen, callinview, uicallback
 from codesearch import ResultItem, ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode
 from cpp_impl import Body, from_file, to_file
 from codetask import TaskManager
@@ -578,10 +578,16 @@ class CodeBrowser(App, uicallback):
 
     def on_callinopen(self, msg: callinopen) -> None:
         try:
-            node: CallNode = msg.node
-            self.on_choose_file_from_event(
-                from_file(node.sym.uri),
-                Location(uri=node.sym.uri, range=node.sym.selectionRange))
+            if isinstance(msg.node, CallNode):
+                node: CallNode = msg.node
+                self.on_choose_file_from_event(
+                    from_file(node.sym.uri),
+                    Location(uri=node.sym.uri, range=node.sym.selectionRange))
+            elif isinstance(msg.node, task_call_in):
+                task: task_call_in = msg.node
+                self.on_choose_file_from_event(
+                    from_file(task.method.location.uri), task.method.location)
+                pass
         except Exception as e:
             self.logview.write(str(e))
 

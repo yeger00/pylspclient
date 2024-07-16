@@ -3,6 +3,7 @@
 
 """
 from pyclbr import Function
+from codetask import taskbase
 import cpp_impl
 from typing import Union
 import logging
@@ -1097,23 +1098,27 @@ class OutputFile(Output):
     def close(self):
         self.fp.close()
 
-class TaskCallBack:
+class task_callback:
     toFile: Optional[Output] = None
     toUml: Optional[Output] = None
-
     def __init__(self) -> None:
+        pass
+    def update(self,a):
         pass
 
 
-class callinjob:
 
-    def __init__(self, wk: WorkSpaceSymbol, client: lspcppclient, method, cb: TaskCallBack, once) -> None:
+
+class task_call_in(taskbase):
+    method:SymbolInformation
+    def __init__(self, wk: WorkSpaceSymbol, client: lspcppclient, method:SymbolInformation, cb: task_callback, once) -> None:
         self.client = client
         self.wk = wk
         self.method = method
         self.toFile = cb.toFile
         self.uml = cb.toUml != None
         self.toUml = cb.toUml
+        self.cb = cb
         self.once = once
         self.callin_all = []
         pass
@@ -1122,8 +1127,7 @@ class callinjob:
         walk = CallerWalker(self.client, self.wk)
         ret = walk.get_caller(Symbol(self.method), once=False)
         self.callin_all = ret
-        for a in ret:
-            stack = a.callstack()
+        self.cb.update(self)    
             # a.printstack(fp=self.toFile)
         if self.toFile != None:
             self.toFile.write("callin_all %d" % (len(ret)))
@@ -1269,10 +1273,10 @@ class SymbolFile:
 
     def callin(self,
                method: SymbolInformation,
-               cb: TaskCallBack,
+               cb: task_callback,
                once=True
-               ) -> callinjob:
-        return callinjob(self.wk, self.sourcecode.client, method=method, cb=cb, once=once)
+               ) -> task_call_in:
+        return task_call_in(self.wk, self.sourcecode.client, method=method, cb=cb, once=once)
 
     def call(self,
              method,

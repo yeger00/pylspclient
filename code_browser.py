@@ -6,7 +6,6 @@ Run with:
     python code_browser.py PATH
 """
 
-from inspect import istraceback
 import sys
 from typing import Optional
 from textual.message import Message
@@ -18,7 +17,6 @@ import argparse
 from textual.message_pump import events
 from textual.suggester import SuggestFromList, SuggestionReady
 from textual.widgets import Log, TextArea
-from textual.widgets import Tree
 from rich.syntax import Syntax
 from rich.traceback import Traceback
 from textual.dom import DOMNode
@@ -27,16 +25,16 @@ from textual.containers import Container
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
-from callinview import uicallback
-from codesearch import ResultItem, ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode, SourceCodeSearch
+from callinview import callinview, uicallback
+from codesearch import ResultItem, ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode
 from cpp_impl import Body, from_file, to_file
-from codetask import TaskManager,TaskCallIn,TaskCallBack
-from lspcpp import LspMain, Symbol, OutputFile, SymbolLocation
+from codetask import TaskManager
+from lspcpp import CallNode, LspMain, Symbol, OutputFile, SymbolLocation, task_call_in, task_callback
 from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
 
-from pylspclient.lsp_pydantic_strcuts import Location, Position, Range, SymbolInformation, TextDocumentIdentifier
+from pylspclient.lsp_pydantic_strcuts import Location, Position, Range, SymbolInformation
 
 find_key = "find "
 view_key = "view "
@@ -59,7 +57,7 @@ class CodeView:
             return
         begin = self.textarea.selection.start[0]
         # self.textarea.selection.start.
-        self.textarea.select_line(begin+1 if down else begin-1)
+        self.textarea.select_line(begin + 1 if down else begin - 1)
 
     def is_focused(self):
         if self.textarea is None:
@@ -94,18 +92,18 @@ class CodeView:
         line = self.textarea.document.lines[linenum]
         ignore_set = set(
             [' ', ',', '{', '-', '}', ';', '.', '(', ')', '/', '"'])
-        while b-1 >= 0:
-            if line[b-1] in ignore_set:
+        while b - 1 >= 0:
+            if line[b - 1] in ignore_set:
                 break
             else:
-                b = b-1
+                b = b - 1
 
-        while e+1 < len(line):
-            if line[e+1] in ignore_set:
+        while e + 1 < len(line):
+            if line[e + 1] in ignore_set:
                 break
             else:
                 e += 1
-        return line[b:e+1]
+        return line[b:e + 1]
 
     def get_select(self) -> str:
         if self.textarea is None:
@@ -305,6 +303,7 @@ class history:
 
 
 class BackFoward:
+
     def __init__(self, h: history) -> None:
         self.history = h
         self.index = 0
@@ -312,7 +311,7 @@ class BackFoward:
 
     def goback(self) -> str:
         self.index += 1
-        self.index = min(len(self.history.datalist)-1, self.index)
+        self.index = min(len(self.history.datalist) - 1, self.index)
         ret = self.history.datalist[self.index]
         return ret
 
@@ -489,11 +488,15 @@ class mymessage(Message):
 class changelspmessage(Message):
     loc: Optional[Location] = None
 
-    def __init__(self, file, loc: Optional[Location] = None, refresh=True) -> None:
+    def __init__(self,
+                 file,
+                 loc: Optional[Location] = None,
+                 refresh=True) -> None:
         super().__init__()
         self.loc = loc
         self.file = file
         self.refresh_symbol_view = refresh
+
     pass
 
 
@@ -507,6 +510,15 @@ class symbolsmessage(Message):
         self.data = data
 
 
+class callin_message(Message):
+    task: Optional[task_call_in]
+
+    def __init__(self, task: Optional[task_call_in] = None, call: Optional[CallNode] = None) -> None:
+        super().__init__()
+        self.task = task
+        self.call = call
+
+
 class refermessage(Message):
     s: list[SymbolLocation]
     query: str
@@ -518,7 +530,7 @@ class refermessage(Message):
 
 
 class MyListView(ListView):
-    mainui:uicallback 
+    mainui: uicallback
 
     def setlist(self, data: list[str]):
         self.clear()
@@ -533,9 +545,7 @@ class MyListView(ListView):
         self.mainui.on_select_list(self)
 
 
-
-
-class CodeBrowser(App,uicallback):
+class CodeBrowser(App, uicallback):
     root: str
     symbol_query = LspQuery("", "")
     codeview_file: str
@@ -543,24 +553,7 @@ class CodeBrowser(App,uicallback):
     symbol_listview: MyListView
     history_view: MyListView
     lsp: LspMain
-
-    def on_refermessage(self, message: refermessage) -> None:
-        self.search_result = SearchResults(
-            list(map(lambda x: ResultItemRefer(x), message.s)))
-        self.udpate_search_result_view()
-        self.searchview.focus()
-        f: Label = self.query_one("#f1", Label)
-        f.update("Refer to <%d>" % (len(message.s))+message.query)
-        pass
-
-    def on_mymessage(self, message: mymessage) -> None:
-        s = message.s
-        self.search_result = SearchResults(
-            list(map(lambda x: ResultItemString(x), s)))
-        # logui.write_lines(s)
-        self.searchview.setlist(s)
-        self.searchview.focus()
-        pass
+    callin: callinview
 
     def __init__(self, root, file):
         App.__init__(self)
@@ -576,11 +569,34 @@ class CodeBrowser(App,uicallback):
         self.history.add_to_history(self.codeview_file)
         self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE
         self.CodeView = CodeView(None)
+        self.callin = callinview()
         self.taskmanager = TaskManager()
         # self.lsp.currentfile.save_uml_file = self.print_recieved
         # self.lsp.currentfile.save_stack_file = self.print_recieved
 
-    """Textual code browser app."""
+    def on_callin_message(self, message: callin_message) -> None:
+        if message.task!=None:
+           self.callin.update_job(message.task) 
+        pass
+
+    def on_refermessage(self, message: refermessage) -> None:
+        self.search_result = SearchResults(
+            list(map(lambda x: ResultItemRefer(x), message.s)))
+        self.udpate_search_result_view()
+        self.searchview.focus()
+        f: Label = self.query_one("#f1", Label)
+        f.update("Refer to <%d>" % (len(message.s)) + message.query)
+        pass
+
+    def on_mymessage(self, message: mymessage) -> None:
+        s = message.s
+        self.search_result = SearchResults(
+            list(map(lambda x: ResultItemString(x), s)))
+        # logui.write_lines(s)
+        self.searchview.setlist(s)
+        self.searchview.focus()
+        pass
+        """Textual code browser app."""
 
     CSS_PATH = "code_browser.tcss"
     BINDINGS = [
@@ -691,7 +707,8 @@ class CodeBrowser(App,uicallback):
             self.refresh_symbol_view()
         if msg.loc != None:
             line = msg.loc.range.start.line
-            self.code_editor_scroll_view().scroll_to(y=max(line-10, 0), animate=False)
+            self.code_editor_scroll_view().scroll_to(y=max(line - 10, 0),
+                                                     animate=False)
             range = msg.loc.range
             y = range.start.line
             b = range.start.character
@@ -809,7 +826,7 @@ class CodeBrowser(App,uicallback):
             self.focus_to_viewid("fzf")
             f: Label = self.query_one("#f1", Label)
             f.update("Search Result to <%d>" %
-                     (self.search_result.result_number())+word)
+                     (self.search_result.result_number()) + word)
             search = self.search_result.get(0)
             if search != None:
                 self.code_to_search_position(search)
@@ -898,14 +915,15 @@ class CodeBrowser(App,uicallback):
                     yield self.searchview
                     pass
                 with TabPane("CallInView", id="callin-tab"):
-                    tree: Tree[dict] = Tree("Dune")
-                    tree.root.expand()
-                    characters = tree.root.add("Characters", expand=True)
-                    characters.add_leaf("Paul")
-                    characters.add_leaf("Jessica")
-                    characters.add_leaf("Chani")
-                    yield tree 
-                    pass
+                    yield self.callin.tree
+                    # tree: Tree[dict] = Tree("Dune")
+                    # tree.root.expand()
+                    # characters = tree.root.add("Characters", expand=True)
+                    # characters.add_leaf("Paul")
+                    # characters.add_leaf("Jessica")
+                    # characters.add_leaf("Chani")
+                    # yield tree
+                    # pass
         v = CommandInput(self, root=self.lsp.root)
         self.cmdline = v
         yield v
@@ -970,7 +988,10 @@ class CodeBrowser(App,uicallback):
     def code_editor_scroll_view(self):
         return self.query_one("#code-view")
 
-    def on_choose_file_from_event(self, path: str, loc: Optional[Location] = None, backforward=False):
+    def on_choose_file_from_event(self,
+                                  path: str,
+                                  loc: Optional[Location] = None,
+                                  backforward=False):
         if self.codeview_file == path:
             self.post_message(changelspmessage(path, loc, False))
             return
@@ -991,24 +1012,13 @@ class CodeBrowser(App,uicallback):
 
     def help(self):
         help = [
-            "help",
-            "opeh filepath",
-            "history|code-view|fzf|symbol",
-            "view history|code-view|fzf|symbol",
-            "cn",
-            "cp",
+            "help", "opeh filepath", "history|code-view|fzf|symbol",
+            "view history|code-view|fzf|symbol", "cn", "cp",
             "find       find file under directory \"find xx yy\"",
-            "search     find word",
-            "Ctrl Key:",
-            "   o  goback",
-            "   b  goforward",
-            "Key:",
-            "   j/k  down/up",
-            "   f find current word",
-            "   c CallIncomming",
-            "   d goto declaration",
-            "   i goto impl",
-            "   r Refere"
+            "search     find word", "Ctrl Key:", "   o  goback",
+            "   b  goforward", "Key:", "   j/k  down/up",
+            "   f find current word", "   c CallIncomming",
+            "   d goto declaration", "   i goto impl", "   r Refere"
         ]
         self.logview.write_lines(help)
 
@@ -1072,8 +1082,8 @@ class CodeBrowser(App,uicallback):
             file_location = self.lsp.client.get_decl(loc)
             if file_location is None:
                 return
-            self.on_choose_file_from_event(
-                from_file(file_location.uri), file_location)
+            self.on_choose_file_from_event(from_file(file_location.uri),
+                                           file_location)
             pass
         pass
 
@@ -1088,8 +1098,8 @@ class CodeBrowser(App,uicallback):
             file_location = self.lsp.client.get_impl(loc)
             if file_location is None:
                 return
-            self.on_choose_file_from_event(
-                from_file(file_location.uri), file_location)
+            self.on_choose_file_from_event(from_file(file_location.uri),
+                                           file_location)
             pass
         pass
         pass
@@ -1108,15 +1118,15 @@ class CodeBrowser(App,uicallback):
                     if self.lsp.client is None:
                         return
 
-                    loc = Location(uri=to_file(
-                        self.codeview_file), range=s.range)
-                    ret = self.lsp.client.get_refer_from_cursor(
-                        loc, s.text)
+                    loc = Location(uri=to_file(self.codeview_file),
+                                   range=s.range)
+                    ret = self.lsp.client.get_refer_from_cursor(loc, s.text)
                     key1 = str(Body(loc)).replace("\n", "")
                     key2 = self.CodeView.get_select_wholeword()
                     key = key1 if len(key1) > len(key2) else key2 + \
                         " %s:%d" % (from_file(loc.uri), loc.range.start.line)
                     self.post_message(refermessage(ret, key))
+
                 ThreadPoolExecutor(1).submit(cursor_refer)
                 pass
 
@@ -1143,8 +1153,9 @@ class CodeBrowser(App,uicallback):
                 self.logview.write_line(str(e))
                 pass
             self.logview.write_line("Call Job finished")
-            key = '''[u]%s[/u]''' % (str(Body(sym.location)).replace("\n", ""))+"%s:%d" % (from_file(sym.location.uri),
-                                                                                           sym.location.range.start.line)
+            key = '''[u]%s[/u]''' % (str(Body(sym.location)).replace(
+                "\n", "")) + "%s:%d" % (from_file(
+                    sym.location.uri), sym.location.range.start.line)
             self.post_message(refermessage(ret, key))
             return ret
 
@@ -1179,20 +1190,29 @@ class CodeBrowser(App,uicallback):
         def my_function(lsp: LspMain, sym: SymbolInformation, toFile, toUml):
             try:
                 self.logview.write_line("Callin Job %s Started" % (sym.name))
-                class CallInCb(TaskCallBack):
-                    def __init__(self,app:App) -> None:
+                filepath = from_file(sym.location.uri)
+                class callin_ui_cb(task_callback):
+
+                    def __init__(self, app: App) -> None:
                         super().__init__()
                         self.app = app
-                        
-                cb = CallInCb(self)
+
+                    def update(self, task):
+                        if isinstance(task, task_call_in):
+                            self.app.post_message(
+                                callin_message(task=task, call=None))
+                        pass
+
+                cb = callin_ui_cb(self)
                 cb.toUml = toUml
                 cb.toFile = toFile
-                task = lsp.currentfile.callin(sym,
-                                              once=False,
-                                              cb=cb,
-                                              )
-                t = self.taskmanager.add(TaskCallIn(task, cb))
-                t.run()
+                task = lsp.currentfile.callin(
+                    sym,
+                    once=False,
+                    cb=cb,
+                )
+                self.taskmanager.add(task)
+                task.run()
                 self.logview.write_line("Callin Job %s Stopped" % (sym.name))
             except Exception as e:
                 self.logview.write_line("exception %s" % (str(e)))

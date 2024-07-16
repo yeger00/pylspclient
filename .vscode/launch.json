@@ -15,7 +15,7 @@
             "name": "Python 调试程序: 当前文件",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            "program": "/home/z/dev/lsp/pylspclient/code_browser.py",
             "console": "integratedTerminal",
             "args": [
                 "--root",

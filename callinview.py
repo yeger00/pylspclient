@@ -1,10 +1,10 @@
 from textual.widgets import Label, ListItem, ListView, Tree
 
-from codetask import TaskCallIn
-from lspcpp import CallNode
+from lspcpp import task_call_in
 
 
 class uicallback:
+
     def on_select_list(self, list: ListView):
         pass
 
@@ -26,12 +26,14 @@ class MyListView(ListView):
 
 
 class callinview:
-    job: TaskCallIn
+    job: task_call_in
+
     def __init__(self) -> None:
         self.tree = Tree("call heritage")
+
     # mainui:uicallback
-    def update_job(self, job: TaskCallIn):
+    def update_job(self, job: task_call_in):
         self.job = job
-        root = self.tree.root.add(job.name, expand=True)
-        for a in job.job.callin_all:
+        root = self.tree.root.add(job.method.name, expand=True)
+        for a in job.callin_all:
             root.add_leaf(a.displayname())

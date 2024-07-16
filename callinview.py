@@ -57,6 +57,11 @@ class _calltree(Tree,uicallback):
         pass
 
     def action_select_cursor(self):
+        try:
+            self.__action_select_cursor()
+        except:
+            pass
+    def __action_select_cursor(self):
         if self.cursor_node != None and self.cursor_node.data != None:
             n: CallTreeNode = self.cursor_node.data
             if self.cursor_node.is_expanded:

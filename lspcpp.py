@@ -21,7 +21,6 @@ from pylspclient.lsp_pydantic_strcuts import SignatureHelp, TextDocumentIdentifi
 from cpp_impl import Body, from_file, to_file, LspFuncParameter, LspFuncParameter_cpp, where_is_bin
 import logging
 
-
 logger = logging.getLogger('lsppython')
 print(logger)
 logger.critical("lspcpp begined")
@@ -164,7 +163,10 @@ class Token:
 
 class SymbolLocation:
 
-    def __init__(self, loc: Location, symbol: Optional['Symbol'] = None, name="") -> None:
+    def __init__(self,
+                 loc: Location,
+                 symbol: Optional['Symbol'] = None,
+                 name="") -> None:
         self.file = from_file(loc.uri)
         self.range = loc.range
         if len(name):
@@ -180,13 +182,13 @@ class SymbolLocation:
             code = code.replace("\n", "")
             pos = code.find(self.name)
             if pos > 0:
-                code = code[max(pos-20, 0)
-                                :min(pos+len(self.name)+20, len(code))]
+                code = code[max(pos - 20, 0):min(pos + len(self.name) +
+                                                 20, len(code))]
                 self.code = "  " + \
                     code.replace(self.name, '''[u]%s[/u]''' % (self.name))
 
     def __str__(self) -> str:
-        return " %s:%d" % (self.file, self.range.start.line) + self.code
+        return " %s:%d" % (display_file_path(self.file), self.range.start.line) + self.code
 
 
 class Symbol:
@@ -249,7 +251,8 @@ class Symbol:
         if self.is_class_define():
             return icon + self.name
         if self.cls:
-            return "    " + icon + self.name + str(self.param.displayname() if self.param != None else "")
+            return "    " + icon + self.name + str(
+                self.param.displayname() if self.param != None else "")
         return icon + self.name
 
     def is_construct(self):
@@ -383,7 +386,7 @@ class LspClient2(LspClient):
         return ret
 
     def document_semantictokens_delta(
-            self, file, token: SemanticTokens
+        self, file, token: SemanticTokens
     ) -> Union[SemanticTokens, SemanticTokensDelta, None]:
         method = "textDocument/semanticTokens/full/delta"
         ret = self.endpoint.call_method(
@@ -439,15 +442,16 @@ class LspClient2(LspClient):
 
         return [x for x in map(convert, ret) if x is not None]
 
-    def callHierarchyPrepareLocation(self, sym: Location) -> list[PrepareReturn]:
+    def callHierarchyPrepareLocation(self,
+                                     sym: Location) -> list[PrepareReturn]:
         ret = self.endpoint.call_method(
             "textDocument/prepareCallHierarchy",
             textDocument=TextDocumentIdentifier(uri=sym.uri),
-            position=sym.range.start
-        )
+            position=sym.range.start)
         return ret
 
-    def callHierarchyPrepare(self, sym: SymbolInformation) -> list[PrepareReturn]:
+    def callHierarchyPrepare(self,
+                             sym: SymbolInformation) -> list[PrepareReturn]:
         s = SymbolParser(sym)
         col = s.symbol_col
         line = s.symbol_line
@@ -535,7 +539,8 @@ class project_config:
 class lspcppclient:
     lsp_client: LspClient2
 
-    def get_refer_from_cursor(self, loc: Location, text: str) -> list[SymbolLocation]:
+    def get_refer_from_cursor(self, loc: Location,
+                              text: str) -> list[SymbolLocation]:
         file = from_file(loc.uri)
         col = loc.range.start.character
         line = loc.range.start.line
@@ -546,7 +551,8 @@ class lspcppclient:
 
     def get_impl(self, loc: Location) -> Location | None:
         ret = self.lsp_client.definition(
-            textDocument=TextDocumentIdentifier(uri=loc.uri), position=loc.range.start)
+            textDocument=TextDocumentIdentifier(uri=loc.uri),
+            position=loc.range.start)
         if isinstance(ret, Location):
             return ret
         if isinstance(ret, list) and len(ret) > 0:
@@ -556,7 +562,8 @@ class lspcppclient:
 
     def get_decl(self, loc: Location) -> Location | None:
         ret = self.lsp_client.declaration(
-            textDocument=TextDocumentIdentifier(uri=loc.uri), position=loc.range.start)
+            textDocument=TextDocumentIdentifier(uri=loc.uri),
+            position=loc.range.start)
         if isinstance(ret, Location):
             return ret
         if isinstance(ret, list) and len(ret) > 0:
@@ -716,6 +723,7 @@ class lspcppserver:
 
 
 # DEFAULT_ROOT = path.abspath("./tests/test-workspace/cpp")
+work_space_root: Optional[str] = None
 
 
 class ICON:
@@ -752,7 +760,16 @@ class ICON:
         ) else ICON.Function if s.is_function(
         ) else ICON.Constructor if s.is_construct() else "?"
 
+def display_file_path(uri:str)->str:
+    global work_space_root
+    path= from_file(uri).replace(
+                work_space_root if work_space_root != None else "",
+                "")
 
+    i = 0
+    while i<len(path) and path[i]=='/':
+        i+=1
+    return path[i:]
 class CallNode:
     symboldefine: Union[Symbol, None] = None
     detail: str = ""
@@ -775,12 +792,11 @@ class CallNode:
             return None
         return self.symboldefine.cls
 
+    def displayname(self):
+        return self.stack_display_name(0)
+
     def printstack(self, level=0, fp=None):
-        cls = self.get_cls()
-        classname = cls.name + \
-            "::" if cls != None else ""
-        sss = " " * level + "->" + classname + self.sym.name + self.param + " " + "%s:%d" % (
-            from_file(self.sym.uri), self.sym.range.start.line)
+        sss = self.stack_display_name(level)
         print(sss)
         if fp != None:
             fp.write(sss)
@@ -788,6 +804,15 @@ class CallNode:
             fp.flush()
         if self.callee != None:
             self.callee.printstack(level=level + 1, fp=fp)
+
+    def stack_display_name(self, level):
+        cls = self.get_cls()
+        classname = cls.name + \
+            "::" if cls != None else ""
+        sss = " " * level + "->" + classname + self.sym.name + self.param + " " + "%s:%d" % (
+            display_file_path(self.sym.uri), self.sym.range.start.line)
+
+        return sss
 
     def resolve_all(self, wk: 'WorkSpaceSymbol'):
         for s in self.callstack():
@@ -889,8 +914,7 @@ class CallNode:
         sss.extend(ret)
         sss.extend(["@enduml", "\n" * 3])
         return "\n".join(sss)
-    def displayname(self):
-        return self.sym.name
+
     def callstack(self):
         ret: list[CallNode] = [self]
         next = self.callee
@@ -937,7 +961,7 @@ class CallerWalker:
             ret.extend(next)
         return ret
 
-    def get_caller(self, sym: Symbol, once=False)->list[CallNode]:
+    def get_caller(self, sym: Symbol, once=False) -> list[CallNode]:
         if sym.is_function() or sym.is_method() or sym.is_construct():
             ctx = self.client.lsp_client.callHierarchyPrepare(sym.sym)
             callser: list[CallNode] = []
@@ -999,6 +1023,8 @@ class WorkSpaceSymbol:
         self.source_list = {}
         self.root = root
         self.client = client
+        global work_space_root
+        work_space_root = root
         pass
 
     def create_source(self, file) -> 'SourceCode':
@@ -1098,20 +1124,23 @@ class OutputFile(Output):
     def close(self):
         self.fp.close()
 
+
 class task_callback:
     toFile: Optional[Output] = None
     toUml: Optional[Output] = None
+
     def __init__(self) -> None:
         pass
-    def update(self,a):
+
+    def update(self, a):
         pass
-
-
 
 
 class task_call_in(taskbase):
-    method:SymbolInformation
-    def __init__(self, wk: WorkSpaceSymbol, client: lspcppclient, method:SymbolInformation, cb: task_callback, once) -> None:
+    method: SymbolInformation
+
+    def __init__(self, wk: WorkSpaceSymbol, client: lspcppclient,
+                 method: SymbolInformation, cb: task_callback, once) -> None:
         self.client = client
         self.wk = wk
         self.method = method
@@ -1127,8 +1156,8 @@ class task_call_in(taskbase):
         walk = CallerWalker(self.client, self.wk)
         ret = walk.get_caller(Symbol(self.method), once=False)
         self.callin_all = ret
-        self.cb.update(self)    
-            # a.printstack(fp=self.toFile)
+        self.cb.update(self)
+        # a.printstack(fp=self.toFile)
         if self.toFile != None:
             self.toFile.write("callin_all %d" % (len(ret)))
 
@@ -1274,9 +1303,12 @@ class SymbolFile:
     def callin(self,
                method: SymbolInformation,
                cb: task_callback,
-               once=True
-               ) -> task_call_in:
-        return task_call_in(self.wk, self.sourcecode.client, method=method, cb=cb, once=once)
+               once=True) -> task_call_in:
+        return task_call_in(self.wk,
+                            self.sourcecode.client,
+                            method=method,
+                            cb=cb,
+                            once=once)
 
     def call(self,
              method,

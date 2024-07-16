@@ -911,7 +911,8 @@ class CodeBrowser(App, uicallback):
                     pass
                 line = self.generic_search_mgr.get_index()
                 sss = self.CodeView.textarea.document.lines[line]
-                pos = SourceCodeSearch.Pos(line, col=sss.find(key), text=key)
+                pos = SourceCodeSearch.Pos(line, col=sss.lower().find(key), text=key)
+                self.soucecode.search.pattern = key
                 self.code_to_search_position(ResultItemSearch(pos))
             pass
         elif self.preview_focused == self.callin.tree:
@@ -948,7 +949,7 @@ class CodeBrowser(App, uicallback):
                 self.search_prev_next(args[0] == "cp")
                 pass
 
-            if args[0] == "search":
+            if args[0] == "grep":
                 if len(args) > 1 and self.soucecode.search.pattern == args[1]:
                     if len(args) > 2 and args[2] == "-":
                         self.soucecode.search.index = self.soucecode.search.index + \

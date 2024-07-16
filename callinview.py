@@ -32,22 +32,25 @@ class MyListView(ListView):
 CallTreeNodeExpand = 3
 CallTreeNodeFocused = 2
 CallTreeNodeCollapse = 1
+
+
 class callinopen(Message):
+
     def __init__(self, node: CallNode) -> None:
         super().__init__()
         self.node = node
 
 
-
 class CallTreeNode:
     callnode: CallNode
+
     def __init__(self, callnode: CallNode, expanded: bool) -> None:
         self.callnode = callnode
         self.focused = False
         pass
 
 
-class _calltree(Tree,uicallback):
+class _calltree(Tree, uicallback):
     BINDINGS = [
         ("enter", "open_file", "Open"),
     ]
@@ -66,13 +69,14 @@ class _calltree(Tree,uicallback):
             self.__action_select_cursor()
         except:
             pass
+
     def __action_select_cursor(self):
         if self.cursor_node != None and self.cursor_node.data != None:
             n: CallTreeNode = self.cursor_node.data
-            if n!=None:
-                open = n.focused==False
+            if n != None:
+                open = n.focused == False
                 if n.focused:
-                    n.focused=False
+                    n.focused = False
                 else:
                     n.focused = True
                 if open:
@@ -80,16 +84,15 @@ class _calltree(Tree,uicallback):
                 else:
                     if self.cursor_node.is_expanded:
                         cur = self.cursor_node
-                        child  =   cur.children[0] if len(cur.children) else None
-                        while child!=None:
-                            call= child.data
-                            if call!=None:
+                        child = cur.children[0] if len(cur.children) else None
+                        while child != None:
+                            call = child.data
+                            if call != None:
                                 call.focused = False
-                            child =  child.children[0] if len(child.children) else None
+                            child = child.children[0] if len(
+                                child.children) else None
 
                     self.cursor_node.toggle_all()
-
-
 
     def __action_select_cursor_(self):
         if self.cursor_node != None and self.cursor_node.data != None:
@@ -99,23 +102,23 @@ class _calltree(Tree,uicallback):
                 child = None
                 if c != None and len(c.children) > 0:
                     child = c.children[0]
-                yes = None 
+                yes = None
                 while child != None:
-                    if  child.is_expanded == False:
+                    if child.is_expanded == False:
                         yes = child
                         break
                     if len(child.children) > 0:
                         child = child.children[0]
                     else:
                         break
-                if yes!=None:
+                if yes != None:
                     yes.toggle_all()
                     return
                 node: Optional[CallTreeNode] = c.data if c != None else None
-                if node != None :
-                     yes = node.focused
-                     node.focused = node.focused == False
-                     if yes==False:
+                if node != None:
+                    yes = node.focused
+                    node.focused = node.focused == False
+                    if yes == False:
                         self.app.post_message(callinopen(node.callnode))
                         return
                 self.cursor_node.toggle_all()
@@ -133,11 +136,13 @@ class callinview:
     # mainui:uicallback
     def update_job(self, job: task_call_in):
         self.job = job
-        for a in self.tree.children:
-            a.remove()
+        for child in self.tree.root.children:
+            if child.data == job.displayname():
+                child.remove()
+                return
         root = self.tree.root.add(job.method.name,
                                   expand=True,
-                                  data=job.method)
+                                  data=job.displayname())
         for a in job.callin_all:
             node = root.add(a.displayname(),
                             data=CallTreeNode(a, False),

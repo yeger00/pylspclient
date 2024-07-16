@@ -831,9 +831,8 @@ class CallNode:
             self.detail = str(self.symboldefine)
 
     def uml(self,
-            stack: list['CallNode'],
             wk: Optional['WorkSpaceSymbol'] = None) -> str:
-
+        stack = self.callstack()
         def fix(node: CallNode):
             if node.symboldefine == None:
                 return node
@@ -1172,15 +1171,12 @@ class task_call_in(taskbase):
 
         for a in ret:
             a.resolve_all(self.wk)
-            stack = a.callstack()
             a.printstack(fp=self.toFile)
-            for ss in stack:
-                ss.resolve(self.wk)
             self.cb.update(self)
             try:
                 uml = self.uml
                 if uml:
-                    s = a.uml(stack, wk=self.wk)
+                    s = a.uml(wk=self.wk)
                     print(s)
                     toUml = self.toUml
                     if toUml != None:

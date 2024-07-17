@@ -730,6 +730,7 @@ class CodeBrowser(App, uicallback):
         try:
             if message.file != self.codeview_file:
                 return
+            self.symbol_listview.loading = False
             try:
                 self.symbol_listview.clear()
             except Exception as e:
@@ -760,15 +761,14 @@ class CodeBrowser(App, uicallback):
 
         def __my_function():
             file = self.lsp.currentfile.file
-            self.symbol_listview.loading = True
             liststr = self.lsp.currentfile.get_symbol_list_string()
 
-            self.symbol_listview.loading = False
             if file != self.codeview_file:
                 return
             symbols_list = self.lsp.currentfile.symbols_list.copy()
             self.post_message(symbolsmessage(liststr, symbols_list, file))
 
+        self.symbol_listview.loading = True
         ThreadPoolExecutor(1).submit(my_function)
 
     def on_directory_tree_file_selected(
@@ -795,7 +795,7 @@ class CodeBrowser(App, uicallback):
         TEXT = open(str(path), "r").read()
         # code_view.document = Document(TEXT)
         code_view.load_text(TEXT)
-        self.post_message(changelspmessage(path, loc, False))
+        self.post_message(changelspmessage(path, loc, True))
         self.soucecode = SourceCode(self.codeview_file)
         self.code_editor_view().scroll_home(animate=False)
         self.sub_title = str(path)

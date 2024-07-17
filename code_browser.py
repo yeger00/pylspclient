@@ -1421,7 +1421,7 @@ class CodeBrowser(App, uicallback):
             if self.tofile != None:
                 self.tofile.close()
             dir ="output"
-            if os.path.exists(dir):
+            if os.path.exists(dir)==False:
                 os.mkdir(dir)
             self.tofile = UiOutput(os.path.join(dir,q.data + ".txt"))
             self.tofile.ui = self.logview

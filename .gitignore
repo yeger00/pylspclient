@@ -108,3 +108,5 @@ tests/cpp/CMakeCache.txt
 tests/cpp/Makefile
 tests/cpp/cmake_install.cmake
 home/**/**
+export/**
+output/**

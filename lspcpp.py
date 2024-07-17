@@ -2,11 +2,7 @@
 
 
 """
-from pyclbr import Function
-from sys import exc_info
-
 from codetask import taskbase
-import cpp_impl
 from typing import Union
 import logging
 import os
@@ -781,6 +777,7 @@ class CallNode:
     detail: str = ""
     line: str = ""
     callee: Optional['CallNode'] = None
+    status: str = ""
 
     def __init__(self, sym: PrepareReturn) -> None:
         self.sym = sym
@@ -828,9 +825,16 @@ class CallNode:
 
         return sss
 
-    def resolve_all(self, wk: 'WorkSpaceSymbol'):
-        for s in self.callstack():
+    def resolve_all(self, wk: 'WorkSpaceSymbol', cb=None):
+        stack = self.callstack()
+        i = 0
+        if cb!=None:
+            cb(0, len(stack))
+        for s in stack:
             s.resolve(wk)
+            i += 1
+            if cb != None:
+                cb(i, len(stack))
 
     def resolve(self, wk: 'WorkSpaceSymbol'):
         if self.symboldefine != None:
@@ -1136,6 +1140,7 @@ class task_callback:
 
 class task_call_in(taskbase):
     method: SymbolInformation
+    resolve_task_list: list['subtask'] = []
 
     def __init__(self, wk: WorkSpaceSymbol, client: lspcppclient,
                  method: SymbolInformation, cb: task_callback, once) -> None:
@@ -1152,7 +1157,7 @@ class task_call_in(taskbase):
         codetask.task_seq = +1
         self.id = codetask.task_seq
         self.processed = 0
-        self.pendding = 0
+        # self.pendding = 0
         pass
 
     def run(self):
@@ -1164,29 +1169,15 @@ class task_call_in(taskbase):
         self.cb.update(self)
 
     def deep_resolve_at(self, index):
-        a: CallNode = self.callin_all[index]
+        node = self.callin_all[index]
+        found = list(filter(lambda x: node == x, self.resolve_task_list))
+        if len(found):
+            return
+        t = subtask(node, self)
+        self.resolve_task_list.append(t)
+        t.run()
+        self.resolve_task_list.remove(t)
         self.cb.update(self)
-        self.pendding += 1
-        a.resolve_all(self.wk)
-        a.printstack(fp=self.toFile)
-        try:
-            uml = self.uml
-            if uml:
-                markdown_it = False
-                s = a.uml(wk=self.wk, markdown=markdown_it)
-                self.save_uml_tofile(a, s, markdown=markdown_it)
-                print(s)
-                toUml = self.toUml
-                if toUml != None:
-                    toUml.write(s)
-                    toUml.write("\n")
-                    toUml.flush()
-        except Exception as e:
-            logger.exception(str(e))
-            pass
-        self.cb.update(self)
-        self.pendding -= 1
-        self.processed += 1  # a.printstack(fp=self.toFile)
 
     def ensureroot(self):
         dirname = location_to_filename(
@@ -1220,7 +1211,7 @@ class task_call_in(taskbase):
                 filepath = os.path.join(root, name + ext)
                 with open(filepath, "w") as fp:
                     fp.write(s)
-                
+
                 if markdown == False:
                     planuml_to_image(filepath, root)
             except Exception as e:
@@ -1231,11 +1222,62 @@ class task_call_in(taskbase):
             pass
 
     def displayname(self):
+        total = 0
+        done = 0
+        for item in self.resolve_task_list:
+            total += item.total
+            done += item.done
+        substate = "" if total == 0 else "sub->%d/%d " % (done, total)
+
+        state1 = "[%d/%d/%d] " % (self.processed,
+                                 len(self.callin_all), len(self.resolve_task_list))
         data = Body(self.method.location).data.replace("\n", "")
-        return data + "[%d/%d/%d] %s:%d" % (
-            self.processed, len(self.callin_all), self.pendding,
-            display_file_path(self.method.location.uri),
-            self.method.location.range.start.line)
+        return data + "%s%s %s:%d" % (state1, substate,
+                                      display_file_path(
+                                          self.method.location.uri),
+                                      self.method.location.range.start.line)
+
+
+class subtask:
+    a: CallNode
+    task: task_call_in
+    total = 0
+    done = 0
+
+    def __init__(self, a: CallNode, task: task_call_in) -> None:
+        self.node = a
+        self.task = task
+        pass
+
+    def run(self):
+        task = self.task
+        a = self.node
+        task.cb.update(self)
+
+        def fn(done, total):
+            self.total = total
+            self.done = done
+            task.cb.update(task)
+            pass
+        a.resolve_all(task.wk, fn)
+        a.printstack(fp=task.toFile)
+        try:
+            uml = task.uml
+            if uml:
+                markdown_it = False
+                s = a.uml(wk=task.wk, markdown=markdown_it)
+                task.save_uml_tofile(a, s, markdown=markdown_it)
+                print(s)
+                toUml = task.toUml
+                if toUml != None:
+                    toUml.write(s)
+                    toUml.write("\n")
+                    toUml.flush()
+        except Exception as e:
+            logger.exception(str(e))
+            pass
+        task.cb.update(self)
+        task.processed += 1  # a.printstack(fp=self.toFile)
 
 
 class SymbolFile:
@@ -1375,16 +1417,16 @@ class SymbolFile:
              toUml: Union[Output, None] = None):
         symbo = self.find(method)
         walk = CallerWalker(self.sourcecode.client, self.wk)
-        ret = walk.get_caller(Symbol(symbo[0].sym), once=once)
+        ret: list[CallNode] = walk.get_caller(Symbol(symbo[0].sym), once=once)
         for a in ret:
-            a.resolve_all(self.wk)
+            a.resolve_all(self.wk, cb=None)
             stack = a.callstack()
             a.printstack(fp=toFile)
             for ss in stack:
                 ss.resolve(self.wk)
             try:
                 if uml:
-                    s = a.uml(stack, wk=self.wk)
+                    s = a.uml(wk=self.wk)
                     print(s)
                     if toUml != None:
                         toUml.write(s)

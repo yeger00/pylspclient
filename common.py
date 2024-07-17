@@ -9,6 +9,7 @@ def where_is_bin(clangd):
         ret = result.stdout.split('\n')[0]
         s = ret[ret.find("/"):]
         s = s[:s.find(" ")]
+        return s
     except subprocess.CalledProcessError:
         return None
 

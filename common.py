@@ -7,7 +7,8 @@ def where_is_bin(clangd):
     try:
         result = subprocess.run(['/usr/bin/whereis', clangd], capture_output=True, text=True, check=True)
         ret = result.stdout.split('\n')[0]
-        return ret[ret.find("/"):]
+        s = ret[ret.find("/"):]
+        s = s[:s.find(" ")]
     except subprocess.CalledProcessError:
         return None
 
@@ -59,3 +60,8 @@ class Body:
 
     def __str__(self) -> str:
         return "\n".join(self.subline)
+    
+def location_to_filename(loc:Location):
+    import os
+    filename = os.path.basename(from_file(loc.uri))
+    return "%s:%d" % (filename, loc.range.start.line)

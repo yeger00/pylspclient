@@ -22,7 +22,7 @@ import threading
 from pylspclient import LspClient, LspEndpoint
 from pylspclient.lsp_pydantic_strcuts import SignatureHelp, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, SymbolInformation, Location, SymbolKind
 from cpp_impl import LspFuncParameter, LspFuncParameter_cpp
-from common import Body, SubLine, from_file, range_before, to_file, where_is_bin
+from common import Body, SubLine, from_file, location_to_filename, range_before, to_file, where_is_bin
 import logging
 logger = logging.getLogger('lsppython')
 print(logger)
@@ -812,12 +812,11 @@ class CallNode:
             self.callee.printstack(level=level + 1, fp=fp)
 
     def filename(self):
-        f = os.path.basename(from_file(self.sym.uri)).replace(".", "_")
+        f = location_to_filename(self.sym) 
         cls = self.get_cls()
         classname = cls.name + \
             "::" if cls != None else ""
-        sss = classname + self.sym.name + "%s_%d" % (f,
-                                                     self.sym.range.start.line)
+        sss = classname + self.sym.name + f
         return sss
 
     def stack_display_name(self, level):
@@ -1190,9 +1189,7 @@ class task_call_in(taskbase):
         self.processed += 1  # a.printstack(fp=self.toFile)
 
     def ensureroot(self):
-        filename = "%s_%s" % (self.method.name,
-                              os.path.basename(
-                                  from_file(self.method.location.uri)))
+        filename = location_to_filename(self.method.location)
         filename = filename.replace(".", "_")
         if os.path.exists(filename):
             return filename
@@ -1220,7 +1217,7 @@ class task_call_in(taskbase):
                 fp = open(filepath, "w")
                 fp.write(s)
                 if markdown==False:
-                    planuml_to_image(filepath)
+                    planuml_to_image(filepath,root)
             except Exception as e:
                 logger.error(str(e))
                 if self.toFile != None:

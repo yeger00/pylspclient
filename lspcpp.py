@@ -200,11 +200,11 @@ class Symbol:
     param: Optional[LspFuncParameter] = None
     def to_dict(self): # type: ignore
         ret = {}
-        ret['sym']=self.sym.__dict__
+        ret['sym']=self.sym.dict()
         ret['members']=[a.to_dict() for a in self.members]
         if self.cls != None:
             ret['cls']={
-                'sym':self.cls.sym.__dict__,
+                'sym':self.cls.sym.dict(),
             }
         return ret 
     def all_call_symbol(self):

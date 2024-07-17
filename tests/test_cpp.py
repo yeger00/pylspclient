@@ -1,3 +1,4 @@
+import json
 from cpp_impl import LspFuncParameter_cpp
 from common import Body 
 import lspcpp
@@ -106,6 +107,18 @@ def test_client_symbol():
         print("name=%s\n kind=%s\n token=%s" % (name, kind, token.data))
     client.close()
 
+def test_dump():
+    a = Location(uri="a",range=Range(start=Position(line=0,character=0),end=Position(line=0,character=0)))
+    try:
+        def d(x):
+            return x.dict()
+        ss  = json.dumps(a,default=d)
+        assert(len(ss)>0)
+        print(ss)
+    except Exception as e:
+        ss = str(e)
+        
+    
 
 def test_client_reference():
     srv = lspcppserver(cfg.workspace_root)

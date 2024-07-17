@@ -198,7 +198,15 @@ class Symbol:
     members: list['Symbol'] = []
     cls: Optional['Symbol'] = None
     param: Optional[LspFuncParameter] = None
-
+    def to_dict(self): # type: ignore
+        ret = {}
+        ret['sym']=self.sym.__dict__
+        ret['members']=[a.to_dict() for a in self.members]
+        if self.cls != None:
+            ret['cls']={
+                'sym':self.cls.sym.__dict__,
+            }
+        return ret 
     def all_call_symbol(self):
         ret: list[Symbol] = [self]
         ret.extend(self.members)
@@ -781,7 +789,13 @@ class CallNode:
     callee: Optional['CallNode'] = None
     status: str = ""
     resolved = False
-
+    def to_dict(self): # type: ignore
+        ret = {}
+        ret['resolved'] = self.resolved
+        if self.symboldefine!=None:
+            ret['symboldefine'] = self.symboldefine.to_dict()
+        ret['status'] = ""
+        return ret
     def __init__(self, sym: PrepareReturn) -> None:
         self.sym = sym
         self.callee = None
@@ -1248,8 +1262,11 @@ class task_call_in(taskbase):
             try:
                 ext = ".stack.json"
                 filepath = os.path.join(root, name + ext)
-                # with open(filepath, "w") as fp:
-                #     json.dump(a.callstack(),fp,indent=4)
+                with open(filepath, "w") as fp:
+                    def default_serializer(obj):
+                        if isinstance(obj, CallNode):
+                            return obj.to_dict()
+                    json.dump(a.callstack(),fp,indent=4,default=default_serializer)
             except Exception as e:
                 logger.error(str(e))
                 if self.toFile != None:

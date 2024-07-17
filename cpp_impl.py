@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from common import Body, SubLine, range_before
 from pylspclient.lsp_pydantic_strcuts import Location, Position, SymbolInformation
 class LspFuncParameter:
@@ -11,7 +12,7 @@ class LspFuncParameter:
 
     def displayname(self):
         return str(self)
-
+        
 
 class LspFuncParameter_cpp(LspFuncParameter):
     def __init__(self, sym: SymbolInformation):

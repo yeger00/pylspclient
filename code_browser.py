@@ -27,7 +27,7 @@ from textual.containers import Container
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
-from callinview import CallTreeNode, callinopen, callinview, uicallback
+from callinview import CallTreeNode, callinopen, callinview, log_message, uicallback
 from codesearch import ResultItem, ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode, SourceCodeSearch
 from common import Body, from_file, to_file
 from codetask import TaskManager
@@ -698,7 +698,8 @@ class CodeBrowser(App, uicallback):
                 self.symbol_listview.index = index
         except Exception as e:
             self.logview.write_line(str(e))
-
+    def on_log_message(self,message:log_message):
+        self.logview.write_line(message.log)
     def on_mymessage(self, message: mymessage) -> None:
         s = message.s
         self.search_result = SearchResults(
@@ -817,7 +818,7 @@ class CodeBrowser(App, uicallback):
     def on_changelspmessage(self, msg: changelspmessage) -> None:
         if self.codeview_file != msg.file:
             return
-        if msg.refresh_symbol_view == True:
+        if msg.refresh_symbol_view == True or self.symbol_listview.index==None:
             self.refresh_symbol_view()
         if msg.loc != None:
             line = msg.loc.range.start.line

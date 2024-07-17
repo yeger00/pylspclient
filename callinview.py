@@ -8,6 +8,14 @@ from textual.widgets import Label, ListItem, ListView, Tree
 from lspcpp import CallNode, task_call_in
 
 
+class log_message(Message):
+    log: str = ""
+
+    def __init__(self, log: str) -> None:
+        super().__init__()
+        self.log = log
+
+
 class uicallback:
 
     def on_vi_command(self, value: str):
@@ -46,13 +54,13 @@ class callinopen(Message):
 class CallTreeNode:
     callnode: CallNode
     treenode_id: Optional[str] = None
-    job_id: int
 
-    def __init__(self, callnode: CallNode,
-                 jobid: int) -> None:
+    # job_id: int
+
+    def __init__(self, callnode: CallNode, jobid: int = 0) -> None:
         self.callnode = callnode
         self.focused = False
-        self.job_id = jobid
+        # self.job_id = jobid
         pass
 
 
@@ -64,7 +72,7 @@ class RootCallTreeNode(CallTreeNode):
     def __init__(self, task: task_call_in, jobid: int) -> None:
         self.task = task
         self.focused = False
-        self.job_id = jobid
+        # self.job_id = jobid
         self.nodecount = task.all_stacknode_cout()
 
     def add(self, node: CallNode):
@@ -165,8 +173,8 @@ class callinview:
     status: str = ""
     findresult = []
     index = 0
-    
-    tree_node_list={}
+
+    call_tree_node_list = {}
 
     def __init__(self) -> None:
         self.tree = _calltree()
@@ -195,21 +203,54 @@ class callinview:
         if len(self.findresult):
             self.tree.select_node(self.findresult[self.index])  # type: ignore
 
-    def update_exists_node(self, job: task_call_in):
+    def update_exists_node_(self, job: task_call_in):
+        try:
+            return self.__update_exists_node_(job)
+        except:
+            return False
+
+    def __update_exists_node_(self, job: task_call_in):
+        for task in job.resolve_task_list:
+            call_tree_node = self.call_tree_node_list[task.node.id]
+            # call_tree_node:CallTreeNode=self.tree_node_list[stacknode.id]
+            if call_tree_node != None:
+                root = treenode = self.tree.get_node_by_id(
+                    int(call_tree_node.treenode_id))  # type: ignore
+                treenode.remove_children()
+                a = call_tree_node.callnode
+                a = a.callee
+                cout = 1
+                while a != None:
+                    self.tree.post_message(
+                        log_message("displayname:" + a.displayname()))
+                    treenode, a = self.add_node(treenode, a)
+                    if treenode == None:
+                        continue
+                    cout += 1
+                    self.tree.post_message(log_message(str(treenode.label)))
+                    # print(" "*cout, treenode.label)
+                root.set_label("%d %s" % (cout, task.node.displayname()))
+        return True
+
+    #     return True
+    def rupdate_exists_node(self, job: task_call_in):
+        ret = []
         for a in job.resolve_task_list:
             for stacknode in a.node.callstack():
                 try:
-                    node =self.tree_node_list[stacknode.id]
-                    treenode = self.tree.get_node_by_id(
-                        int(node.treenode_id))  # type: ignore
+                    node = self.call_tree_node_list[stacknode.id]
+                    treenode = self.tree.get_node_by_id(int(
+                        node.treenode_id))  # type: ignore
                     if treenode is None:
                         return False
-                    s= stacknode.displayname()
+                    s = stacknode.displayname()
                     if str(treenode.label) != s:
                         treenode.set_label(s)
+                        ret.append(treenode)
                 except Exception as e:
-                    return False
-        return True
+                    self.tree.post_message(log_message(str(e)))
+                    return False, []
+        return True, ret
 
     # mainui:uicallback
     def update_job(self, job: task_call_in):
@@ -222,36 +263,44 @@ class callinview:
                 c: RootCallTreeNode = child.data
                 task: task_call_in = c.task
                 if task.id == job.id:
-                    if c.nodecount == job.all_stacknode_cout() and self.update_exists_node(job):
-                        return
+                    if c.nodecount == job.all_stacknode_cout():
+                        if self.update_exists_node_(job):
+                            return
+                        # yes,ret = self.update_exists_node(job) # type: ignore
+                        # if yes:
+                        #     for a in ret:
+                        #         a.refresh()
+                        #     return
                     child.remove()
                     break
         root_call_tree = RootCallTreeNode(job, jobid=jobid)
-        root = self.tree.root.add(
-            job.method.name, expand=True, data=root_call_tree)
+        root = self.tree.root.add(job.method.name,
+                                  expand=True,
+                                  data=root_call_tree)
         root_call_tree.treenode_id = str(root.id)
         # self.tree_node_list.append(root_call_tree)
         for a in job.callin_all:
             level = 1
-            node, a = self.add_node(root, a, jobid,root_call_tree)
+            node, a = self.add_node(root, a)
             if node is None:
                 break
-            subroot = node 
+            subroot = node
             while a != None:
                 level += 1
-                node, a = self.add_node(node, a, jobid,root_call_tree)
+                node, a = self.add_node(node, a)
             ss = subroot.label
             subroot.label = "%d %s" % (level, ss)
 
-    def add_node(self, root_dom_node, callnode:Optional[CallNode], jobid:int,root:RootCallTreeNode):
+    def add_node(self, root_dom_node, callnode: Optional[CallNode]):
         if callnode is None:
-            return (None,None)
-        data = CallTreeNode(callnode, jobid=jobid)
+            return (None, None)
+        data = CallTreeNode(callnode)
         if callnode.callee is None:
-            root_dom_node = root_dom_node.add_leaf(callnode.displayname(), data=data)
+            root_dom_node = root_dom_node.add_leaf(callnode.displayname(),
+                                                   data=data)
         else:
-            root_dom_node = root_dom_node.add(callnode.displayname(), data=data)
-        root.add(callnode)
+            root_dom_node = root_dom_node.add(callnode.displayname(),
+                                              data=data)
         data.treenode_id = str(root_dom_node.id)
-        self.tree_node_list[callnode.id] = data
+        self.call_tree_node_list[callnode.id] = data
         return (root_dom_node if callnode != None else None, callnode.callee)

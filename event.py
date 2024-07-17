@@ -35,13 +35,11 @@ class changelspmessage(Message):
 class symbolsmessage(Message):
     data = []
     file: str
-    symbols_list: list[Symbol]
 
-    def __init__(self, data, symbols_list: list[Symbol], file: str) -> None:
+    def __init__(self, data,  file: str) -> None:
         super().__init__()
         self.file = file
         self.data = data
-        self.symbols_list = symbols_list
 
 
 class callin_message(Message):

@@ -11,7 +11,7 @@ import subprocess
 import json
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, FailFast
 from planuml import planuml_to_image
 import pylspclient
 import threading
@@ -20,6 +20,7 @@ from pylspclient.lsp_pydantic_strcuts import SignatureHelp, TextDocumentIdentifi
 from cpp_impl import LspFuncParameter, LspFuncParameter_cpp
 from common import Body, SubLine, from_file, location_to_filename, range_before, to_file, where_is_bin
 import logging
+
 logger = logging.getLogger('lsppython')
 print(logger)
 logger.critical("lspcpp begined")
@@ -847,7 +848,9 @@ class CallNode:
                 self.param = wk.get_parama(self)
             self.detail = str(self.symboldefine)
 
-    def uml(self, wk: Optional['WorkSpaceSymbol'] = None, markdown=False) -> str:
+    def uml(self,
+            wk: Optional['WorkSpaceSymbol'] = None,
+            markdown=False) -> str:
         stack = self.callstack()
 
         def fix(node: CallNode):
@@ -1185,10 +1188,9 @@ class task_call_in(taskbase):
 
     def ensureroot(self):
         dirname = location_to_filename(
-            self.method.location) + "_"+self.method.name
-        dirname = os.path.join(
-            os.path.dirname(__file__),
-            "export", dirname.replace(".", "_"))
+            self.method.location) + "_" + self.method.name
+        dirname = os.path.join(os.path.dirname(__file__), "export",
+                               dirname.replace(".", "_"))
         dirname = dirname.replace(" ", "")
         if os.path.exists(dirname):
             return dirname
@@ -1205,6 +1207,24 @@ class task_call_in(taskbase):
             self.toFile.write("callin_all %d" % (len(self.callin_all)))
         for i in range(len(self.callin_all)):
             self.deep_resolve_at(i)
+
+    def node_file_name(self, a: CallNode, markdown=False):
+        root = self.ensureroot()
+        if root is None:
+            return None
+        name = a.callstack()[0].filename()
+        ext = ".md" if markdown else ".puml"
+        filepath = os.path.join(root, name + ext)
+        return filepath
+
+    def check_node_resoved(self, a: CallNode):
+        try:
+            p = self.node_file_name(a)
+            if p is None:
+                return False
+            return os.path.exists(p)
+        except Exception as e:
+            logger.error(str(e))
 
     def save_uml_tofile(self, a: CallNode, s: str, markdown: bool):
         root = self.ensureroot()
@@ -1233,13 +1253,12 @@ class task_call_in(taskbase):
             done += item.done
         substate = "" if total == 0 else "sub->%d/%d " % (done, total)
 
-        state1 = "[%d/%d/%d] " % (self.processed,
-                                  len(self.callin_all), len(self.resolve_task_list))
+        state1 = "[%d/%d/%d] " % (self.processed, len(
+            self.callin_all), len(self.resolve_task_list))
         data = Body(self.method.location).data.replace("\n", "")
-        return data + "%s%s %s:%d" % (state1, substate,
-                                      display_file_path(
-                                          self.method.location.uri),
-                                      self.method.location.range.start.line)
+        return data + "%s%s %s:%d" % (
+            state1, substate, display_file_path(self.method.location.uri),
+            self.method.location.range.start.line)
 
 
 class subtask:
@@ -1263,6 +1282,7 @@ class subtask:
             self.done = done
             task.cb.update(task)
             pass
+
         a.resolve_all(task.wk, fn)
         a.printstack(fp=task.toFile)
         try:

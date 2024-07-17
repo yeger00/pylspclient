@@ -1,19 +1,10 @@
 from concurrent.futures import ThreadPoolExecutor
-from importlib.metadata import files
 from typing import Optional
-from textual import message
 from textual.message import Message
-from textual.validation import Failure
-from textual.widgets import Label, ListItem, ListView, Tree
+from textual.widgets import Tree
 from baseview import uicallback
 from event import log_message
 from lspcpp import CallNode, task_call_in
-
-
-
-
-
-        
 
 
 class callinopen(Message):
@@ -50,6 +41,7 @@ class RootCallTreeNode(CallTreeNode):
 
     def add(self, node: CallNode):
         self.__subnode.add(node.id)
+
 
 class _calltree(Tree, uicallback):
     BINDINGS = [

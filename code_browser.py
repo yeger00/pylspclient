@@ -27,14 +27,14 @@ from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
 from baseview import MyListView, uicallback
-from callinview import  callinopen, callinview, log_message 
+from callinview import  callinopen, callinview 
 from codesearch import ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode, SourceCodeSearch
 from codeview import CodeView
 from commandline import convert_command_args, clear_key
 from common import Body, from_file, to_file
 from codetask import TaskManager
 from dircomplete import TaskFindFile, dir_complete_db
-from event import callin_message, changelspmessage, mymessage, refermessage, symbolsmessage
+from event import callin_message, changelspmessage, log_message, mymessage, refermessage, symbolsmessage
 from input_suggestion import input_suggestion
 from lspcpp import CallNode, LspMain, Symbol, OutputFile, task_call_in, task_callback
 from textual.app import App, ComposeResult
@@ -45,7 +45,6 @@ from history import BackFoward, history
 from commandline import input_command_options
 from codesearch import generic_search
 from symbolload import symbolload
-
 
 class UiOutput(OutputFile):
     ui: Log | None = None

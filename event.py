@@ -1,7 +1,7 @@
 from typing import Optional
 from textual.message import Message
-from callinview import task_call_in
 from codesearch import Symbol, SymbolLocation
+from lspcpp import task_call_in
 from pylspclient.lsp_pydantic_strcuts import Location
 class log_message(Message):
     log: str = ""

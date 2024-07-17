@@ -1068,6 +1068,10 @@ class WorkSpaceSymbol:
             return self.source_list[file]
         return self.client.open_file(file)
 
+    def get_source(self, file)->Optional['SourceCode']:
+        return self.source_list[file] 
+
+
     def add(self, s: SourceCode):
         self.source_list[s.file] = s
 
@@ -1543,7 +1547,11 @@ class LspMain:
         self.client = client
         self.root = root
         self.changefile(file)
-
+    def find_symbol_file(self,file:str)->Optional[SymbolFile]:
+        for f in self.opened_files:
+            if f.sourcecode.file == file:
+                return f
+        return None
     def changefile(self, file) -> SymbolFile:
         for f in self.opened_files:
             if f.sourcecode.file == file:

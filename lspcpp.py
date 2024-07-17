@@ -783,7 +783,7 @@ def display_file_path(uri: str) -> str:
         i += 1
     return path[i:]
 
-
+callnode_id=1
 class CallNode:
     symboldefine: Union[Symbol, None] = None
     detail: str = ""
@@ -791,7 +791,7 @@ class CallNode:
     callee: Optional['CallNode'] = None
     status: str = ""
     resolved = False
-
+    id :int
     def to_dict(self):  # type: ignore
         ret = {}
         ret['resolved'] = self.resolved
@@ -804,6 +804,9 @@ class CallNode:
         self.sym = sym
         self.callee = None
         self.param = ""
+        global callnode_id
+        self.id = callnode_id+1
+        callnode_id = self.id
 
     def get_cls_name(self) -> str:
         cls = self.get_cls()

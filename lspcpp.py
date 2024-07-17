@@ -3,7 +3,7 @@
 
 """
 from inspect import stack
-from codetask import taskbase
+from codetask import task_message, taskbase
 from typing import Union
 import logging
 import os
@@ -783,7 +783,10 @@ def display_file_path(uri: str) -> str:
         i += 1
     return path[i:]
 
-callnode_id=1
+
+callnode_id = 1
+
+
 class CallNode:
     symboldefine: Union[Symbol, None] = None
     detail: str = ""
@@ -791,7 +794,8 @@ class CallNode:
     callee: Optional['CallNode'] = None
     status: str = ""
     resolved = False
-    id :int
+    id: int
+
     def to_dict(self):  # type: ignore
         ret = {}
         ret['resolved'] = self.resolved
@@ -805,7 +809,7 @@ class CallNode:
         self.callee = None
         self.param = ""
         global callnode_id
-        self.id = callnode_id+1
+        self.id = callnode_id + 1
         callnode_id = self.id
 
     def get_cls_name(self) -> str:
@@ -855,11 +859,13 @@ class CallNode:
         if cb != None:
             cb(0, len(stack))
         for index in range(len(stack)):
-            s = stack[len(stack) - 1 - index]
+            s = stack[index]
             s.resolve(wk)
             completed += 1
             if cb != None:
                 cb(completed, len(stack))
+        if cb != None:
+            cb(completed, len(stack))
         self.resolved = True
 
     def resolve(self, wk: 'WorkSpaceSymbol'):
@@ -1170,6 +1176,17 @@ class task_call_in(taskbase):
     method: SymbolInformation
     resolve_task_list: list['subtask'] = []
 
+    class message(task_message):
+        task: 'task_call_in'
+        node: Optional[CallNode] = None
+
+        def __init__(self,
+                     task: 'task_call_in',
+                     updated_node: Optional['CallNode'] = None) -> None:
+            super().__init__()
+            self.task = task
+            self.node = updated_node
+
     def __init__(self, wk: WorkSpaceSymbol, client: lspcppclient,
                  method: SymbolInformation, cb: task_callback, once) -> None:
         self.client = client
@@ -1187,23 +1204,25 @@ class task_call_in(taskbase):
         self.processed = 0
         # self.pendding = 0
         pass
+
     def all_stacknode_cout(self):
         n = 0
         for node in self.callin_all:
             n += len(node.callstack())
         return n
+
     def run(self):
         self.processed = 0
         self.callin_all = []
         walk = CallerWalker(self.client, self.wk)
         ret = walk.get_caller(Symbol(self.method), once=False)
         self.callin_all = ret
-        self.cb.update(self)
+        self.cb.update(task_call_in.message(self))
 
     def deep_resolve_at(self, index):
         node = self.callin_all[index]
-        if node.resolved:
-            return
+        # if node.resolved:
+        #     return
         found = list(filter(lambda x: node == x.node, self.resolve_task_list))
         if len(found):
             return
@@ -1211,7 +1230,7 @@ class task_call_in(taskbase):
         self.resolve_task_list.append(t)
         t.run()
         self.resolve_task_list.remove(t)
-        self.cb.update(self)
+        self.cb.update(task_call_in.message(self))
 
     def ensureroot(self):
         dirname = location_to_filename(
@@ -1307,7 +1326,7 @@ class task_call_in(taskbase):
 
 
 class subtask:
-    a: CallNode
+    node: CallNode
     task: task_call_in
     total = 0
     done = 0
@@ -1320,12 +1339,12 @@ class subtask:
     def run(self):
         task = self.task
         a = self.node
-        task.cb.update(self)
+        task.cb.update(task_call_in.message(task))
 
         def fn(done, total):
             self.total = total
             self.done = done
-            task.cb.update(task)
+            task.cb.update(task_call_in.message(task, self.node))
             pass
 
         a.resolve_all(task.wk, fn)
@@ -1345,7 +1364,7 @@ class subtask:
         except Exception as e:
             logger.exception(str(e))
             pass
-        task.cb.update(self)
+        task.cb.update(task_call_in.message(task, a))
         task.processed += 1  # a.printstack(fp=self.toFile)
 
 

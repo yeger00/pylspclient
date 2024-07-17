@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from importlib.metadata import files
 from typing import Optional
+from textual import message
 from textual.message import Message
 from textual.validation import Failure
 from textual.widgets import Label, ListItem, ListView, Tree
@@ -203,15 +204,15 @@ class callinview:
         if len(self.findresult):
             self.tree.select_node(self.findresult[self.index])  # type: ignore
 
-    def update_exists_node_(self, job: task_call_in):
+    def update_exists_node_(self, msg: task_call_in.message):
         try:
-            return self.__update_exists_node_(job)
+            return self.__update_exists_node_(msg)
         except:
             return False
 
-    def __update_exists_node_(self, job: task_call_in):
-        for task in job.resolve_task_list:
-            call_tree_node = self.call_tree_node_list[task.node.id]
+    def __update_exists_node_(self, message: task_call_in.message):
+        if message.node!=None:
+            call_tree_node = self.call_tree_node_list[message.node.id]
             # call_tree_node:CallTreeNode=self.tree_node_list[stacknode.id]
             if call_tree_node != None:
                 root = treenode = self.tree.get_node_by_id(
@@ -229,7 +230,7 @@ class callinview:
                     cout += 1
                     self.tree.post_message(log_message(str(treenode.label)))
                     # print(" "*cout, treenode.label)
-                root.set_label("%d %s" % (cout, task.node.displayname()))
+                root.set_label("%d %s" % (cout, message.node.displayname()))
         return True
 
     #     return True
@@ -253,7 +254,8 @@ class callinview:
         return True, ret
 
     # mainui:uicallback
-    def update_job(self, job: task_call_in):
+    def update_job(self, message: task_call_in.message):
+        job = message.task
         self.job = job
         jobid = job.id
         for child in self.tree.root.children:
@@ -264,7 +266,7 @@ class callinview:
                 task: task_call_in = c.task
                 if task.id == job.id:
                     if c.nodecount == job.all_stacknode_cout():
-                        if self.update_exists_node_(job):
+                        if self.update_exists_node_(message):
                             return
                         # yes,ret = self.update_exists_node(job) # type: ignore
                         # if yes:

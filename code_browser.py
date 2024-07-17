@@ -519,14 +519,11 @@ class symbolsmessage(Message):
 
 
 class callin_message(Message):
-    task: Optional[task_call_in]
+    taskmsg: task_call_in.message
 
-    def __init__(self,
-                 task: Optional[task_call_in] = None,
-                 call: Optional[CallNode] = None) -> None:
+    def __init__(self, message: task_call_in.message) -> None:
         super().__init__()
-        self.task = task
-        self.call = call
+        self.taskmsg = message
 
 
 class refermessage(Message):
@@ -636,11 +633,12 @@ class CodeBrowser(App, uicallback):
             self.logview.write(str(e))
 
     def on_callin_message(self, message: callin_message) -> None:
-        if message.task != None:
-            self.callin.update_job(message.task)
+        if message.taskmsg != None:
+            self.callin.update_job(message.taskmsg)
             f: Label = self.query_one("#f1", Label)
             self.callin.status = "call in to <%d> " % (len(
-                message.task.callin_all)) + message.task.displayname()
+                message.taskmsg.task.callin_all
+            )) + message.taskmsg.task.displayname()
             f.update(self.callin.status)
             # if len(message.task.callin_all) > 0:
             #     self.callin.tree.focus()
@@ -698,8 +696,10 @@ class CodeBrowser(App, uicallback):
                 self.symbol_listview.index = index
         except Exception as e:
             self.logview.write_line(str(e))
-    def on_log_message(self,message:log_message):
+
+    def on_log_message(self, message: log_message):
         self.logview.write_line(message.log)
+
     def on_mymessage(self, message: mymessage) -> None:
         s = message.s
         self.search_result = SearchResults(
@@ -818,7 +818,7 @@ class CodeBrowser(App, uicallback):
     def on_changelspmessage(self, msg: changelspmessage) -> None:
         if self.codeview_file != msg.file:
             return
-        if msg.refresh_symbol_view == True or self.symbol_listview.index==None:
+        if msg.refresh_symbol_view == True or self.symbol_listview.index == None:
             self.refresh_symbol_view()
         if msg.loc != None:
             line = msg.loc.range.start.line
@@ -913,7 +913,9 @@ class CodeBrowser(App, uicallback):
                     pass
                 line = self.generic_search_mgr.get_index()
                 sss = self.CodeView.textarea.document.lines[line]
-                pos = SourceCodeSearch.Pos(line, col=sss.lower().find(key), text=key)
+                pos = SourceCodeSearch.Pos(line,
+                                           col=sss.lower().find(key),
+                                           text=key)
                 self.soucecode.search.pattern = key
                 self.code_to_search_position(ResultItemSearch(pos))
             pass
@@ -1388,18 +1390,15 @@ class CodeBrowser(App, uicallback):
         def my_function(lsp: LspMain, sym: SymbolInformation, toFile, toUml):
             try:
                 self.logview.write_line("Callin Job %s Started" % (sym.name))
-                filepath = from_file(sym.location.uri)
-
                 class callin_ui_cb(task_callback):
 
                     def __init__(self, app: App) -> None:
                         super().__init__()
                         self.app = app
 
-                    def update(self, task):
-                        if isinstance(task, task_call_in):
-                            self.app.post_message(
-                                callin_message(task=task, call=None))
+                    def update(self, a):
+                        if isinstance(a, task_call_in.message):
+                            self.app.post_message(callin_message(message=a))
                         pass
 
                 cb = callin_ui_cb(self)
@@ -1421,15 +1420,15 @@ class CodeBrowser(App, uicallback):
         if q != self.symbol_query:
             if self.tofile != None:
                 self.tofile.close()
-            dir ="output"
-            if os.path.exists(dir)==False:
+            dir = "output"
+            if os.path.exists(dir) == False:
                 os.mkdir(dir)
-            self.tofile = UiOutput(os.path.join(dir,q.data + ".txt"))
+            self.tofile = UiOutput(os.path.join(dir, q.data + ".txt"))
             self.tofile.ui = self.logview
 
             if self.toUml != None:
                 self.toUml.close()
-            self.toUml = UiOutput(os.path.join(dir,q.data + ".qml"))
+            self.toUml = UiOutput(os.path.join(dir, q.data + ".qml"))
             self.toUml.ui = self.logview
             ThreadPoolExecutor(1).submit(my_function, self.lsp, sym.sym,
                                          self.tofile, self.toUml)

@@ -17,7 +17,6 @@ import os
 import re
 import argparse
 from textual.message_pump import events
-from textual.suggester import SuggestFromList, SuggestionReady
 from textual.widgets import Log, TextArea
 from rich.syntax import Syntax
 from rich.traceback import Traceback
@@ -30,41 +29,18 @@ from textual.widgets import Footer, Label, ListItem, ListView
 from callinview import CallTreeNode, callinopen, callinview, log_message, uicallback
 from codesearch import ResultItem, ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode, SourceCodeSearch
 from codeview import CodeView
+from commandline import convert_command_args
 from common import Body, from_file, to_file
 from codetask import TaskManager
-from dircomplete import dir_complete_db
+from dircomplete import TaskFindFile, dir_complete_db
+from input_suggestion import input_suggestion
 from lspcpp import CallNode, LspMain, Symbol, OutputFile, SymbolLocation, task_call_in, task_callback
 from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
 from pylspclient.lsp_pydantic_strcuts import Location, Position, Range, SymbolInformation
-find_key = "find "
-view_key = "view "
-clear_key = "clear"
-input_command_options = [
-    "history", "symbol", "open", "find", "refer", "callin", "ctrl-c", "copy",
-    "save", "log", "quit", "grep", "view", "clear"
-]
-
-
-
-
-
-def convert_command_args(value):
-    args = list(filter(lambda x: len(x) > 0, value.split(" ")))
-    return args
-
-
-
-
-
-
-
-
-
-
-
-
+from history import BackFoward, history
+from commandline import input_command_options
 
 
 # def thread_submit(fn, cb, args: tuple):
@@ -75,51 +51,6 @@ def convert_command_args(value):
 #         # result = future.result()
 #         # cb(result)
 #
-
-
-class TaskFindFile:
-
-    def __init__(self, dir, pattern: list[str]) -> None:
-        self.dir = dir
-        self.pattern = list(filter(lambda x: x[0] != '!', pattern))
-        self.exclude_pattern = list(
-            map(lambda x: x[1:], filter(lambda x: x[0] == '!', pattern)))
-        self.ret = []
-        pass
-
-    def match_pattern(self, path):
-        for p in self.exclude_pattern:
-            if path.find(p) > -1:
-                return False
-        for p in self.pattern:
-            if path.find(p) == -1:
-                return False
-
-        return True
-
-    def get(self):
-        files_found = []
-        if self.dir is None:
-            return files_found
-        for root, _, files in os.walk(self.dir):
-            for file in files:
-                p = os.path.join(root, file)
-                if self.match_pattern(p):
-                    files_found.append(p)
-        return files_found
-
-    @staticmethod
-    def run(dir, pattern):
-        fileset = ["h", "c", "hpp", "cc", "cpp"]
-
-        def extfilter(x: str):
-            for s in fileset:
-                if x.endswith(s):
-                    return True
-            return False
-
-        ret = list(filter(extfilter, TaskFindFile(dir, pattern).get()))
-        return ret
 
 
 class UiOutput(OutputFile):
@@ -159,130 +90,6 @@ class LspQuery:
             s: LspQuery = value
             return self.data == s.data and self.type == s.type
         return False
-
-
-class history:
-    datalist: list[str]
-
-    def __init__(self, file=None) -> None:
-        self._data = set()
-        self.datalist = list(self._data)
-        self.file = file
-        if file != None:
-            try:
-                self.datalist = list(
-                    map(lambda x: x.replace("\n", ""),
-                        open(file, "r").readlines()))
-                self._data = set(self.datalist)
-            except:
-                pass
-        pass
-
-    def add_to_history(self, data, barckforward=False):
-        self._data.add(data)
-        self.datalist = list(filter(lambda x: x != data, self.datalist))
-        self.datalist.insert(0, data)
-        if self.file != None:
-            open(self.file, "w").write("\n".join(self.datalist))
-
-
-class BackFoward:
-
-    def __init__(self, h: history) -> None:
-        self.history = h
-        self.index = 0
-        pass
-
-    def goback(self) -> str:
-        self.index += 1
-        self.index = min(len(self.history.datalist) - 1, self.index)
-        ret = self.history.datalist[self.index]
-        return ret
-
-    def goforward(self) -> str:
-        self.index -= 1
-        self.index = max(0, self.index)
-        ret = self.history.datalist[self.index]
-        return ret
-
-
-class input_suggestion(SuggestFromList):
-    _history: history
-    dircomplete: dir_complete_db
-
-    async def _get_suggestion(self, requester, value: str) -> None:
-        """Used by widgets to get completion suggestions.
-
-        Note:
-            When implementing custom suggesters, this method does not need to be
-            overridden.
-
-        Args:
-            requester: The message target that requested a suggestion.
-            value: The current value to complete.
-        """
-
-        args = convert_command_args(value)
-        suggestion = None
-        if suggestion is None:
-            suggestion = self.complete_view(value, args)
-
-        if suggestion != None:
-            requester.post_message(SuggestionReady(value, suggestion))
-
-        normalized_value = value if self.case_sensitive else value.casefold()
-        if self.cache is None or normalized_value not in self.cache:
-            suggestion = await self.get_suggestion(normalized_value)
-            if self.cache is not None:
-                self.cache[normalized_value] = suggestion
-        else:
-            suggestion = self.cache[normalized_value]
-
-        if suggestion is None:
-            suggestion = self.complete_path(value, args)
-        if suggestion is None:
-            ret = list(
-                filter(lambda x: x.startswith(value), self._history._data))
-            if len(ret) > 0:
-                suggestion = ret[0]
-        if suggestion is None:
-            return
-        requester.post_message(SuggestionReady(value, suggestion))
-
-    def complete_view(self, value: str, args):
-        view_name = ["code", "explore", "symbol", "history"]
-        try:
-            if value.startswith(view_key) == False:
-                return None
-            if len(args) == 2:
-                for a in view_name:
-                    if a.startswith(args[1]):
-                        args[1] = a
-                        return " ".join(args)
-
-        except:
-            pass
-        return None
-
-    def complete_path(self, value: str, args):
-        try:
-            # if self.root is None: return None
-            if value.startswith(find_key) == False:
-                return None
-            if self.dircomplete != None:
-                if len(args) == 2:
-                    s = self.dircomplete.find(args[1])
-                    if s != None:
-                        part1 = value[0:value.find(args[1])]
-                        return part1 + "/" + s
-
-            # ret = find_dirs_os_walk(self.root, args[1])
-            # if len(ret):
-            # return ret[0]
-        except Exception as e:
-            print(e)
-            pass
-        return None
 
 
 class CommandInput(Input):
@@ -1272,6 +1079,7 @@ class CodeBrowser(App, uicallback):
         def my_function(lsp: LspMain, sym: SymbolInformation, toFile, toUml):
             try:
                 self.logview.write_line("Callin Job %s Started" % (sym.name))
+
                 class callin_ui_cb(task_callback):
 
                     def __init__(self, app: App) -> None:

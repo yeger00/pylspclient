@@ -1,3 +1,8 @@
+
+
+
+
+
 class history:
     datalist: list[str]
 
@@ -41,4 +46,5 @@ class BackFoward:
         self.index = max(0, self.index)
         ret = self.history.datalist[self.index]
         return ret
+
 

@@ -29,10 +29,11 @@ from textual.widgets import Footer, Label, ListItem, ListView
 from callinview import CallTreeNode, callinopen, callinview, log_message, uicallback
 from codesearch import ResultItem, ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode, SourceCodeSearch
 from codeview import CodeView
-from commandline import convert_command_args
+from commandline import convert_command_args,clear_key,find_key,view_key
 from common import Body, from_file, to_file
 from codetask import TaskManager
 from dircomplete import TaskFindFile, dir_complete_db
+from event import callin_message, changelspmessage, mymessage, refermessage, symbolsmessage
 from input_suggestion import input_suggestion
 from lspcpp import CallNode, LspMain, Symbol, OutputFile, SymbolLocation, task_call_in, task_callback
 from textual.app import App, ComposeResult
@@ -42,15 +43,6 @@ from pylspclient.lsp_pydantic_strcuts import Location, Position, Range, SymbolIn
 from history import BackFoward, history
 from commandline import input_command_options
 from codesearch import generic_search
-
-# def thread_submit(fn, cb, args: tuple):
-#     with ThreadPoolExecutor(max_workers=2) as executor:
-#         future = executor.submit(fn, *args)
-#             cb(future.result())
-#         future.add_done_callback(done,cb)
-#         # result = future.result()
-#         # cb(result)
-#
 
 
 class UiOutput(OutputFile):
@@ -175,54 +167,7 @@ SYMBOL_LISTVIEW_TYPE = 1
 HISTORY_LISTVIEW_TYPE = 2
 
 
-class mymessage(Message):
 
-    def __init__(self, s: list[str]) -> None:
-        super().__init__()
-        self.s = s
-
-
-class changelspmessage(Message):
-    loc: Optional[Location] = None
-
-    def __init__(self,
-                 file,
-                 loc: Optional[Location] = None,
-                 refresh=True) -> None:
-        super().__init__()
-        self.loc = loc
-        self.file = file
-        self.refresh_symbol_view = refresh
-
-    pass
-
-
-class symbolsmessage(Message):
-    data = []
-    file: str
-
-    def __init__(self, data, file: str) -> None:
-        super().__init__()
-        self.file = file
-        self.data = data
-
-
-class callin_message(Message):
-    taskmsg: task_call_in.message
-
-    def __init__(self, message: task_call_in.message) -> None:
-        super().__init__()
-        self.taskmsg = message
-
-
-class refermessage(Message):
-    s: list[SymbolLocation]
-    query: str
-
-    def __init__(self, s: list[SymbolLocation], key: str) -> None:
-        super().__init__()
-        self.query = key
-        self.s = s
 
 
 class MyListView(ListView):

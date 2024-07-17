@@ -67,4 +67,4 @@ class Body:
 def location_to_filename(loc:Location):
     import os
     filename = os.path.basename(from_file(loc.uri))
-    return "%s:%d" % (filename, loc.range.start.line)
+    return "%s:%d:%d" % (filename, loc.range.start.line,loc.range.start.character)

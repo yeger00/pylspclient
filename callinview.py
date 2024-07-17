@@ -41,7 +41,7 @@ class callinopen(Message):
 
 class CallTreeNode:
     callnode: Optional[CallNode | task_call_in]
-
+    id :Optional[str]=None
     def __init__(self, callnode: Optional[CallNode | task_call_in]) -> None:
         self.callnode = callnode
         self.focused = False
@@ -142,7 +142,7 @@ class callinview:
     status: str = ""
     findresult = []
     index = 0
-
+    tree_node_list:list[CallTreeNode]=[]
     def __init__(self) -> None:
         self.tree = _calltree()
 
@@ -182,9 +182,12 @@ class callinview:
                 if task.id == job.id:
                     child.remove()
                     break
+        data=CallTreeNode(job)
         root = self.tree.root.add(job.method.name,
                                   expand=True,
-                                  data=CallTreeNode(job))
+                                  data=data)
+        data.id = str(root.id)
+        self.tree_node_list.append(data)
         for a in job.callin_all:
             level = 1
             subroot = node = root.add(a.displayname(),
@@ -193,11 +196,14 @@ class callinview:
             a = a.callee
             while a != None:
                 level += 1
+                data=CallTreeNode(a)
                 if a.callee is None:
-                    node = node.add_leaf(a.displayname(), data=CallTreeNode(a))
+                    node = node.add_leaf(a.displayname(), data=data)
                     break
                 else:
-                    node = node.add(a.displayname(), data=CallTreeNode(a))
+                    node = node.add(a.displayname(), data=data)
+                data.id = str(node.id)
+                self.tree_node_list.append(data)
                 a = a.callee
             ss = subroot.label
             subroot.label = "%d %s" % (level, ss)

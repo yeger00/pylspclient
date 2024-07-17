@@ -1420,12 +1420,15 @@ class CodeBrowser(App, uicallback):
         if q != self.symbol_query:
             if self.tofile != None:
                 self.tofile.close()
-            self.tofile = UiOutput(q.data + ".txt")
+            dir ="output"
+            if os.path.exists(dir):
+                os.mkdir(dir)
+            self.tofile = UiOutput(os.path.join(dir,q.data + ".txt"))
             self.tofile.ui = self.logview
 
             if self.toUml != None:
                 self.toUml.close()
-            self.toUml = UiOutput(q.data + ".qml")
+            self.toUml = UiOutput(os.path.join(dir,q.data + ".qml"))
             self.toUml.ui = self.logview
             ThreadPoolExecutor(1).submit(my_function, self.lsp, sym.sym,
                                          self.tofile, self.toUml)

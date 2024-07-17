@@ -606,6 +606,7 @@ class CodeBrowser(App, uicallback):
 
     def search_word(self, word):
         try:
+            self.soucecode.search = SourceCodeSearch(file=self.codeview_file)
             ret = self.soucecode.search.search(word)
             self.search_result = SearchResults(
                 list(map(lambda x: ResultItemSearch(x), ret)))

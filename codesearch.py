@@ -27,7 +27,7 @@ class SourceCodeSearch(object):
             index = 0
             for line in fp.readlines():
                 pos = line.find(pattern)
-                if pos > 1:
+                if pos > -1:
                     result = SourceCodeSearch.Pos(
                         index, pos, line[max(pos - 20, 0):min(pos + len(pattern)+20, len(line))])
                     result.text =result.text.replace(pattern,'''[b][u]%s[/u][/b]'''%(pattern)) 

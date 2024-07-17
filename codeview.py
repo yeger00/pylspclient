@@ -47,7 +47,7 @@ class CodeView:
         e = r.range.end.character
         line = self.textarea.document.lines[linenum]
         ignore_set = set(
-            [' ', ',', '{', '-', '}', ';', '.', '(', ')', '/', '"'])
+            [' ', ',', '{', '-', '}', ';', '.', '(', ')', '/', '"',':','&'])
         while b - 1 >= 0:
             if line[b - 1] in ignore_set:
                 break

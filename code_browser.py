@@ -935,8 +935,8 @@ class CodeBrowser(App, uicallback):
         try:
             if self.symbol_listview.index is None:
                 return None
-            sym: Symbol = self._symbolload.symbols_list(self.codeview_file)[
-                self.symbol_listview.index]
+            sym: Symbol = self._symbolload.symbols_list(
+                self.codeview_file)[self.symbol_listview.index]
             self.get_symbol_refer(sym=sym)
         except Exception as e:
             self.logview.write_line(str(e))
@@ -1041,7 +1041,16 @@ class CodeBrowser(App, uicallback):
     def action_toggle_files(self) -> None:
         """Called in response to key binding."""
         if self.CodeView.is_focused():
-            w = self.CodeView.get_select_wholeword()
+            range = self.CodeView.get_select_range()
+            if range is None:
+                w = self.CodeView.get_select_wholeword()
+            elif range.text != None:
+                if len(range.text) <=1:
+                    w = self.CodeView.get_select_wholeword()
+                else:
+                    w = range.text
+            else:
+                w = self.CodeView.get_select_wholeword()
             if len(w):
                 self.search_word(w)
             return

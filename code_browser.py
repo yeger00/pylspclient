@@ -41,7 +41,7 @@ from textual.widgets import Footer, Label, TabbedContent, TabPane
 from pylspclient.lsp_pydantic_strcuts import Location, Position, Range, SymbolInformation
 from history import BackFoward, history
 from commandline import input_command_options
-
+from codesearch import generic_search
 
 # def thread_submit(fn, cb, args: tuple):
 #     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -241,35 +241,7 @@ class MyListView(ListView):
         self.mainui.on_select_list(self)
 
 
-class generic_search:
-    indexlist: list[int] = []
-    view: object
-    key: str
 
-    def __init__(self, view: object, key: str = "") -> None:
-        self.view = view
-        self.key = key
-        self.indexlist = []
-        self.currentindex = 0
-        pass
-
-    def get_next(self) -> int:
-        self.currentindex += 1
-        self.currentindex = self.currentindex % len(self.indexlist)
-        return self.indexlist[self.currentindex]
-
-    def get_index(self) -> int:
-        return self.indexlist[self.currentindex]
-
-    def add(self, index: int):
-        self.indexlist.append(index)
-
-    def __str__(self) -> str:
-        return "search %s %d/%d" % (self.key, self.currentindex,
-                                    self.result_number())
-
-    def result_number(self) -> int:
-        return len(self.indexlist)
 
 
 class CodeBrowser(App, uicallback):

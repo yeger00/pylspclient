@@ -55,6 +55,7 @@ class callinopen(Message):
 class CallTreeNode:
     callnode: CallNode
     treenode_id: Optional[str] = None
+    firstcall = False
 
     # job_id: int
 
@@ -140,9 +141,24 @@ class _calltree(Tree, uicallback):
 
     def action_select_cursor(self):
         try:
-            self.__action_select_cursor()
+            self.__action_select_cursor_1()
         except:
             pass
+
+    def __action_select_cursor_1(self):
+        if self.cursor_node != None and self.cursor_node.data != None:
+            n: CallTreeNode = self.cursor_node.data
+            if n != None:
+                open = False
+                if n.firstcall == False:
+                    open = True
+                else:
+                    open = n.focused == False
+                    n.focused = open 
+                if open:
+                    self.app.post_message(callinopen(n.callnode))
+                else:
+                    self.cursor_node.toggle_all()
 
     def __action_select_cursor(self):
         if self.cursor_node != None and self.cursor_node.data != None:
@@ -211,7 +227,7 @@ class callinview:
             return False
 
     def __update_exists_node_(self, message: task_call_in.message):
-        if message.node!=None:
+        if message.node != None:
             call_tree_node = self.call_tree_node_list[message.node.id]
             # call_tree_node:CallTreeNode=self.tree_node_list[stacknode.id]
             if call_tree_node != None:
@@ -284,6 +300,9 @@ class callinview:
         for a in job.callin_all:
             level = 1
             node, a = self.add_node(root, a)
+            if node!=None and node.data != None:
+                top: CallTreeNode = node.data
+                top.firstcall = True
             if node is None:
                 break
             subroot = node

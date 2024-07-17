@@ -864,7 +864,7 @@ class CodeBrowser(App, uicallback):
         self.searchview.setlist(list(m))
 
     def search_preview_ui(self, args: list[str]):
-        key = args[0][2:].lower()
+        key = args[0][1:].lower()
         changed = False
         if self.generic_search_mgr.key != key or self.generic_search_mgr.view != self.preview_focused:
             self.generic_search_mgr = generic_search(self.preview_focused, key)
@@ -930,7 +930,7 @@ class CodeBrowser(App, uicallback):
         try:
             args = value.split(" ")
             if len(args) > 0:
-                if args[0].find(":/") == 0:
+                if args[0].find("/") == 0:
                     self.search_preview_ui(args)
             pass
         except Exception as e:
@@ -940,7 +940,7 @@ class CodeBrowser(App, uicallback):
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:
-            if args[0].find(":/") == 0:
+            if args[0].find("/") == 0:
                 self.search_preview_ui(args)
                 return True
             elif args[0] == "help":

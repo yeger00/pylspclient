@@ -2,6 +2,7 @@
 
 
 """
+from inspect import stack
 from codetask import taskbase
 from typing import Union
 import logging
@@ -1228,9 +1229,9 @@ class task_call_in(taskbase):
 
     def save_uml_tofile(self, a: CallNode, s: str, markdown: bool):
         root = self.ensureroot()
+        name = a.callstack()[0].filename()
         if root != None:
             try:
-                name = a.callstack()[0].filename()
                 ext = ".md" if markdown else ".puml"
                 filepath = os.path.join(root, name + ext)
                 with open(filepath, "w") as fp:
@@ -1244,6 +1245,18 @@ class task_call_in(taskbase):
                     self.toFile.write(str(e) + "\n")
                 pass
             pass
+            try:
+                ext = ".stack.json"
+                filepath = os.path.join(root, name + ext)
+                # with open(filepath, "w") as fp:
+                #     json.dump(a.callstack(),fp,indent=4)
+            except Exception as e:
+                logger.error(str(e))
+                if self.toFile != None:
+                    self.toFile.write(str(e) + "\n")
+                pass
+
+
 
     def displayname(self):
         total = 0

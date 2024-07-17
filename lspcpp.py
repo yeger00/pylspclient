@@ -1191,7 +1191,9 @@ class task_call_in(taskbase):
     def ensureroot(self):
         dirname = location_to_filename(
             self.method.location) + "_"+self.method.name
-        dirname = os.path.join("export", dirname.replace(".", "_"))
+        dirname = os.path.join(
+            os.path.dirname(__file__),
+            "export", dirname.replace(".", "_"))
         dirname = dirname.replace(" ", "")
         if os.path.exists(dirname):
             return dirname
@@ -1216,8 +1218,9 @@ class task_call_in(taskbase):
                 name = a.callstack()[0].filename()
                 ext = ".md" if markdown else ".puml"
                 filepath = os.path.join(root, name + ext)
-                fp = open(filepath, "w")
-                fp.write(s)
+                with open(filepath, "w") as fp:
+                    fp.write(s)
+                
                 if markdown == False:
                     planuml_to_image(filepath, root)
             except Exception as e:

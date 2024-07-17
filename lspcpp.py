@@ -812,7 +812,7 @@ class CallNode:
             self.callee.printstack(level=level + 1, fp=fp)
 
     def filename(self):
-        f = location_to_filename(self.sym) 
+        f = location_to_filename(self.sym)
         cls = self.get_cls()
         classname = cls.name + \
             "::" if cls != None else ""
@@ -1174,7 +1174,7 @@ class task_call_in(taskbase):
             if uml:
                 markdown_it = False
                 s = a.uml(wk=self.wk, markdown=markdown_it)
-                self.save_uml_tofile(a, s,markdown=markdown_it)
+                self.save_uml_tofile(a, s, markdown=markdown_it)
                 print(s)
                 toUml = self.toUml
                 if toUml != None:
@@ -1189,14 +1189,16 @@ class task_call_in(taskbase):
         self.processed += 1  # a.printstack(fp=self.toFile)
 
     def ensureroot(self):
-        filename = location_to_filename(self.method.location)
-        filename = filename.replace(".", "_")
-        if os.path.exists(filename):
-            return filename
+        dirname = location_to_filename(
+            self.method.location) + "_"+self.method.name
+        dirname = os.path.join("export", dirname.replace(".", "_"))
+        dirname = dirname.replace(" ", "")
+        if os.path.exists(dirname):
+            return dirname
         try:
-            os.mkdir(filename)
-            if os.path.exists(filename):
-                return filename
+            os.makedirs(dirname)
+            if os.path.exists(dirname):
+                return dirname
         except:
             pass
         return None
@@ -1206,7 +1208,7 @@ class task_call_in(taskbase):
             self.toFile.write("callin_all %d" % (len(self.callin_all)))
         for i in range(len(self.callin_all)):
             self.deep_resolve_at(i)
-    
+
     def save_uml_tofile(self, a: CallNode, s: str, markdown: bool):
         root = self.ensureroot()
         if root != None:
@@ -1216,8 +1218,8 @@ class task_call_in(taskbase):
                 filepath = os.path.join(root, name + ext)
                 fp = open(filepath, "w")
                 fp.write(s)
-                if markdown==False:
-                    planuml_to_image(filepath,root)
+                if markdown == False:
+                    planuml_to_image(filepath, root)
             except Exception as e:
                 logger.error(str(e))
                 if self.toFile != None:

@@ -8,8 +8,10 @@ def where_is_bin(clangd):
         result = subprocess.run(['/usr/bin/whereis', clangd], capture_output=True, text=True, check=True)
         ret = result.stdout.split('\n')[0]
         s = ret[ret.find("/"):]
-        s = s[:s.find(" ")]
-        return s
+        sp = list(filter(lambda x:len(x)>0,s.split(" ")))
+        return sp[0]
+        # s = s[:s.find(" ")]
+        # return s
     except subprocess.CalledProcessError:
         return None
 

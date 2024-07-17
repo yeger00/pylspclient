@@ -1,5 +1,5 @@
-import imp
-from cpp_impl import Body, LspFuncParameter_cpp
+from cpp_impl import LspFuncParameter_cpp
+from common import Body 
 import lspcpp
 from lspcpp import SymbolKindName, Token, WorkSpaceSymbol, from_file, lspcppclient, lspcppserver, project_config, to_file
 from pylspclient.lsp_pydantic_strcuts import DocumentSymbol, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext, SymbolInformation, ReferenceParams, TextDocumentPositionParams, SymbolKind, ReferenceContext, Location
@@ -12,7 +12,12 @@ cfg = project_config(
     compile_database=os.path.join(os.path.dirname(__file__),"cpp","/compile_commands.json")
 )
 
-
+def test_export_png():
+    file="/home/z/dev/lsp/pylspclient/export/navigation_throttle_h:140_WillStartRequest/NavigationRequest::CancelDeferredNavigationInternalnavigation_request.cc:6537.puml"
+    # planuml_to_image
+    from planuml import planuml_to_image
+    planuml_to_image(file,"")
+    
 
 
 def test_client_init():

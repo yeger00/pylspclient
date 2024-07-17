@@ -4,6 +4,7 @@
 """
 from pyclbr import Function
 from sys import exc_info
+
 from codetask import taskbase
 import cpp_impl
 from typing import Union
@@ -15,13 +16,14 @@ import json
 from typing import Optional
 
 from pydantic import BaseModel
+from planuml import planuml_to_image
 import pylspclient
 import threading
 from pylspclient import LspClient, LspEndpoint
 from pylspclient.lsp_pydantic_strcuts import SignatureHelp, TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, SymbolInformation, Location, SymbolKind
-from cpp_impl import Body, from_file, to_file, LspFuncParameter, LspFuncParameter_cpp, where_is_bin
+from cpp_impl import LspFuncParameter, LspFuncParameter_cpp
+from common import Body, SubLine, from_file, range_before, to_file, where_is_bin
 import logging
-
 logger = logging.getLogger('lsppython')
 print(logger)
 logger.critical("lspcpp begined")
@@ -840,7 +842,7 @@ class CallNode:
                 self.param = wk.get_parama(self)
             self.detail = str(self.symboldefine)
 
-    def uml(self, wk: Optional['WorkSpaceSymbol'] = None) -> str:
+    def uml(self, wk: Optional['WorkSpaceSymbol'] = None, markdown=False) -> str:
         stack = self.callstack()
 
         def fix(node: CallNode):
@@ -905,27 +907,10 @@ class CallNode:
                     pass
             caller = s
             pass
-        # while len(stack) > 1:
-        #     caller = stack[0]
-        #     callee = stack[1]
-        #     cls = caller.symboldefine.cls
-        #     left = caller.symboldefine.name
-        #     if cls != None:
-        #         left = cls.name
-        #     if len(ret) == 0 and cls != None:
-        #         right = caller.symboldefine.name
-        #         ret.append("%s ->%s::%s" % (left, left, right))
-        #     else:
-        #         right = callee.symboldefine.name
-        #         cls = callee.symboldefine.cls
-        #         if cls != None:
-        #             right = "%s:%s" % (cls.name, right)
-        #         ret.append("%s -> %s" % (left, right))
-        #     stack = stack[1:]
-        mark_begin = "```plantuml"
+        mark_begin = "```plantuml" if markdown else ""
         sss = [mark_begin, "@startuml", "autoactivate on", title]
         sss.extend(ret)
-        mark_end = "```"
+        mark_end = "```" if markdown else ""
         sss.extend(["@enduml", mark_end, "\n" * 3])
         return "\n".join(sss)
 
@@ -1180,7 +1165,7 @@ class task_call_in(taskbase):
         self.cb.update(self)
 
     def deep_resolve_at(self, index):
-        a = self.callin_all[index]
+        a: CallNode = self.callin_all[index]
         self.cb.update(self)
         self.pendding += 1
         a.resolve_all(self.wk)
@@ -1188,8 +1173,9 @@ class task_call_in(taskbase):
         try:
             uml = self.uml
             if uml:
-                s = a.uml(wk=self.wk)
-                self.save_uml_tofile(a, s)
+                markdown_it = False
+                s = a.uml(wk=self.wk, markdown=markdown_it)
+                self.save_uml_tofile(a, s,markdown=markdown_it)
                 print(s)
                 toUml = self.toUml
                 if toUml != None:
@@ -1223,14 +1209,18 @@ class task_call_in(taskbase):
             self.toFile.write("callin_all %d" % (len(self.callin_all)))
         for i in range(len(self.callin_all)):
             self.deep_resolve_at(i)
-
-    def save_uml_tofile(self, a: CallNode, s):
+    
+    def save_uml_tofile(self, a: CallNode, s: str, markdown: bool):
         root = self.ensureroot()
         if root != None:
             try:
                 name = a.callstack()[0].filename()
-                fp = open(os.path.join(root, name + ".md"), "w")
+                ext = ".md" if markdown else ".puml"
+                filepath = os.path.join(root, name + ext)
+                fp = open(filepath, "w")
                 fp.write(s)
+                if markdown==False:
+                    planuml_to_image(filepath)
             except Exception as e:
                 logger.error(str(e))
                 if self.toFile != None:

@@ -29,7 +29,7 @@ from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Stat
 from textual.widgets import Footer, Label, ListItem, ListView
 from callinview import CallTreeNode, callinopen, callinview, uicallback
 from codesearch import ResultItem, ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode, SourceCodeSearch
-from cpp_impl import Body, from_file, to_file
+from common import Body, from_file, to_file
 from codetask import TaskManager
 from lspcpp import CallNode, LspMain, Symbol, OutputFile, SymbolLocation, task_call_in, task_callback
 from textual.app import App, ComposeResult

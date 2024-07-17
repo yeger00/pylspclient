@@ -1,8 +1,15 @@
 from typing import Optional
 from textual.message import Message
 from callinview import task_call_in
-from codesearch import SymbolLocation
+from codesearch import Symbol, SymbolLocation
 from pylspclient.lsp_pydantic_strcuts import Location
+class log_message(Message):
+    log: str = ""
+
+    def __init__(self, log: str) -> None:
+        super().__init__()
+        self.log = log
+
 class mymessage(Message):
 
     def __init__(self, s: list[str]) -> None:
@@ -28,11 +35,13 @@ class changelspmessage(Message):
 class symbolsmessage(Message):
     data = []
     file: str
+    symbols_list: list[Symbol]
 
-    def __init__(self, data, file: str) -> None:
+    def __init__(self, data, symbols_list: list[Symbol], file: str) -> None:
         super().__init__()
         self.file = file
         self.data = data
+        self.symbols_list = symbols_list
 
 
 class callin_message(Message):

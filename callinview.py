@@ -5,44 +5,15 @@ from textual import message
 from textual.message import Message
 from textual.validation import Failure
 from textual.widgets import Label, ListItem, ListView, Tree
-
+from baseview import uicallback
+from event import log_message
 from lspcpp import CallNode, task_call_in
 
 
-class log_message(Message):
-    log: str = ""
-
-    def __init__(self, log: str) -> None:
-        super().__init__()
-        self.log = log
 
 
-class uicallback:
 
-    def on_vi_command(self, value: str):
-        pass
-
-    def on_command_input(self, value):
-        pass
-
-    def on_select_list(self, list: ListView):
-        pass
-
-
-class MyListView(ListView):
-    mainui: uicallback
-
-    def setlist(self, data: list[str]):
-        self.clear()
-        self.extend(list(map(lambda x: ListItem(Label(x)), data)))
-
-    def _on_list_item__child_clicked(self,
-                                     event: ListItem._ChildClicked) -> None:
-        ListView._on_list_item__child_clicked(self, event)
-        self.mainui.on_select_list(self)
-
-    def action_select_cursor(self):
-        self.mainui.on_select_list(self)
+        
 
 
 class callinopen(Message):
@@ -79,7 +50,6 @@ class RootCallTreeNode(CallTreeNode):
 
     def add(self, node: CallNode):
         self.__subnode.add(node.id)
-
 
 class _calltree(Tree, uicallback):
     BINDINGS = [

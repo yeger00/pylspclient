@@ -6,7 +6,7 @@ Run with:
     python code_browser.py PATH
 """
 
-import sys
+import traceback
 from typing import Optional
 from textual import on
 from textual.message import Message
@@ -26,23 +26,25 @@ from textual.containers import Container
 from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
-from callinview import CallTreeNode, callinopen, callinview, log_message, uicallback
-from codesearch import ResultItem, ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode, SourceCodeSearch
+from baseview import MyListView, uicallback
+from callinview import  callinopen, callinview, log_message 
+from codesearch import ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode, SourceCodeSearch
 from codeview import CodeView
-from commandline import convert_command_args,clear_key,find_key,view_key
+from commandline import convert_command_args, clear_key
 from common import Body, from_file, to_file
 from codetask import TaskManager
 from dircomplete import TaskFindFile, dir_complete_db
 from event import callin_message, changelspmessage, mymessage, refermessage, symbolsmessage
 from input_suggestion import input_suggestion
-from lspcpp import CallNode, LspMain, Symbol, OutputFile, SymbolLocation, task_call_in, task_callback
+from lspcpp import CallNode, LspMain, Symbol, OutputFile, task_call_in, task_callback
 from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
-from pylspclient.lsp_pydantic_strcuts import Location, Position, Range, SymbolInformation
+from pylspclient.lsp_pydantic_strcuts import Location, SymbolInformation
 from history import BackFoward, history
 from commandline import input_command_options
 from codesearch import generic_search
+from symbolload import symbolload
 
 
 class UiOutput(OutputFile):
@@ -82,7 +84,6 @@ class LspQuery:
             s: LspQuery = value
             return self.data == s.data and self.type == s.type
         return False
-
 
 class CommandInput(Input):
     mainui: uicallback
@@ -168,27 +169,6 @@ HISTORY_LISTVIEW_TYPE = 2
 
 
 
-
-
-class MyListView(ListView):
-    mainui: uicallback
-
-    def setlist(self, data: list[str]):
-        self.clear()
-        self.extend(list(map(lambda x: ListItem(Label(x)), data)))
-
-    def _on_list_item__child_clicked(self,
-                                     event: ListItem._ChildClicked) -> None:
-        ListView._on_list_item__child_clicked(self, event)
-        self.mainui.on_select_list(self)
-
-    def action_select_cursor(self):
-        self.mainui.on_select_list(self)
-
-
-
-
-
 class CodeBrowser(App, uicallback):
     root: str
     symbol_query = LspQuery("", "")
@@ -199,8 +179,8 @@ class CodeBrowser(App, uicallback):
     lsp: LspMain
     callin: callinview
     preview_focused: Optional[Widget]
-    symbols_list: list[Symbol] = []
     generic_search_mgr: generic_search
+    _symbolload: symbolload
 
     def __init__(self, root, file):
         App.__init__(self)
@@ -220,8 +200,7 @@ class CodeBrowser(App, uicallback):
         self.taskmanager = TaskManager()
         self.preview_focused = None
         self.generic_search_mgr = generic_search(None, "")
-        # self.lsp.currentfile.save_uml_file = self.print_recieved
-        # self.lsp.currentfile.save_stack_file = self.print_recieved
+        self._symbolload = symbolload([], "")
 
     def on_callinopen(self, msg: callinopen) -> None:
         try:
@@ -288,7 +267,6 @@ class CodeBrowser(App, uicallback):
             l = self.lsp.currentfile.symbols_list
             max = 10
             index = None
-            closest = None
             i = 0
             for item in l:
                 gap = abs(selection.range.start.line -
@@ -296,7 +274,6 @@ class CodeBrowser(App, uicallback):
                 if gap < max:
                     index = i
                     max = gap
-                    closest = item
                 i += 1
             if index != None:
                 self.symbol_listview.index = index
@@ -424,7 +401,9 @@ class CodeBrowser(App, uicallback):
     def on_changelspmessage(self, msg: changelspmessage) -> None:
         if self.codeview_file != msg.file:
             return
-        if msg.refresh_symbol_view == True or self.symbol_listview.index == None:
+        if msg.refresh_symbol_view == True or self._symbolload.need_refresh(
+                msg.file):
+            self._symbolload = symbolload([], msg.file)
             self.refresh_symbol_view()
         if msg.loc != None:
             line = msg.loc.range.start.line
@@ -490,8 +469,9 @@ class CodeBrowser(App, uicallback):
             pass
         elif self.preview_focused == self.symbol_listview:
             if changed == True:
-                for i in range(len(self.symbols_list)):
-                    l = self.symbols_list[i]
+                symbols_list = self._symbolload.symbols_list
+                for i in range(len(symbols_list)):
+                    l = symbols_list[i]
                     if l.symbol_display_name().lower().find(key) > -1:
                         self.generic_search_mgr.add(i)
             self.symbol_listview.index = self.generic_search_mgr.get_index()
@@ -751,12 +731,22 @@ class CodeBrowser(App, uicallback):
         try:
             if message.file != self.codeview_file:
                 return
-            self.symbol_listview.clear()
-            self.symbol_listview.extend(message.data)
+            try:
+                self.symbol_listview.clear()
+            except Exception as e:
+                stack_trace = traceback.format_exc()
+                self.logview.write_line(str(stack_trace))
+                self.logview.write_line("clear exception %s" % (str(e)))
+
+            aa = list(map(lambda x: ListItem(Label(x)), message.data))
+            self.symbol_listview.extend(aa)
             self.logview.write_line(
                 "on_symbolsmessage %s %d" %
                 (self.lsp.currentfile.file, len(message.data)))
+            self._symbolload = symbolload(message.symbols_list, message.file)
         except Exception as e:
+            stack_trace = traceback.format_exc()
+            self.logview.write_line(str(stack_trace))
             self.logview.write_line("exception %s" % (str(e)))
         pass
 
@@ -772,13 +762,13 @@ class CodeBrowser(App, uicallback):
         def __my_function():
             file = self.lsp.currentfile.file
             self.symbol_listview.loading = True
-            aa = map(lambda x: ListItem(Label(x)),
-                     self.lsp.currentfile.get_symbol_list_string())
+            liststr = self.lsp.currentfile.get_symbol_list_string()
+
             self.symbol_listview.loading = False
             if file != self.codeview_file:
                 return
-            self.symbols_list = self.lsp.currentfile.symbols_list
-            self.post_message(symbolsmessage(list(aa), file))
+            symbols_list = self.lsp.currentfile.symbols_list.copy()
+            self.post_message(symbolsmessage(liststr, symbols_list, file))
 
         ThreadPoolExecutor(1).submit(my_function)
 

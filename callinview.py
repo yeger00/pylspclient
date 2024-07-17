@@ -154,7 +154,7 @@ class _calltree(Tree, uicallback):
                     open = True
                 else:
                     open = n.focused == False
-                    n.focused = open 
+                    n.focused = open
                 if open:
                     self.app.post_message(callinopen(n.callnode))
                 else:
@@ -222,9 +222,25 @@ class callinview:
 
     def update_exists_node_(self, msg: task_call_in.message):
         try:
-            return self.__update_exists_node_(msg)
+            return self.__update_exists_node_setlabel(msg)
         except:
             return False
+
+    def __update_exists_node_setlabel(self, message: task_call_in.message):
+        if message.node != None:
+            call_tree_node = self.call_tree_node_list[message.node.id]
+            if call_tree_node != None:
+                stacks = message.node.callstack()
+                for stacknode in stacks:
+                    call_tree_node = self.call_tree_node_list[stacknode.id]
+                    treenode = self.tree.get_node_by_id(
+                        int(call_tree_node.treenode_id))  # type: ignore
+                    treenode.set_label(stacknode.displayname())
+                    self.tree.post_message(log_message(str(treenode.label)))
+                root = self.call_tree_node_list[message.node.id]
+                root.set_label("%d %s" %
+                               (len(stacks), message.node.displayname()))
+        return True
 
     def __update_exists_node_(self, message: task_call_in.message):
         if message.node != None:
@@ -250,24 +266,6 @@ class callinview:
         return True
 
     #     return True
-    def rupdate_exists_node(self, job: task_call_in):
-        ret = []
-        for a in job.resolve_task_list:
-            for stacknode in a.node.callstack():
-                try:
-                    node = self.call_tree_node_list[stacknode.id]
-                    treenode = self.tree.get_node_by_id(int(
-                        node.treenode_id))  # type: ignore
-                    if treenode is None:
-                        return False
-                    s = stacknode.displayname()
-                    if str(treenode.label) != s:
-                        treenode.set_label(s)
-                        ret.append(treenode)
-                except Exception as e:
-                    self.tree.post_message(log_message(str(e)))
-                    return False, []
-        return True, ret
 
     # mainui:uicallback
     def update_job(self, message: task_call_in.message):
@@ -300,7 +298,7 @@ class callinview:
         for a in job.callin_all:
             level = 1
             node, a = self.add_node(root, a)
-            if node!=None and node.data != None:
+            if node != None and node.data != None:
                 top: CallTreeNode = node.data
                 top.firstcall = True
             if node is None:

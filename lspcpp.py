@@ -778,6 +778,7 @@ class CallNode:
     line: str = ""
     callee: Optional['CallNode'] = None
     status: str = ""
+    resolved = False
 
     def __init__(self, sym: PrepareReturn) -> None:
         self.sym = sym
@@ -828,13 +829,14 @@ class CallNode:
     def resolve_all(self, wk: 'WorkSpaceSymbol', cb=None):
         stack = self.callstack()
         i = 0
-        if cb!=None:
+        if cb != None:
             cb(0, len(stack))
         for s in stack:
             s.resolve(wk)
             i += 1
             if cb != None:
                 cb(i, len(stack))
+        self.resolved = True
 
     def resolve(self, wk: 'WorkSpaceSymbol'):
         if self.symboldefine != None:
@@ -1170,7 +1172,9 @@ class task_call_in(taskbase):
 
     def deep_resolve_at(self, index):
         node = self.callin_all[index]
-        found = list(filter(lambda x: node == x, self.resolve_task_list))
+        if node.resolved:
+            return
+        found = list(filter(lambda x: node == x.node, self.resolve_task_list))
         if len(found):
             return
         t = subtask(node, self)
@@ -1230,7 +1234,7 @@ class task_call_in(taskbase):
         substate = "" if total == 0 else "sub->%d/%d " % (done, total)
 
         state1 = "[%d/%d/%d] " % (self.processed,
-                                 len(self.callin_all), len(self.resolve_task_list))
+                                  len(self.callin_all), len(self.resolve_task_list))
         data = Body(self.method.location).data.replace("\n", "")
         return data + "%s%s %s:%d" % (state1, substate,
                                       display_file_path(

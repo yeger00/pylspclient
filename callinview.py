@@ -1,14 +1,18 @@
 from concurrent.futures import ThreadPoolExecutor
+from importlib.metadata import files
 from typing import Optional
 from textual.message import Message
+from textual.validation import Failure
 from textual.widgets import Label, ListItem, ListView, Tree
 
 from lspcpp import CallNode, task_call_in
 
 
 class uicallback:
-    def on_vi_command(self, value:str):
+
+    def on_vi_command(self, value: str):
         pass
+
     def on_command_input(self, value):
         pass
 
@@ -41,10 +45,15 @@ class callinopen(Message):
 
 class CallTreeNode:
     callnode: Optional[CallNode | task_call_in]
-    id :Optional[str]=None
-    def __init__(self, callnode: Optional[CallNode | task_call_in]) -> None:
+    treenode_id: Optional[str] = None
+    job_id: int
+    nodecount: int = 0
+
+    def __init__(self, callnode: Optional[CallNode | task_call_in],
+                 jobid: int) -> None:
         self.callnode = callnode
         self.focused = False
+        self.job_id = jobid
         pass
 
 
@@ -142,7 +151,8 @@ class callinview:
     status: str = ""
     findresult = []
     index = 0
-    tree_node_list:list[CallTreeNode]=[]
+    tree_node_list: list[CallTreeNode] = []
+
     def __init__(self) -> None:
         self.tree = _calltree()
 
@@ -170,9 +180,32 @@ class callinview:
         if len(self.findresult):
             self.tree.select_node(self.findresult[self.index])  # type: ignore
 
+    def update_exists_node(self, job: task_call_in):
+        for a in job.resolve_task_list:
+            for stacknode in a.node.callstack():
+                try:
+                    def cmp(node: CallTreeNode):
+                        if job.id != node.job_id:
+                            return False
+                        return stacknode == node.callnode
+
+                    ret = list(filter(cmp, self.tree_node_list))
+                    if len(ret) == 1:
+                        treenode = self.tree.get_node_by_id(
+                            int(ret[0].treenode_id))  # type: ignore
+                        if treenode is None:
+                            return False
+                        treenode.label = stacknode.displayname()
+                    else:
+                        return False
+                except Exception as e:
+                    return False
+        return True
+
     # mainui:uicallback
     def update_job(self, job: task_call_in):
         self.job = job
+        jobid = job.id
         for child in self.tree.root.children:
             if child.data is None:
                 continue
@@ -180,29 +213,30 @@ class callinview:
             if isinstance(c.callnode, task_call_in):
                 task: task_call_in = c.callnode
                 if task.id == job.id:
+                    if c.nodecount == job.all_stacknode_cout() and self.update_exists_node(job):
+                        return
                     child.remove()
                     break
-        data=CallTreeNode(job)
-        root = self.tree.root.add(job.method.name,
-                                  expand=True,
-                                  data=data)
-        data.id = str(root.id)
+        data = CallTreeNode(job, jobid=jobid)
+        data.nodecount = job.all_stacknode_cout()
+        root = self.tree.root.add(job.method.name, expand=True, data=data)
+        data.treenode_id = str(root.id)
         self.tree_node_list.append(data)
         for a in job.callin_all:
             level = 1
             subroot = node = root.add(a.displayname(),
-                                      data=CallTreeNode(a),
+                                      data=CallTreeNode(a, jobid=jobid),
                                       expand=False)
             a = a.callee
             while a != None:
                 level += 1
-                data=CallTreeNode(a)
+                data = CallTreeNode(a, jobid=jobid)
                 if a.callee is None:
                     node = node.add_leaf(a.displayname(), data=data)
                     break
                 else:
                     node = node.add(a.displayname(), data=data)
-                data.id = str(node.id)
+                data.treenode_id = str(node.id)
                 self.tree_node_list.append(data)
                 a = a.callee
             ss = subroot.label

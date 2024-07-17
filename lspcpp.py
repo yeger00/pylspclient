@@ -1184,7 +1184,11 @@ class task_call_in(taskbase):
         self.processed = 0
         # self.pendding = 0
         pass
-
+    def all_stacknode_cout(self):
+        n = 0
+        for node in self.callin_all:
+            n += len(node.callstack())
+        return n
     def run(self):
         self.processed = 0
         self.callin_all = []

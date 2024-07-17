@@ -4,7 +4,8 @@ class taskbase:
 
     def run(self):
         pass
-
+class task_message:
+    pass
 task_seq=0
 
 class TaskManager:

@@ -164,9 +164,17 @@ class callinview:
         if len(self.findresult):
             self.index += 1
             self.index = self.index % len(self.findresult)
-            node =self.findresult[self.index]
+            node = self.findresult[self.index]
+            self.tree.root
+            parent = node.parent
+            while parent != None:
+                if parent.is_expanded == False:
+                    parent.expand()
+                    parent = parent.parent
+                else:
+                    break
             self.tree.select_node(node)  # type: ignore
-            node.expand_all()
+            self.tree.cursor_line = node.line
             self.tree.scroll_to_node(node)
 
     def find_text(self, text):
@@ -178,9 +186,8 @@ class callinview:
             ret = []
             if str(node.label).lower().find(key) > -1:
                 ret.append(node)
-            if node.is_expanded:
-                for c in node.children:
-                    ret.extend(find_node(c, key))
+            for c in node.children:
+                ret.extend(find_node(c, key))
             return ret
 
         self.findresult = find_node(self.tree.root, text)

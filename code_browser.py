@@ -572,7 +572,8 @@ class CodeBrowser(App, uicallback):
                 for i in range(len(self.callin.findresult)):
                     self.generic_search_mgr.add(i)
             else:
-                self.callin.goto_next()
+                self.generic_search_mgr.get_next()
+            self.callin.goto_next()
             pass
         f.update(" ".join([
             str(self.generic_search_mgr), ""

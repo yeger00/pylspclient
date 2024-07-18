@@ -720,6 +720,9 @@ class lspcppserver:
         cmd = [
             where_is_bin("clangd"),
             "--compile-commands-dir=%s" % (root),
+            "--background-index",
+            "--background-index-priority=normal",
+            "-j","4"
             # "--log=verbose",
             # "--background-index"
         ]
@@ -963,20 +966,20 @@ class CallNode:
 
 
 class CallerWalker:
+    maxlevel = 15
 
     def __init__(self, client: lspcppclient,
                  workspaceSymbol: 'WorkSpaceSymbol') -> None:
         self.caller_set = []
         self.client = client
         self.workspaceSymbol = workspaceSymbol
-        self.maxlevel = 15
         pass
 
     def __get_caller_next(self,
                           node: CallNode,
                           once=False,
                           level=10) -> list[CallNode]:
-        if level > self.maxlevel:
+        if level > CallerWalker.maxlevel:
             return [node]
         # print(node.sym.name, node.sym.uri, len(self.caller_set))
         param = node.sym

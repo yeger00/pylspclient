@@ -36,7 +36,7 @@ from codetask import TaskManager
 from dircomplete import TaskFindFile, dir_complete_db
 from event import callin_message, changelspmessage, log_message, mymessage, refermessage, symbolsmessage
 from input_suggestion import input_suggestion
-from lspcpp import CallNode, LspMain, Symbol, OutputFile, task_call_in, task_callback
+from lspcpp import CallNode, CallerWalker, LspMain, Symbol, OutputFile, task_call_in, task_callback
 from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
@@ -514,14 +514,18 @@ class CodeBrowser(App, uicallback):
             if args[0].find("/") == 0:
                 self.search_preview_ui(args)
                 return True
+            elif args[0] == "set":
+                if len(args) == 3:
+                    if args[1] == 'maxlevel':
+                        CallerWalker.maxlevel = int(args[2])
+                    return
             elif args[0] == "help":
                 self.help()
                 return
-            if args[0] in set(["cn", "cp"]):
+            elif args[0] in set(["cn", "cp"]):
                 self.search_prev_next(args[0] == "cp")
                 pass
-
-            if args[0] == "grep":
+            elif args[0] == "grep":
                 if len(args) > 1 and self.soucecode.search.pattern == args[1]:
                     if len(args) > 2 and args[2] == "-":
                         self.soucecode.search.index = self.soucecode.search.index + \
@@ -751,7 +755,6 @@ class CodeBrowser(App, uicallback):
         ]
         self.logview.write_lines(help)
 
-
     def action_open_file(self) -> None:
         if self.lsp.currentfile.file != self.codeview_file:
             self.change_lsp_file(self.codeview_file)
@@ -777,8 +780,6 @@ class CodeBrowser(App, uicallback):
         url = self.backforward.goforward()
         self.on_choose_file_from_event(url, backforward=True)
         pass
-
-    
 
     def on_code_message_impl(self, message: code_message_impl):
         if self.lsp.client is None:

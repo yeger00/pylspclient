@@ -16,6 +16,7 @@ class planmuml_bin:
         if self.java is None or os.path.exists(self.java) == False:
             raise Exception("Exception java not found")
         os.system("%s -jar %s %s " % (self.java, self.jarpath, uml))
+        os.system("%s -jar %s %s -utxt" % (self.java, self.jarpath, uml))
 
 
 plamuml_jar = planmuml_bin()

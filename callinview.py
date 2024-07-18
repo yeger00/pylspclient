@@ -301,11 +301,17 @@ class callinview:
         data.treenode_id = str(root_dom_node.id)
         self.call_tree_node_list[callnode.id] = data
         return (root_dom_node if callnode != None else None, callnode.callee)
+
+
 class filenode:
 
     def __init__(self, file) -> None:
         self.file = file
         self.name = os.path.basename(file)
+        try:
+            self.name = self.name.split('_')[0]
+        except:
+            pass
 
 
 class plumresult:
@@ -316,7 +322,10 @@ class plumresult:
         self.name = os.path.basename(name)
         pass
 
+
 import os
+
+
 def find_seq() -> list[plumresult]:
     root = os.path.join(os.path.dirname(__file__), "export")
     dirs = os.listdir(root)

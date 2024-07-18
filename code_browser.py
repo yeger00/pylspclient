@@ -469,7 +469,18 @@ class CodeBrowser(App, uicallback):
             self.generic_search_mgr.get_next()
         f: Label = self.query_one("#f1", Label)
 
-        if self.preview_focused == self.history_view:
+        if self.preview_focused == self.symbol_tree_view:
+            if changed:
+                ret = self.symbol_tree_view.search_word(key)
+                for a in ret:
+                    self.generic_search_mgr.add(a)
+                self.symbol_tree_view.goto(
+                self.generic_search_mgr.get_index())
+            else:
+                self.symbol_tree_view.goto(
+                self.generic_search_mgr.get_next())
+            pass
+        elif self.preview_focused == self.history_view:
             if changed:
                 for i in range(len(self.history.datalist)):
                     h = self.history.datalist[i].lower()

@@ -65,6 +65,30 @@ class _symbol_tree_view(Tree):
         ("c", "call", "Call in"),
     ]
 
+    def search_word(self, key):
+
+        def find(root, key):
+            ret = []
+            if root.data != None:
+                if isinstance(root.data, Symbol):
+                    s: Symbol = root.data
+                    if s.name.lower().find(key) > -1:
+                        ret.append(root.id)
+            for a in root.children:
+                ret.extend(find(a, key))
+            return ret
+        if len(key)==0:return []
+        return find(self.root, key)
+    
+    def goto(self, id: int):
+        try:
+            self.root.expand_all()
+            node = self.get_node_by_id(id)  # type: ignore
+            self.cursor_line = node.line
+            self.scroll_to_node(node)
+        except Exception as e:
+            self.post_message(log_message("exception %s" % (str(e)))) 
+        pass
     def get_refer_for_symbol_list(self, refer: bool):
         root = self.cursor_node
         if root is None:

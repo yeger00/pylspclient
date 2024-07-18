@@ -667,14 +667,6 @@ class CodeBrowser(App, uicallback):
                     pass
                 with TabPane("CallInView", id="callin-tab"):
                     yield self.callin.tree
-                    # tree: Tree[dict] = Tree("Dune")
-                    # tree.root.expand()
-                    # characters = tree.root.add("Characters", expand=True)
-                    # characters.add_leaf("Paul")
-                    # characters.add_leaf("Jessica")
-                    # characters.add_leaf("Chani")
-                    # yield tree
-                    # pass
         v = CommandInput(self, root=self.lsp.root)
         self.cmdline = v
         yield v
@@ -759,28 +751,6 @@ class CodeBrowser(App, uicallback):
         ]
         self.logview.write_lines(help)
 
-    def on_choose_file_from_event_static(self, path):
-        code_view = self.query_one("#code", Static)
-        try:
-            syntax = Syntax.from_path(
-                str(path),
-                line_numbers=True,
-                word_wrap=False,
-                indent_guides=True,
-                theme="github-dark",
-            )
-        except Exception:
-            code_view.update(Traceback(theme="github-dark", width=None))
-            self.sub_title = "ERROR"
-        else:
-            code_view.update(syntax)
-            self.code_editor_scroll_view().scroll_home(animate=False)
-            self.sub_title = str(path)
-            self.codeview_file = self.sub_title
-            self.logview.write_line("tree open %s" % (self.sub_title))
-            self.history.add_to_history(self.codeview_file)
-            self.refresh_history_view()
-            self.change_lsp_file(self.codeview_file)
 
     def action_open_file(self) -> None:
         if self.lsp.currentfile.file != self.codeview_file:
@@ -808,21 +778,7 @@ class CodeBrowser(App, uicallback):
         self.on_choose_file_from_event(url, backforward=True)
         pass
 
-    def action_go_declare(self) -> None:
-        if self.lsp.client is None:
-            return
-        if self.CodeView.is_focused():
-            range = self.CodeView.get_select_range()
-            if range is None:
-                return
-            loc = Location(uri=to_file(self.codeview_file), range=range.range)
-            file_location = self.lsp.client.get_decl(loc)
-            if file_location is None:
-                return
-            self.on_choose_file_from_event(from_file(file_location.uri),
-                                           file_location)
-            pass
-        pass
+    
 
     def on_code_message_impl(self, message: code_message_impl):
         if self.lsp.client is None:

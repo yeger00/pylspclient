@@ -6,7 +6,6 @@ Run with:
     python code_browser.py PATH
 """
 
-from tkinter import NO
 import traceback
 from typing import Optional
 from textual import on
@@ -197,7 +196,7 @@ class CodeBrowser(App, uicallback):
         self.backforward = BackFoward(self.history)
         self.history.add_to_history(self.codeview_file)
         self.symbol_listview_type = SYMBOL_LISTVIEW_TYPE
-        self.CodeView = CodeView(None)
+        self.CodeView = CodeView()
         self.callin = callinview()
         self.taskmanager = TaskManager()
         self.preview_focused = None
@@ -644,22 +643,8 @@ class CodeBrowser(App, uicallback):
         yield Header()
         with Container():
             yield DirectoryTree(path, id="tree-view")
-            from tree_sitter_languages import get_language
-            from pathlib import Path
-            code = TextArea.code_editor(Path(self.codeview_file).read_text(),
-                                        id="code-view",
-                                        read_only=True)
-            self.CodeView.textarea = code
-            try:
-                cpp = get_language("cpp")
-                cpp_highlight_query = (Path(__file__).parent /
-                                       "queries/c/highlights.scm").read_text()
-                code.register_language(cpp, cpp_highlight_query)
-                code.language = "cpp"
-            except Exception as e:
-                self.log.error(str(e))
-                pass
-            yield code
+            self.CodeView.loadfile(self.codeview_file)
+            yield self.CodeView.textarea
             with TabbedContent(initial="symboltree", id="symbol-list"):
                 with TabPane("Rencently", id="leto"):  # First tab
                     self.history_view = MyListView(id="history")

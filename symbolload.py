@@ -12,7 +12,7 @@ from codesearch import Symbol
 from codeview import CodeSelection, CodeView, code_message_decl, code_message_impl
 from common import from_file
 from lspcpp import LspMain, SymbolFile, SymbolKind
-from event import message_get_symbol_callin, message_get_symbol_declare, message_get_symbol_refer, message_get_symbol_callin, message_line_change
+from event import message_get_symbol_callin, message_get_symbol_refer, message_get_symbol_callin, message_line_change
 
 
 class symbolload:
@@ -82,11 +82,7 @@ class _symbol_tree_view(Tree):
 
     def action_go_declare(self) -> None:
         try:
-            data = None if self.cursor_node == None else self.cursor_node.data
-            sym = data if isinstance(data, Symbol) else None
-            if sym is None:
-                return
-            self.post_message(code_message_decl(sym.sym.location))
+            self.get_refer_for_symbol_list(action_declare)
         except Exception as e:
             self.post_message(log_message("exception %s" % (str(e))))
             pass
@@ -146,7 +142,7 @@ class _symbol_tree_view(Tree):
         elif action == action_callin:
             self.post_message(message_get_symbol_callin(sym))
         elif action == action_declare:
-            self.post_message(message_get_symbol_declare(sym))
+            self.post_message(code_message_decl(sym.sym.location))
         elif action == action_impl:
             self.post_message(code_message_impl(sym.sym.location))
 

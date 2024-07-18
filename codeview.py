@@ -22,6 +22,7 @@ class code_message_impl(Message):
             Location(uri=to_file(file), range=selection.range))
 
     def __init__(self, location: Location) -> None:
+        super().__init__()
         self.location = location
 
 

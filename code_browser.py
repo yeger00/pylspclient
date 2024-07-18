@@ -44,7 +44,7 @@ from pylspclient.lsp_pydantic_strcuts import Location, SymbolInformation
 from history import BackFoward, history
 from commandline import input_command_options
 from codesearch import generic_search
-from event import message_get_symbol_impl, message_get_symbol_refer, message_line_change, message_get_symbol_callin
+from event import message_get_symbol_refer, message_line_change, message_get_symbol_callin
 from symbolload import _symbol_tree_view, symbol_tree_update, symbolload
 
 

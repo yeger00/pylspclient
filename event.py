@@ -67,12 +67,8 @@ class message_get_symbol(Message):
         self.sym = sym
 
 
-class message_get_symbol_impl(message_get_symbol):
-    pass
 
 
-class message_get_symbol_declare(message_get_symbol):
-    pass
 
 
 class message_get_symbol_callin(message_get_symbol):

@@ -12,6 +12,7 @@ from codesearch import Symbol
 from codeview import CodeView
 from common import from_file
 from lspcpp import LspMain, SymbolFile, SymbolKind
+from event import message_get_symbol_callin, message_get_symbol_declare, message_get_symbol_impl, message_get_symbol_refer, message_get_symbol_callin, message_line_change
 
 
 class symbolload:
@@ -37,38 +38,6 @@ class symbol_tree_update(Message):
     def __init__(self, symfile: Optional[SymbolFile]) -> None:
         super().__init__()
         self.symfile = symfile
-
-
-class message_line_change(Message):
-
-    def __init__(self, line, file) -> None:
-        super().__init__()
-        self.line = line
-        self.file = file
-
-
-class message_get_symbol(Message):
-    sym: Symbol
-
-    def __init__(self, sym: Symbol) -> None:
-        super().__init__()
-        self.sym = sym
-
-
-class message_get_symbol_impl(message_get_symbol):
-    pass
-
-
-class message_get_symbol_declare(message_get_symbol):
-    pass
-
-
-class message_get_symbol_callin(message_get_symbol):
-    pass
-
-
-class message_get_symbol_refer(message_get_symbol):
-    pass
 
 
 action_refer = 1

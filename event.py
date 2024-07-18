@@ -58,3 +58,34 @@ class refermessage(Message):
         super().__init__()
         self.query = key
         self.s = s
+
+class message_get_symbol(Message):
+    sym: Symbol
+
+    def __init__(self, sym: Symbol) -> None:
+        super().__init__()
+        self.sym = sym
+
+
+class message_get_symbol_impl(message_get_symbol):
+    pass
+
+
+class message_get_symbol_declare(message_get_symbol):
+    pass
+
+
+class message_get_symbol_callin(message_get_symbol):
+    pass
+
+
+class message_get_symbol_refer(message_get_symbol):
+    pass
+           
+           
+class message_line_change(Message):
+
+    def __init__(self, line, file) -> None:
+        super().__init__()
+        self.line = line
+        self.file = file 

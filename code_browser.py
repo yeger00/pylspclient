@@ -29,7 +29,7 @@ from textual.widgets import Footer, Label, ListItem, ListView
 from baseview import MyListView, uicallback
 from callinview import callinopen, callinview
 from codesearch import ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode, SourceCodeSearch
-from codeview import CodeView
+from codeview import CodeView, code_message_decl, code_message_impl, code_message_refer
 from commandline import convert_command_args, clear_key
 from common import Body, from_file, to_file
 from codetask import TaskManager
@@ -44,8 +44,8 @@ from pylspclient.lsp_pydantic_strcuts import Location, SymbolInformation
 from history import BackFoward, history
 from commandline import input_command_options
 from codesearch import generic_search
-from event import message_get_symbol_declare, message_get_symbol_impl, message_get_symbol_refer, message_line_change,  message_get_symbol_callin
-from symbolload import _symbol_tree_view,symbol_tree_update, symbolload
+from event import message_get_symbol_impl, message_get_symbol_refer, message_line_change, message_get_symbol_callin
+from symbolload import _symbol_tree_view, symbol_tree_update, symbolload
 
 
 class UiOutput(OutputFile):
@@ -264,7 +264,7 @@ class CodeBrowser(App, uicallback):
             return
         try:
             selection = self.CodeView.get_select_range()
-            if selection!=None:
+            if selection != None:
                 self.symbol_tree_view.goto_selection(selection)
         except Exception as e:
             self.logview.write_line(str(e))
@@ -578,8 +578,6 @@ class CodeBrowser(App, uicallback):
             elif args[0] == "symbol":
                 self.symbol_tree_view.focus()
                 self.refresh_symbol_view()
-            elif args[0] == "refer":
-                self.action_refer()
             else:
                 return False
             return True
@@ -737,11 +735,8 @@ class CodeBrowser(App, uicallback):
         if self.codeview_file == path:
             self.post_message(changelspmessage(path, loc, False))
             return
-        code_view = self.code_editor_view()
-
-        TEXT = open(str(path), "r").read()
-        # code_view.document = Document(TEXT)
-        code_view.load_text(TEXT)
+        # code_view = self.code_editor_view()
+        self.CodeView.changefile(path)
         self.post_message(changelspmessage(path, loc, True))
         self.soucecode = SourceCode(self.codeview_file)
         self.code_editor_view().scroll_home(animate=False)
@@ -829,46 +824,29 @@ class CodeBrowser(App, uicallback):
             pass
         pass
 
-    def action_go_impl(self) -> None:
+    def on_code_message_impl(self, message: code_message_impl):
         if self.lsp.client is None:
             return
-        if self.CodeView.is_focused():
-            range = self.CodeView.get_select_range()
-            if range is None:
-                return
-            loc = Location(uri=to_file(self.codeview_file), range=range.range)
-            file_location = self.lsp.client.get_impl(loc)
-            if file_location is None:
-                return
-            self.on_choose_file_from_event(from_file(file_location.uri),
-                                           file_location)
-            pass
-        pass
+        file_location = self.lsp.client.get_impl(message.location)
+        if file_location is None:
+            return
+        self.on_choose_file_from_event(from_file(file_location.uri),
+                                       file_location)
         pass
 
-    def action_refer(self) -> None:
+    def on_code_message_refer(self, message: code_message_refer):
         try:
 
-            if self.CodeView.is_focused():
-                s = self.CodeView.get_select_range()
-                if s is None:
-                    return
+            def cursor_refer(client, message: code_message_refer):
+                s = message.selection
+                loc = message.location()
+                ret = client.get_refer_from_cursor(loc, s.text)
 
-                def cursor_refer():
-                    if self.lsp.client is None:
-                        return
+                self.post_message(refermessage(ret, message.key))
 
-                    loc = Location(uri=to_file(self.codeview_file),
-                                   range=s.range)
-                    ret = self.lsp.client.get_refer_from_cursor(loc, s.text)
-                    key1 = str(Body(loc)).replace("\n", "")
-                    key2 = self.CodeView.get_select_wholeword()
-                    key = key1 if len(key1) > len(key2) else key2 + \
-                        " %s:%d" % (from_file(loc.uri), loc.range.start.line)
-                    self.post_message(refermessage(ret, key))
-
-                ThreadPoolExecutor(1).submit(cursor_refer)
-                pass
+            ThreadPoolExecutor(1).submit(cursor_refer, self.lsp.client,
+                                         message)
+            pass
 
         except Exception as e:
             self.log.error("exception %s" % (str(e)))
@@ -893,12 +871,15 @@ class CodeBrowser(App, uicallback):
             pass
         pass
 
-    def on_message_get_symbol_declare(self,
-                                      message: message_get_symbol_declare):
+    def on_code_message_decl(self, message: code_message_decl):
+        if self.lsp.client is None:
+            return
         try:
-            file_location = message.sym.sym.location
-            self.on_choose_file_from_event(from_file(file_location.uri),
-                                           file_location)
+            ret = self.lsp.client.get_decl(message.location)
+            if ret is None:
+                return
+            self.on_choose_file_from_event(from_file(ret.uri),
+                                           ret)
         except Exception as e:
             self.logview.write_line(str(e))
 

@@ -1,9 +1,11 @@
 from functools import update_wrapper
+from logging import root
 from typing import Optional
 from textual.message import Message
 from textual.widgets import Tree
 from baseview import MyListView
 from codesearch import Symbol
+from common import from_file
 from lspcpp import LspMain, SymbolFile, SymbolKind
 
 
@@ -30,6 +32,14 @@ class symbol_tree_update(Message):
     def __init__(self, symfile: SymbolFile) -> None:
         super().__init__()
         self.symfile = symfile
+
+
+class message_line_change(Message):
+
+    def __init__(self, line, file) -> None:
+        super().__init__()
+        self.line = line
+        self.file = file
 
 
 class _symbol_tree_view(Tree):
@@ -63,4 +73,13 @@ class _symbol_tree_view(Tree):
                 root.add_leaf(a.symbol_sidebar_displayname(False), data=a)
 
     def action_select_cursor(self):
+        root = self.cursor_node
+        if root is None:
+            return
+        sym: Optional[Symbol] = root.data
+        if sym is None:
+            return
+        loc = sym.sym.location
+        self.post_message(
+            message_line_change(loc.range.start.line, file=from_file(loc.uri)))
         pass

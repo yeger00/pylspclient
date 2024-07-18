@@ -44,7 +44,7 @@ from pylspclient.lsp_pydantic_strcuts import Location, SymbolInformation
 from history import BackFoward, history
 from commandline import input_command_options
 from codesearch import generic_search
-from symbolload import symbol_tree_update, symbolload, _symbol_tree_view
+from symbolload import message_line_change, symbol_tree_update, symbolload, _symbol_tree_view
 
 
 class UiOutput(OutputFile):
@@ -400,6 +400,14 @@ class CodeBrowser(App, uicallback):
             self.code_editor_scroll_view().scroll_to(y=line, animate=False)
         pass
 
+    def on_message_line_change(self, message: message_line_change):
+        if self.codeview_file != message.file:
+            return
+        y = message.line
+        self.code_editor_scroll_view().scroll_to(y=y - 10, animate=False)
+        self.hightlight_code_line(y)
+        pass
+
     def on_changelspmessage(self, msg: changelspmessage) -> None:
         if self.codeview_file != msg.file:
             return
@@ -731,10 +739,11 @@ class CodeBrowser(App, uicallback):
                  list(self.history.datalist))
         self.history_view.clear()
         self.history_view.extend(aa)
-    
+
     def on_symbol_tree_update(self, message: symbol_tree_update):
         self.symbol_tree_view.on_symbol_tree_update(message)
         pass
+
     def on_symbolsmessage(self, message: symbolsmessage) -> None:
         try:
             if message.file != self.codeview_file:
@@ -779,6 +788,7 @@ class CodeBrowser(App, uicallback):
 
         self.symbol_listview.loading = True
         ThreadPoolExecutor(1).submit(my_function)
+
     def on_directory_tree_file_selected(
             self, event: DirectoryTree.FileSelected) -> None:
         """Called when the user click a file in the directory tree."""

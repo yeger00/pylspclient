@@ -834,6 +834,24 @@ class CodeBrowser(App, uicallback):
                                        file_location)
         pass
 
+    def on_message_get_symbol_callin(self, message: message_get_symbol_callin):
+        self.action_callin_sym(message.sym)
+        pass
+
+    def on_code_message_decl(self, message: code_message_decl):
+        if self.lsp.client is None:
+            return
+        try:
+            ret = self.lsp.client.get_decl(message.location)
+            if ret is None:
+                return
+            self.on_choose_file_from_event(from_file(ret.uri), ret)
+        except Exception as e:
+            self.logview.write_line(str(e))
+
+            pass
+        pass
+
     def on_code_message_refer(self, message: code_message_refer):
         try:
 
@@ -852,39 +870,6 @@ class CodeBrowser(App, uicallback):
             self.log.error("exception %s" % (str(e)))
             self.logview.write_line("exception %s" % (str(e)))
             pass
-
-    def on_message_get_symbol_callin(self, message: message_get_symbol_callin):
-        self.action_callin_sym(message.sym)
-        pass
-
-    def on_message_get_symbol_impl(self, message: message_get_symbol_impl):
-        try:
-            file_location = self.lsp.client.get_impl(
-                message.sym.sym.location) if self.lsp.client != None else None
-            if file_location is None:
-                return
-            self.on_choose_file_from_event(from_file(file_location.uri),
-                                           file_location)
-        except Exception as e:
-            self.logview.write_line(str(e))
-
-            pass
-        pass
-
-    def on_code_message_decl(self, message: code_message_decl):
-        if self.lsp.client is None:
-            return
-        try:
-            ret = self.lsp.client.get_decl(message.location)
-            if ret is None:
-                return
-            self.on_choose_file_from_event(from_file(ret.uri),
-                                           ret)
-        except Exception as e:
-            self.logview.write_line(str(e))
-
-            pass
-        pass
 
     def on_message_get_symbol_refer(self, message: message_get_symbol_refer):
         try:

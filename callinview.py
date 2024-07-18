@@ -3,8 +3,10 @@ from typing import Optional
 from textual.message import Message
 from textual.widgets import Tree
 from baseview import uicallback
-from event import log_message
-from lspcpp import CallNode, task_call_in
+from codesearch import to_file
+from codeview import code_message_decl
+from event import log_message, message_open_file
+from lspcpp import CallNode, Position, Range, task_call_in
 
 
 class callinopen(Message):
@@ -229,17 +231,17 @@ class callinview:
 
     #     return True
     def remove_callnode_list(self, a):
-        i =0
+        i = 0
         if a.data != None:
             if isinstance(a.data, CallNode):
                 try:
-                    n: CallNode= a.data
+                    n: CallNode = a.data
                     self.call_tree_node_list.pop(n.id)
-                    i+=1
+                    i += 1
                 except:
                     pass
         for a in a.children:
-            i+=self.remove_callnode_list(a)
+            i += self.remove_callnode_list(a)
         return i
 
     # mainui:uicallback
@@ -299,3 +301,57 @@ class callinview:
         data.treenode_id = str(root_dom_node.id)
         self.call_tree_node_list[callnode.id] = data
         return (root_dom_node if callnode != None else None, callnode.callee)
+class filenode:
+
+    def __init__(self, file) -> None:
+        self.file = file
+        self.name = os.path.basename(file)
+
+
+class plumresult:
+    name: str
+    files: list[filenode] = []
+
+    def __init__(self, name) -> None:
+        self.name = os.path.basename(name)
+        pass
+
+import os
+def find_seq() -> list[plumresult]:
+    root = os.path.join(os.path.dirname(__file__), "export")
+    dirs = os.listdir(root)
+
+    ret = []
+    for dir in dirs:
+        dir = os.path.join(root, dir)
+        if os.path.isdir(dir) == False:
+            continue
+        b = plumresult(dir)
+        for a in os.listdir(dir):
+            if a.endswith(".utxt"):
+                b.files.append(filenode(os.path.join(dir, a)))
+        if len(b.files):
+            ret.append(b)
+    return ret
+
+
+class ResultTree(Tree):
+
+    def __init__(self):
+        Tree.__init__(self, id="sequence-tree", label="sequence")
+
+    def update(self):
+        ret = find_seq()
+        self.root.expand()
+        self.root.remove_children()
+        for a in ret:
+            root = self.root.add(a.name)
+            for b in a.files:
+                root.add_leaf(b.name, data=b)
+
+    def action_select_cursor(self):
+        if self.cursor_node is None: return
+        if self.cursor_node.data is None:
+            return
+        if isinstance(self.cursor_node.data, filenode):
+            self.post_message(message_open_file(self.cursor_node.data.file))

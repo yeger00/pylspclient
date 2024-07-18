@@ -3,7 +3,7 @@ from typing import Literal
 from textual.widgets import SelectionList, TextArea
 from textual.message import Message
 
-from callinview import log_message
+from event import log_message
 from lspcpp import Body, from_file, to_file
 from pylspclient.lsp_pydantic_strcuts import Location, Position, Range
 

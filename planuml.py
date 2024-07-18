@@ -1,9 +1,11 @@
 import os
-from posix import listdir
 
+from textual.validation import Failure
 from textual.widgets import Tree
 
+from codesearch import to_file
 from common import where_is_bin
+from pylspclient.lsp_pydantic_strcuts import Location
 
 
 class planmuml_bin:
@@ -29,48 +31,3 @@ plamuml_jar = planmuml_bin()
 def planuml_to_image(file, output):
     plamuml_jar.conver(file, output)
 
-
-class filenode:
-
-    def __init__(self, file) -> None:
-        self.file = file
-        self.name = os.path.basename(file)
-
-
-class plumresult:
-    name: str
-    files: list[filenode] = []
-
-    def __init__(self, name) -> None:
-        self.name = name
-        pass
-
-
-def find_seq() -> list[plumresult]:
-    root = os.path.join(os.path.dirname(__file__), "export")
-    dirs = os.listdir(root)
-
-    ret = []
-    for dir in dirs:
-        b = plumresult(dir)
-        dir = os.path.join(root, dir)
-        for a in os.listdir(dir):
-            if a.endswith(".utxt"):
-                b.files.append(filenode(os.path.join(dir, a)))
-        if len(b.files):
-            ret.append(b)
-    return ret
-
-
-class ResultTree(Tree):
-
-    def __init__(self):
-        Tree.__init__(self, id="sequence-tree", label="sequence")
-
-    def update(self):
-        ret = find_seq()
-        self.root.remove_children()
-        for a in ret:
-            root = self.root.add(a.name)
-            for b in a.files:
-                root.add_leaf(b.name, data=b)

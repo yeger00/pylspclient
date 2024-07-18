@@ -59,6 +59,10 @@ class refermessage(Message):
         self.query = key
         self.s = s
 
+class message_open_file(Message):
+    def __init__(self,file) -> None:
+        super().__init__()
+        self.file = file
 class message_get_symbol(Message):
     sym: Symbol
 

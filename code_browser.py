@@ -27,14 +27,14 @@ from textual.reactive import var
 from textual.widgets import DirectoryTree, Footer, Header, Label, ListItem, Static
 from textual.widgets import Footer, Label, ListItem, ListView
 from baseview import MyListView, uicallback
-from callinview import callinopen, callinview
+from callinview import ResultTree, callinopen, callinview
 from codesearch import ResultItemRefer, ResultItemSearch, ResultItemString, SearchResults, SourceCode, SourceCodeSearch
 from codeview import CodeView, code_message_decl, code_message_impl, code_message_refer
 from commandline import convert_command_args, clear_key
 from common import Body, from_file, to_file
 from codetask import TaskManager
 from dircomplete import TaskFindFile, dir_complete_db
-from event import callin_message, changelspmessage, log_message, mymessage, refermessage, symbolsmessage
+from event import callin_message, changelspmessage, log_message, message_open_file, mymessage, refermessage, symbolsmessage
 from input_suggestion import input_suggestion
 from lspcpp import CallNode, CallerWalker, LspMain, Symbol, OutputFile, task_call_in, task_callback
 from textual.app import App, ComposeResult
@@ -46,7 +46,6 @@ from commandline import input_command_options
 from codesearch import generic_search
 from event import message_get_symbol_refer, message_line_change, message_get_symbol_callin
 from symbolload import _symbol_tree_view, symbol_tree_update, symbolload
-
 
 class UiOutput(OutputFile):
     ui: Log | None = None
@@ -203,6 +202,8 @@ class CodeBrowser(App, uicallback):
         self.generic_search_mgr = generic_search(None, "")
         self._symbolload = symbolload("", self.lsp)
         self.symbol_tree_view = _symbol_tree_view()
+        self.uml = ResultTree()
+        self.uml.update()
 
     def on_callinopen(self, msg: callinopen) -> None:
         try:
@@ -231,7 +232,8 @@ class CodeBrowser(App, uicallback):
             #     self.callin.tree.focus()
 
         pass
-
+    def on_message_open_file(self, message: message_open_file):
+        self.on_choose_file_from_event(message.file)
     def on_refermessage(self, message: refermessage) -> None:
         self.search_result = SearchResults(
             list(map(lambda x: ResultItemRefer(x), message.s)))
@@ -654,6 +656,8 @@ class CodeBrowser(App, uicallback):
                     yield self.history_view
                 with TabPane("Symbol", id="symboltree"):
                     yield self.symbol_tree_view
+                with TabPane("UML", id="uml"):
+                    yield self.uml
         yield Label(id="f1")
         # self.text = TextArea.code_editor("xxxx")
         # yield self.text

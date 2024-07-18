@@ -40,6 +40,7 @@ from lspcpp import CallNode, CallerWalker, LspMain, Symbol, OutputFile, config, 
 from textual.app import App, ComposeResult
 from textual.widgets import Input
 from textual.widgets import Footer, Label, TabbedContent, TabPane
+from planuml import Failure
 from pylspclient.lsp_pydantic_strcuts import Location, SymbolInformation
 from history import BackFoward, history
 from commandline import input_command_options
@@ -170,6 +171,60 @@ SYMBOL_LISTVIEW_TYPE = 1
 HISTORY_LISTVIEW_TYPE = 2
 
 
+class vimstate:
+    escape = False
+    find = False
+    command = False
+    find_enter: Optional[str]
+
+    def __init__(self, escape=False, find=False, command=False, insert=False):
+        self.escape = escape
+        self.find = find
+        self.command = command
+        self.insert = insert
+        self.find_enter = None
+
+
+class vim:
+    vi: vimstate
+
+    def __init__(self, app: 'CodeBrowser') -> None:
+        self.app = app
+        self.vi = vimstate()
+        pass
+
+    def check_input(self):
+        if self.vi.find_enter != None:
+            if len(self.vi.find_enter) > len(self.app.cmdline.value):
+                self.vi.find_enter = None
+            else:
+                self.app.cmdline.value = self.vi.find_enter
+        return self.app.cmdline.value
+
+    def enter_find(self):
+        if self.vi.escape:
+            self.app.cmdline.focus()
+            self.vi = vimstate(find=True)
+            self.app.cmdline.value = "/"
+
+    def enter_insert(self):
+        if self.vi.escape:
+            self.vi = vimstate(insert=True)
+        pass
+
+    def enter_escape(self):
+        self.app.cmdline.clear()
+        self.vi = vimstate(escape=True)
+        pass
+
+    def enter_command(self):
+        if self.vi.escape:
+            self.vi = vimstate(command=True)
+            self.app.cmdline.value = ":"
+            self.app.cmdline.focus()
+        pass
+
+
 class CodeBrowser(App, uicallback):
     root: str
     symbol_query = LspQuery("", "")
@@ -294,17 +349,31 @@ class CodeBrowser(App, uicallback):
         # ("i", "focus_to_code", "Focus to cmdline"),
         ("k", "key_up", "up"),
         ("j", "key_down", "down"),
-        ("escape", "focus_input", "Focus to cmdline"),
+        ("escape", "vim_escape", "Focus to cmdline"),
+        (":", "vim_command_mode", "Focus to cmdline"),
+        ("i", "vim_insert_mode", "Focus to cmdline"),
+        ("/", "vim_find_mode", "Focus to cmdline"),
         ("ctrl+o", "goback", "Go Back"),
         ("ctrl+b", "goforward", "Go Forward"),
-        # ("c", "callin", "CallIn"),
-        ("o", "open_file", "Open"),
-        ("d", "go_declare", "Go to declare"),
-        ("D", "go_impl", "Go to Define"),
-        ("r", "refer", "Reference"),
     ]
 
     show_tree = var(True)
+
+    def action_vim_insert_mode(self) -> None:
+        self.vim.enter_insert()
+
+    def action_vim_find_mode(self) -> None:
+        self.vim.enter_find()
+
+    def action_vim_escape(self) -> None:
+        self.vim.enter_escape()
+        if self.screen.focused != self.cmdline:
+            self.preview_focused = self.screen.focused
+        pass
+
+    def action_vim_command_mode(self) -> None:
+        self.vim.enter_command()
+        pass
 
     def action_key_down(self) -> None:
         if self.CodeView.is_focused():
@@ -320,13 +389,6 @@ class CodeBrowser(App, uicallback):
         if self.CodeView.textarea is None:
             return
         self.CodeView.textarea.focus()
-        pass
-
-    def action_focus_input(self) -> None:
-        self.cmdline.clear()
-        if self.screen.focused != self.cmdline:
-            self.preview_focused = self.screen.focused
-            self.cmdline.focus()
         pass
 
     def on_select_list(self, list: ListView):
@@ -422,6 +484,9 @@ class CodeBrowser(App, uicallback):
         self.logview.write_line("open %s" % (file))
 
     def on_command_input(self, value):
+        if self.vim.vi.find:
+            self.vim.vi.find_enter = value
+            return
         args = convert_command_args(value)
         try:
             ret = self.did_command_opt(value, args)
@@ -504,10 +569,10 @@ class CodeBrowser(App, uicallback):
 
     def on_vi_command(self, value: str):
         try:
-            args = value.split(" ")
-            if len(args) > 0:
-                if args[0].find("/") == 0:
-                    self.search_preview_ui(args)
+            if self.vim.vi.find:
+                value = self.vim.check_input()
+                args = value.split(" ")
+                self.search_preview_ui(args)
             pass
         except Exception as e:
             self.logview.write_line(str(e))
@@ -516,10 +581,13 @@ class CodeBrowser(App, uicallback):
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:
-            if args[0].find("/") == 0:
-                self.search_preview_ui(args)
-                return True
-            elif args[0] == "set":
+            if self.vim.vi.find: return
+            if self.vim.vi.command:
+                try:
+                    args[0] = args[0][1:]
+                except Exception as e:
+                    self.logview.write_line(str(e))
+            if args[0] == "set":
                 if len(args) == 3:
                     if args[1] == 'maxlevel':
                         CallerWalker.maxlevel = int(args[2])
@@ -681,6 +749,7 @@ class CodeBrowser(App, uicallback):
         yield Label(id="f1")
         v = CommandInput(self, root=self.lsp.root)
         self.cmdline = v
+        self.vim = vim(self)
         yield v
         yield Footer(id="f2")
 

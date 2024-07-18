@@ -228,6 +228,19 @@ class callinview:
         return True
 
     #     return True
+    def remove_callnode_list(self, a):
+        i =0
+        if a.data != None:
+            if isinstance(a.data, CallNode):
+                try:
+                    n: CallNode= a.data
+                    self.call_tree_node_list.pop(n.id)
+                    i+=1
+                except:
+                    pass
+        for a in a.children:
+            i+=self.remove_callnode_list(a)
+        return i
 
     # mainui:uicallback
     def update_job(self, message: task_call_in.message):
@@ -249,6 +262,7 @@ class callinview:
                         #     for a in ret:
                         #         a.refresh()
                         #     return
+                    self.remove_callnode_list(child)
                     child.remove()
                     break
         root_call_tree = RootCallTreeNode(job, jobid=jobid)

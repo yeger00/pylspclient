@@ -669,7 +669,7 @@ class CodeBrowser(App, uicallback):
                     self.searchview.mainui = self
                     yield self.searchview
                     pass
-                with TabPane("CallInView", id="callin-tab"):
+                with TabPane("callHierarchy incomming", id="callin-tab"):
                     yield self.callin.tree
         v = CommandInput(self, root=self.lsp.root)
         self.cmdline = v

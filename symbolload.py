@@ -43,6 +43,14 @@ class message_line_change(Message):
         self.file = file
 
 
+class message_get_symbol_callin(Message):
+    sym: Symbol
+
+    def __init__(self, sym: Symbol) -> None:
+        super().__init__()
+        self.sym = sym
+
+
 class message_get_symbol_refer(Message):
     sym: Symbol
 
@@ -54,20 +62,31 @@ class message_get_symbol_refer(Message):
 class _symbol_tree_view(Tree):
     BINDINGS = [
         ("r", "refer", "Reference"),
+        ("c", "call", "Call in"),
     ]
 
-    def get_refer_for_symbol_list(self):
+    def get_refer_for_symbol_list(self, refer: bool):
         root = self.cursor_node
         if root is None:
             return
         sym: Optional[Symbol] = root.data
         if sym is None:
             return
-        self.post_message(message_get_symbol_refer(sym))
+        if refer:
+            self.post_message(message_get_symbol_refer(sym))
+        else:
+            self.post_message(message_get_symbol_callin(sym))
+
+    def action_call(self) -> None:
+        try:
+            self.get_refer_for_symbol_list(False)
+        except Exception as e:
+            self.post_message(log_message("exception %s" % (str(e))))
+            pass
 
     def action_refer(self) -> None:
         try:
-            self.get_refer_for_symbol_list()
+            self.get_refer_for_symbol_list(True)
         except Exception as e:
             self.post_message(log_message("exception %s" % (str(e))))
             pass

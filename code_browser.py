@@ -44,7 +44,7 @@ from pylspclient.lsp_pydantic_strcuts import Location, SymbolInformation
 from history import BackFoward, history
 from commandline import input_command_options
 from codesearch import generic_search
-from symbolload import message_get_symbol_refer, message_line_change, symbol_tree_update, symbolload, _symbol_tree_view
+from symbolload import message_get_symbol_refer, message_line_change, symbol_tree_update, symbolload, _symbol_tree_view, message_get_symbol_callin
 
 
 class UiOutput(OutputFile):
@@ -304,7 +304,7 @@ class CodeBrowser(App, uicallback):
         ("escape", "focus_input", "Focus to cmdline"),
         ("ctrl+o", "goback", "Go Back"),
         ("ctrl+b", "goforward", "Go Forward"),
-        ("c", "callin", "CallIn"),
+        # ("c", "callin", "CallIn"),
         ("o", "open_file", "Open"),
         ("d", "go_declare", "Go to declare"),
         ("D", "go_impl", "Go to Define"),
@@ -948,6 +948,10 @@ class CodeBrowser(App, uicallback):
             self.log.error("exception %s" % (str(e)))
             self.logview.write_line("exception %s" % (str(e)))
             pass
+
+    def on_message_get_symbol_callin(self, message: message_get_symbol_callin):
+        self.action_callin_sym(message.sym)
+        pass
 
     def on_message_get_symbol_refer(self, message: message_get_symbol_refer):
         try:

@@ -27,9 +27,9 @@ class symbolload:
 
 
 class symbol_tree_update(Message):
-    file: SymbolFile
+    symfile: Optional[SymbolFile]
 
-    def __init__(self, symfile: SymbolFile) -> None:
+    def __init__(self, symfile: Optional[SymbolFile]) -> None:
         super().__init__()
         self.symfile = symfile
 
@@ -48,7 +48,13 @@ class _symbol_tree_view(Tree):
         Tree.__init__(self, "", id="symbol-tree")
 
     def on_symbol_tree_update(self, message: symbol_tree_update):
-        self.set_data(message.symfile)
+        if message.symfile is None:
+            self.root.remove_children()
+            self.loading = True
+            return
+        else:
+            self.loading = False 
+            self.set_data(message.symfile)
         pass
 
     def set_data(self, data: SymbolFile):

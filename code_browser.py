@@ -687,7 +687,7 @@ class CodeBrowser(App, uicallback):
                 self.log.error(str(e))
                 pass
             yield code
-            with TabbedContent(initial="jessica", id="symbol-list"):
+            with TabbedContent(initial="symboltree", id="symbol-list"):
                 with TabPane("Rencently", id="leto"):  # First tab
                     self.history_view = MyListView(id="history")
                     self.history_view.mainui = self
@@ -787,6 +787,7 @@ class CodeBrowser(App, uicallback):
             self.post_message(symbol_tree_update(self.lsp.currentfile))
 
         self.symbol_listview.loading = True
+        self.post_message(symbol_tree_update(None))
         ThreadPoolExecutor(1).submit(my_function)
 
     def on_directory_tree_file_selected(

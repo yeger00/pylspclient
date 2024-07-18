@@ -201,9 +201,17 @@ class vim:
                 self.app.cmdline.value = self.vi.find_enter
         return self.app.cmdline.value
 
+    def move_focus(self):
+        app = self.app
+        f = app.screen.focused
+        if f == app.cmdline:
+            f = app.CodeView.textarea
+        app.preview_focused = f
+        app.cmdline.focus()
+
     def enter_find(self):
         if self.vi.escape:
-            self.app.cmdline.focus()
+            self.move_focus()
             self.vi = vimstate(find=True)
             self.app.cmdline.value = "/"
 
@@ -215,12 +223,16 @@ class vim:
     def enter_escape(self):
         self.app.cmdline.clear()
         self.vi = vimstate(escape=True)
+
+        f = self.app.screen.focused
+        if f == self.app.cmdline:
+            self.app.CodeView.textarea.focus()
         pass
 
     def enter_command(self):
         if self.vi.escape:
             self.vi = vimstate(command=True)
-            self.app.cmdline.value = ":"
+            self.move_focus()
             self.app.cmdline.focus()
         pass
 
@@ -367,9 +379,6 @@ class CodeBrowser(App, uicallback):
 
     def action_vim_escape(self) -> None:
         self.vim.enter_escape()
-        if self.screen.focused != self.cmdline:
-            self.preview_focused = self.screen.focused
-        pass
 
     def action_vim_command_mode(self) -> None:
         self.vim.enter_command()
@@ -565,7 +574,10 @@ class CodeBrowser(App, uicallback):
             else:
                 self.callin.goto_next()
             pass
-        f.update(str(self.generic_search_mgr))
+        f.update(" ".join([
+            str(self.generic_search_mgr), ""
+            if self.preview_focused is None else str(self.preview_focused.id)
+        ]))
 
     def on_vi_command(self, value: str):
         try:
@@ -581,7 +593,8 @@ class CodeBrowser(App, uicallback):
     def did_command_opt(self, value, args):
         self.logview.write_line(value)
         if len(args) > 0:
-            if self.vim.vi.find: return
+            if self.vim.vi.find:
+                return
             if self.vim.vi.command:
                 try:
                     args[0] = args[0][1:]

@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from pydantic import ValidationError
 from pylspclient.lsp_endpoint import LspEndpoint
@@ -115,7 +115,7 @@ class LspClient(object):
         self.lsp_endpoint.send_notification("textDocument/didChange", textDocument=textDocument, contentChanges=contentChanges)
 
 
-    def documentSymbol(self, textDocument: TextDocumentIdentifier) -> list[DocumentSymbol] | list[SymbolInformation]:
+    def documentSymbol(self, textDocument: TextDocumentIdentifier) ->Union[ list[DocumentSymbol] ,list[SymbolInformation]]:
         """
         The document symbol request is sent from the client to the server to return a flat list of all symbols found in a given text document. 
         Neither the symbol's location range nor the symbol's container name should be used to infer a hierarchy.
@@ -166,7 +166,7 @@ class LspClient(object):
         textDocument: TextDocumentIdentifier,
         position: Position,
         context: CompletionContext
-    ) -> list[CompletionItem] | CompletionList:
+    ) -> Union[list[CompletionItem] , CompletionList]:
             """
             The signature help request is sent from the client to the server to request signature information at a given cursor position.            
 
@@ -186,7 +186,7 @@ class LspClient(object):
         self,
         textDocument: TextDocumentIdentifier,
         position: Position
-    ) -> Location | list[Location] | list[LocationLink]:
+    ) -> Union[Location ,list[Location] ,list[LocationLink]]:
             """
             The go to declaration request is sent from the client to the server to resolve the declaration location of a 
             symbol at a given text document position.
@@ -214,7 +214,7 @@ class LspClient(object):
         position: Position,
         workDoneToken: Optional[str] = None,
         partialResultToken: Optional[str] = None
-    ) -> Location | list[Location] | list[LocationLink]:
+    ) -> Union[Location ,list[Location] ,list[LocationLink]]:
             """
             The go to definition request is sent from the client to the server to resolve the declaration location of a 
             symbol at a given text document position.

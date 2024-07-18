@@ -1,0 +1,28 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    // /chrome/buildcef/chromium/src /chrome/buildcef/chromium/src/services/network/url_loader.cc
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python 调试程序: 使用进程 ID 附加",
+            "type": "debugpy",
+            "request": "attach",
+            "processId": "${command:pickProcess}"
+        },
+        {
+            "name": "Python 调试程序: 当前文件",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/home/z/dev/lsp/pylspclient/code_browser.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--root",
+                "/chrome/buildcef/chromium/src",
+                "-f",
+                "/chrome/buildcef/chromium/src/content/public/browser/navigation_throttle.h"
+            ]
+        }
+    ]
+}

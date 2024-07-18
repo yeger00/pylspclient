@@ -2,14 +2,20 @@ from __future__ import print_function
 import threading
 from pylspclient.lsp_errors import ErrorCodes, ResponseError
 from pylspclient import JsonRpcEndpoint
-from typing import Any, Dict, Callable, Union, Optional, Tuple, TypeAlias, TypedDict
+from typing import Any, Dict, Callable, Union, Optional, Tuple, TypedDict
+import json
 
-ResultType: TypeAlias = Optional[Dict[str, Any]]
+ResultType = Optional[Dict[str, Any]]
 
 class ErrorType(TypedDict):
     code: ErrorCodes
     message: str
     data: Optional[Any]
+import logging
+logger = logging.getLogger('lsppython')
+print(logger)
+logger.critical("%s begined"%(__file__))
+
 
 
 class LspEndpoint(threading.Thread):
@@ -18,7 +24,8 @@ class LspEndpoint(threading.Thread):
             json_rpc_endpoint: JsonRpcEndpoint,
             method_callbacks: Dict[str, Callable[[Any], Any]] = {},
             notify_callbacks: Dict[str, Callable[[Any], Any]] = {},
-            timeout: int = 2
+            timeout: int = 100,
+            name: str = "LspEndpoint"
         ):
         threading.Thread.__init__(self)
         self.json_rpc_endpoint = json_rpc_endpoint
@@ -42,13 +49,15 @@ class LspEndpoint(threading.Thread):
     def stop(self) -> None:
         self.shutdown_flag = True
 
-
+    def on_work_done_progress_create(self, params: dict):
+        self.token =dict
+        pass
     def run(self) -> None:
         while not self.shutdown_flag:
             try:
                 jsonrpc_message = self.json_rpc_endpoint.recv_response()
                 if jsonrpc_message is None:
-                    print("server quit")
+                    # print("server quit")
                     break
                 method = jsonrpc_message.get("method")
                 result = jsonrpc_message.get("result")
@@ -65,9 +74,20 @@ class LspEndpoint(threading.Thread):
                         self.send_response(rpc_id, result, None)
                     else:
                         # a call for notify
+                        logger.info("notify: {method}.".format(method=method))
                         if method not in self.notify_callbacks:
+                            # logger.info(method,json.dumps(params,indent=4))
+                            if method=="textDocument/clangd.fileStatus" :
+                                pass
+                            elif method=='textDocument/publishDiagnostics':
+                                if len(params["diagnostics"])>0:
+                                    # print(json.dumps(params,indent=4))
+                                    continue
+                            elif method=="window/workDoneProgress/create":
+                                self.on_work_done_progress_create(params)
+                            else:
                             # Have nothing to do with this.
-                            print("Notify method not found: {method}.".format(method=method))
+                                logger.warn("Notify method not found: {method}.".format(method=method))
                         else:
                             self.notify_callbacks[method](params)
                 else:

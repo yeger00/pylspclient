@@ -109,20 +109,23 @@ class _symbol_tree_view(Tree):
                 if node.parent != None:
                     node.parent.expand_all()
 
-                region = self._get_label_region(node._line)
-                if region is not None:
-                    r = Region(0, region.y, region.width, region.height)
-                    self.scroll_to_region(r, animate=False, force=True)
+                self.goto_node(node)
             except Exception as e:
                 self.post_message(log_message("exception %s" % (str(e))))
         pass
+
+    def goto_node(self, node):
+        region = self._get_label_region(node._line)
+        if region is not None:
+            r = Region(0, region.y, region.width, region.height)
+            self.scroll_to_region(r, animate=False, force=True)
 
     def goto(self, id: int):
         try:
             self.root.expand_all()
             node = self.get_node_by_id(id)  # type: ignore
             self.cursor_line = node.line
-            self.scroll_to_node(node)
+            self.goto_node(node)
         except Exception as e:
             self.post_message(log_message("exception %s" % (str(e))))
         pass

@@ -1,6 +1,8 @@
 from functools import update_wrapper
 from logging import root
+import re
 from typing import Optional
+from textual.geometry import Region
 from textual.message import Message
 from textual.widgets import Tree
 from textual.widgets.text_area import Selection
@@ -88,7 +90,7 @@ class _symbol_tree_view(Tree):
     def add(self, node, sym: Symbol):
         self.nodemap[node.id] = sym
 
-    def goto_selection(self, selection:CodeView.Selection):
+    def goto_selection(self, selection: CodeView.Selection):
         row = selection.range.start.line
         max = None
         key = None
@@ -101,10 +103,16 @@ class _symbol_tree_view(Tree):
         if key != None:
             try:
                 node = self.get_node_by_id(key)  # type: ignore
+                if node == self.cursor_node:
+                    return
                 self.cursor_line = node.line
-                if node.parent!=None:
+                if node.parent != None:
                     node.parent.expand_all()
-                self.scroll_to_node(node)
+
+                region = self._get_label_region(node._line)
+                if region is not None:
+                    r = Region(0, region.y, region.width, region.height)
+                    self.scroll_to_region(r, animate=False, force=True)
             except Exception as e:
                 self.post_message(log_message("exception %s" % (str(e))))
         pass

@@ -6,6 +6,7 @@ Run with:
     python code_browser.py PATH
 """
 
+from tkinter import NO
 import traceback
 from typing import Optional
 from textual import on
@@ -44,7 +45,7 @@ from pylspclient.lsp_pydantic_strcuts import Location, SymbolInformation
 from history import BackFoward, history
 from commandline import input_command_options
 from codesearch import generic_search
-from symbolload import message_get_symbol_refer, message_line_change, symbol_tree_update, symbolload, _symbol_tree_view, message_get_symbol_callin
+from symbolload import message_get_symbol_declare, message_get_symbol_impl, message_get_symbol_refer, message_line_change, symbol_tree_update, symbolload, _symbol_tree_view, message_get_symbol_callin
 
 
 class UiOutput(OutputFile):
@@ -263,7 +264,8 @@ class CodeBrowser(App, uicallback):
             return
         try:
             selection = self.CodeView.get_select_range()
-            self.symbol_tree_view.goto_selection(selection)
+            if selection!=None:
+                self.symbol_tree_view.goto_selection(selection)
         except Exception as e:
             self.logview.write_line(str(e))
 
@@ -889,6 +891,32 @@ class CodeBrowser(App, uicallback):
 
     def on_message_get_symbol_callin(self, message: message_get_symbol_callin):
         self.action_callin_sym(message.sym)
+        pass
+
+    def on_message_get_symbol_impl(self, message: message_get_symbol_impl):
+        try:
+            file_location = self.lsp.client.get_impl(
+                message.sym.sym.location) if self.lsp.client != None else None
+            if file_location is None:
+                return
+            self.on_choose_file_from_event(from_file(file_location.uri),
+                                           file_location)
+        except Exception as e:
+            self.logview.write_line(str(e))
+
+            pass
+        pass
+
+    def on_message_get_symbol_declare(self,
+                                      message: message_get_symbol_declare):
+        try:
+            file_location = message.sym.sym.location
+            self.on_choose_file_from_event(from_file(file_location.uri),
+                                           file_location)
+        except Exception as e:
+            self.logview.write_line(str(e))
+
+            pass
         pass
 
     def on_message_get_symbol_refer(self, message: message_get_symbol_refer):

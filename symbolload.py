@@ -7,6 +7,7 @@ from textual.widgets.text_area import Selection
 from baseview import MyListView
 from callinview import log_message
 from codesearch import Symbol
+from codeview import CodeView
 from common import from_file
 from lspcpp import LspMain, SymbolFile, SymbolKind
 
@@ -65,7 +66,7 @@ class _symbol_tree_view(Tree):
         ("r", "refer", "Reference"),
         ("c", "call", "Call in"),
     ]
-    symbols: list[Symbol] = []
+    nodemap = {}
 
     def search_word(self, key):
 
@@ -80,12 +81,32 @@ class _symbol_tree_view(Tree):
                 ret.extend(find(a, key))
             return ret
 
-        if len(key) == 0: return []
+        if len(key) == 0:
+            return []
         return find(self.root, key)
 
-    def goto_selection(self, selection: Selection):
-        row = selection.start[0]
-        max =None
+    def add(self, node, sym: Symbol):
+        self.nodemap[node.id] = sym
+
+    def goto_selection(self, selection:CodeView.Selection):
+        row = selection.range.start.line
+        max = None
+        key = None
+        for k in self.nodemap:
+            sym: Symbol = self.nodemap[k]
+            gap = abs(sym.sym.location.range.start.line - row)
+            if max is None or max > gap:
+                max = gap
+                key = k
+        if key != None:
+            try:
+                node = self.get_node_by_id(key)  # type: ignore
+                self.cursor_line = node.line
+                if node.parent!=None:
+                    node.parent.expand_all()
+                self.scroll_to_node(node)
+            except Exception as e:
+                self.post_message(log_message("exception %s" % (str(e))))
         pass
 
     def goto(self, id: int):
@@ -131,22 +152,25 @@ class _symbol_tree_view(Tree):
         if message.symfile is None:
             self.root.remove_children()
             self.loading = True
-            self.symbols = []
+            self.nodemap = []
             return
         else:
             self.loading = False
             self.set_data(message.symfile)
+
         pass
 
     def set_data(self, data: SymbolFile):
-        self.symbols = data.get_class_symbol_list()
+        self.nodemap = {}
+        symbols = data.get_class_symbol_list()
         root = self.root
         root.remove_children()
-        for a in self.symbols:
+        for a in symbols:
             if len(a.members):
                 n = root.add(a.symbol_sidebar_displayname(False),
                              data=a,
                              expand=False)
+                self.add(n, a)
                 self.add_child(n, a)
 
             else:
@@ -157,7 +181,8 @@ class _symbol_tree_view(Tree):
     def add_child(self, root, sym: Symbol):
         if len(sym.members):
             for a in sym.members:
-                root.add_leaf(a.symbol_sidebar_displayname(False), data=a)
+                n = root.add_leaf(a.symbol_sidebar_displayname(False), data=a)
+                self.add(n, a)
 
     def action_select_cursor(self):
         root = self.cursor_node

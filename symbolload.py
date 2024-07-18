@@ -3,6 +3,7 @@ from logging import root
 from typing import Optional
 from textual.message import Message
 from textual.widgets import Tree
+from textual.widgets.text_area import Selection
 from baseview import MyListView
 from callinview import log_message
 from codesearch import Symbol
@@ -64,6 +65,7 @@ class _symbol_tree_view(Tree):
         ("r", "refer", "Reference"),
         ("c", "call", "Call in"),
     ]
+    symbols: list[Symbol] = []
 
     def search_word(self, key):
 
@@ -77,10 +79,15 @@ class _symbol_tree_view(Tree):
             for a in root.children:
                 ret.extend(find(a, key))
             return ret
-        if len(key)==0:return []
+
+        if len(key) == 0: return []
         return find(self.root, key)
-    def goto_selection(self,selection):
+
+    def goto_selection(self, selection: Selection):
+        row = selection.start[0]
+        max =None
         pass
+
     def goto(self, id: int):
         try:
             self.root.expand_all()
@@ -88,8 +95,9 @@ class _symbol_tree_view(Tree):
             self.cursor_line = node.line
             self.scroll_to_node(node)
         except Exception as e:
-            self.post_message(log_message("exception %s" % (str(e)))) 
+            self.post_message(log_message("exception %s" % (str(e))))
         pass
+
     def get_refer_for_symbol_list(self, refer: bool):
         root = self.cursor_node
         if root is None:
@@ -123,6 +131,7 @@ class _symbol_tree_view(Tree):
         if message.symfile is None:
             self.root.remove_children()
             self.loading = True
+            self.symbols = []
             return
         else:
             self.loading = False

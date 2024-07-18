@@ -130,10 +130,10 @@ class _symbol_tree_view(Tree):
         pass
 
     def set_data(self, data: SymbolFile):
-        self.symbols = data.sourcecode.class_symbol
+        self.symbols = data.get_class_symbol_list()
         root = self.root
         root.remove_children()
-        for a in data.sourcecode.class_symbol:
+        for a in self.symbols:
             if len(a.members):
                 n = root.add(a.symbol_sidebar_displayname(False),
                              data=a,
@@ -143,7 +143,7 @@ class _symbol_tree_view(Tree):
             else:
                 root.add_leaf(a.symbol_sidebar_displayname(False), data=a)
             pass
-        root.toggle()
+        root.expand()
 
     def add_child(self, root, sym: Symbol):
         if len(sym.members):

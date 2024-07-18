@@ -1397,6 +1397,42 @@ class SymbolFile:
 
         self.save_stack_file = self.save_uml_file = None
 
+    def get_class_symbol_list(self) -> list[Symbol]:
+        def update_cls( a:Symbol, name:str, cls:Symbol):
+            a.name = name
+            a.cls = cls
+            cls.members.append(a)
+            
+        symbols_list = []
+        cimpl = {}
+        for a in self.sourcecode.class_symbol:
+            if a.is_class_define():
+                if len(a.members):
+                    symbols_list.append(a)
+                else:
+                    cimpl[a.name] = a
+            elif a.is_method():
+                name = a.sym.name
+                classname = None
+                index = name.rfind("::")
+                if index > 0:
+                    a = Symbol(a.sym)
+                    classname = name[:index]
+                    name = name[index + 2:]
+                    if (classname in cimpl.keys())==False:
+                        cls = Symbol(a.sym.copy())
+                        cls.name = classname
+                        cls.sym.kind = SymbolKind.Class
+                        cimpl[classname] = cls
+                        symbols_list.append(cls)
+                    update_cls(a, name, cimpl[classname])
+                    pass
+            else:
+                symbols_list.append(a)
+        return symbols_list
+
+    
+
     def get_symbol_list(self) -> list[Symbol]:
         if (len(self.symbols_list)):
             return self.symbols_list
@@ -1411,7 +1447,7 @@ class SymbolFile:
                 else:
                     cimpl[a.name] = a
             elif a.is_method():
-                name = a.name
+                name = a.sym.name
                 classname = None
                 index = name.rfind("::")
                 if index > 0:

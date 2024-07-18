@@ -258,13 +258,15 @@ class Symbol:
         cls = self.cls.sym.name + "::" if self.cls != None else ""
         return cls + self.sym.name
 
-    def symbol_sidebar_displayname(self) -> str:
-        icon = " " + ICON.ICON(self) + " "
+    def symbol_sidebar_displayname(self, showspace=True) -> str:
+        icon = "".join([" " if showspace else "", ICON.ICON(self), " "])
         if self.is_class_define():
             return icon + self.name
         if self.cls:
-            return "    " + icon + self.name + str(
-                self.param.displayname() if self.param != None else "")
+            return "".join([
+                "    " if showspace else "", icon, self.name,
+                str(self.param.displayname() if self.param != None else "")
+            ])
         return icon + self.name
 
     def is_construct(self):
@@ -1068,9 +1070,8 @@ class WorkSpaceSymbol:
             return self.source_list[file]
         return self.client.open_file(file)
 
-    def get_source(self, file)->Optional['SourceCode']:
-        return self.source_list[file] 
-
+    def get_source(self, file) -> Optional['SourceCode']:
+        return self.source_list[file]
 
     def add(self, s: SourceCode):
         self.source_list[s.file] = s
@@ -1547,11 +1548,13 @@ class LspMain:
         self.client = client
         self.root = root
         self.changefile(file)
-    def find_symbol_file(self,file:str)->Optional[SymbolFile]:
+
+    def find_symbol_file(self, file: str) -> Optional[SymbolFile]:
         for f in self.opened_files:
             if f.sourcecode.file == file:
                 return f
         return None
+
     def changefile(self, file) -> SymbolFile:
         for f in self.opened_files:
             if f.sourcecode.file == file:

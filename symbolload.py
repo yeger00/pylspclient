@@ -1,4 +1,10 @@
-from lspcpp import LspMain
+from functools import update_wrapper
+from typing import Optional
+from textual.message import Message
+from textual.widgets import Tree
+from baseview import MyListView
+from codesearch import Symbol
+from lspcpp import LspMain, SymbolFile, SymbolKind
 
 
 class symbolload:
@@ -16,3 +22,45 @@ class symbolload:
 
     def need_refresh(self, file: str):
         return True if self.filepath != file else False
+
+
+class symbol_tree_update(Message):
+    file: SymbolFile
+
+    def __init__(self, symfile: SymbolFile) -> None:
+        super().__init__()
+        self.symfile = symfile
+
+
+class _symbol_tree_view(Tree):
+
+    def __init__(self):
+        Tree.__init__(self, "", id="symbol-tree")
+
+    def on_symbol_tree_update(self, message: symbol_tree_update):
+        self.set_data(message.symfile)
+        pass
+
+    def set_data(self, data: SymbolFile):
+        self.symbols = data.sourcecode.class_symbol
+        root = self.root
+        root.remove_children()
+        for a in data.sourcecode.class_symbol:
+            if len(a.members):
+                n = root.add(a.symbol_sidebar_displayname(False),
+                             data=a,
+                             expand=False)
+                self.add_child(n, a)
+
+            else:
+                root.add_leaf(a.symbol_sidebar_displayname(False), data=a)
+            pass
+        root.toggle()
+
+    def add_child(self, root, sym: Symbol):
+        if len(sym.members):
+            for a in sym.members:
+                root.add_leaf(a.symbol_sidebar_displayname(False), data=a)
+
+    def action_select_cursor(self):
+        pass

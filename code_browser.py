@@ -44,7 +44,7 @@ from pylspclient.lsp_pydantic_strcuts import Location, SymbolInformation
 from history import BackFoward, history
 from commandline import input_command_options
 from codesearch import generic_search
-from symbolload import symbolload
+from symbolload import symbol_tree_update, symbolload, _symbol_tree_view
 
 
 class UiOutput(OutputFile):
@@ -201,6 +201,7 @@ class CodeBrowser(App, uicallback):
         self.preview_focused = None
         self.generic_search_mgr = generic_search(None, "")
         self._symbolload = symbolload("", self.lsp)
+        self.symbol_tree_view = _symbol_tree_view()
 
     def on_callinopen(self, msg: callinopen) -> None:
         try:
@@ -683,6 +684,8 @@ class CodeBrowser(App, uicallback):
                     self.history_view = MyListView(id="history")
                     self.history_view.mainui = self
                     yield self.history_view
+                with TabPane("Symbol", id="symboltree"):
+                    yield self.symbol_tree_view
                 with TabPane("Symbol", id="jessica"):
                     self.symbol_listview = MyListView(id="symbol")
                     self.symbol_listview.mainui = self
@@ -728,7 +731,10 @@ class CodeBrowser(App, uicallback):
                  list(self.history.datalist))
         self.history_view.clear()
         self.history_view.extend(aa)
-
+    
+    def on_symbol_tree_update(self, message: symbol_tree_update):
+        self.symbol_tree_view.on_symbol_tree_update(message)
+        pass
     def on_symbolsmessage(self, message: symbolsmessage) -> None:
         try:
             if message.file != self.codeview_file:
@@ -769,10 +775,10 @@ class CodeBrowser(App, uicallback):
             if file != self.codeview_file:
                 return
             self.post_message(symbolsmessage(liststr, file))
+            self.post_message(symbol_tree_update(self.lsp.currentfile))
 
         self.symbol_listview.loading = True
         ThreadPoolExecutor(1).submit(my_function)
-
     def on_directory_tree_file_selected(
             self, event: DirectoryTree.FileSelected) -> None:
         """Called when the user click a file in the directory tree."""
@@ -1046,7 +1052,7 @@ class CodeBrowser(App, uicallback):
             if range is None:
                 w = self.CodeView.get_select_wholeword()
             elif range.text != None:
-                if len(range.text) <=1:
+                if len(range.text) <= 1:
                     w = self.CodeView.get_select_wholeword()
                 else:
                     w = range.text

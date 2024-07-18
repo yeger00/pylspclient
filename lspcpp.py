@@ -13,6 +13,7 @@ import json
 from typing import Optional
 
 from pydantic import BaseModel, FailFast
+from config import config
 from planuml import planuml_to_image
 import pylspclient
 import threading
@@ -719,10 +720,8 @@ class lspcppserver:
     def __init__(self, root):
         cmd = [
             where_is_bin("clangd"),
-            "--compile-commands-dir=%s" % (root),
-            "--background-index",
-            "--background-index-priority=normal",
-            "-j","4"
+            "--compile-commands-dir=%s" % (root), "--background-index",
+            "--background-index-priority=normal", "-j", "4"
             # "--log=verbose",
             # "--background-index"
         ]
@@ -966,7 +965,7 @@ class CallNode:
 
 
 class CallerWalker:
-    maxlevel = 15
+    maxlevel = config.load().get("maxlevel", 15)
 
     def __init__(self, client: lspcppclient,
                  workspaceSymbol: 'WorkSpaceSymbol') -> None:
@@ -1401,11 +1400,12 @@ class SymbolFile:
         self.save_stack_file = self.save_uml_file = None
 
     def get_class_symbol_list(self) -> list[Symbol]:
-        def update_cls( a:Symbol, name:str, cls:Symbol):
+
+        def update_cls(a: Symbol, name: str, cls: Symbol):
             a.name = name
             a.cls = cls
             cls.members.append(a)
-            
+
         symbols_list = []
         cimpl = {}
         for a in self.sourcecode.class_symbol:
@@ -1422,7 +1422,7 @@ class SymbolFile:
                     a = Symbol(a.sym)
                     classname = name[:index]
                     name = name[index + 2:]
-                    if (classname in cimpl.keys())==False:
+                    if (classname in cimpl.keys()) == False:
                         cls = Symbol(a.sym.copy())
                         cls.name = classname
                         cls.sym.kind = SymbolKind.Class
@@ -1433,8 +1433,6 @@ class SymbolFile:
             else:
                 symbols_list.append(a)
         return symbols_list
-
-    
 
     def get_symbol_list(self) -> list[Symbol]:
         if (len(self.symbols_list)):

@@ -339,6 +339,7 @@ def find_seq() -> list[plumresult]:
         for a in os.listdir(dir):
             if a.endswith(".utxt"):
                 b.files.append(filenode(os.path.join(dir, a)))
+        b.files = sorted(b.files, key=lambda x: x.name)
         if len(b.files):
             ret.append(b)
     return ret

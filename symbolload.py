@@ -79,7 +79,8 @@ class _symbol_tree_view(Tree):
             return ret
         if len(key)==0:return []
         return find(self.root, key)
-    
+    def goto_selection(self,selection):
+        pass
     def goto(self, id: int):
         try:
             self.root.expand_all()

@@ -174,7 +174,7 @@ class CodeBrowser(App, uicallback):
     symbol_query = LspQuery("", "")
     codeview_file: str
     search_result: SearchResults
-    symbol_listview: MyListView
+    # symbol_listview: MyListView
     history_view: MyListView
     lsp: LspMain
     callin: callinview
@@ -263,21 +263,7 @@ class CodeBrowser(App, uicallback):
             return
         try:
             selection = self.CodeView.get_select_range()
-            if selection is None:
-                return
-            l = self._symbolload.symbols_list(self.codeview_file)
-            max = 10
-            index = None
-            i = 0
-            for item in l:
-                gap = abs(selection.range.start.line -
-                          item.sym.location.range.start.line)
-                if gap < max:
-                    index = i
-                    max = gap
-                i += 1
-            if index != None:
-                self.symbol_listview.index = index
+            self.symbol_tree_view.goto_selection(selection)
         except Exception as e:
             self.logview.write_line(str(e))
 
@@ -353,20 +339,6 @@ class CodeBrowser(App, uicallback):
             if list.index != None:
                 self.on_choose_file_from_event(
                     self.history.datalist[list.index])
-        elif self.symbol_listview == list:
-            try:
-                if list.index == None:
-                    return
-                sym: Symbol = self._symbolload.symbols_list(
-                    self.codeview_file)[list.index]
-                y = sym.sym.location.range.start.line
-                self.code_editor_scroll_view().scroll_to(y=y - 10,
-                                                         animate=False)
-                self.hightlight_code_line(y)
-                # code_view.selection=Selection(start=(0,y),end=(10,y))
-                pass
-            except Exception as e:
-                self.logview.write_line(str(e))
         pass
 
     def code_to_refer(self, refer: ResultItemRefer):
@@ -438,8 +410,6 @@ class CodeBrowser(App, uicallback):
             lsp.changefile(file)
             self.post_message(changelspmessage(file, loc))
 
-        self.symbol_listview.clear()
-        self.symbol_listview.loading = True
         t = ThreadPoolExecutor(1)
         t.submit(lsp_change, self.lsp, file)
         self.logview.write_line("open %s" % (file))
@@ -474,11 +444,9 @@ class CodeBrowser(App, uicallback):
                 ret = self.symbol_tree_view.search_word(key)
                 for a in ret:
                     self.generic_search_mgr.add(a)
-                self.symbol_tree_view.goto(
-                self.generic_search_mgr.get_index())
+                self.symbol_tree_view.goto(self.generic_search_mgr.get_index())
             else:
-                self.symbol_tree_view.goto(
-                self.generic_search_mgr.get_next())
+                self.symbol_tree_view.goto(self.generic_search_mgr.get_next())
             pass
         elif self.preview_focused == self.history_view:
             if changed:
@@ -487,15 +455,6 @@ class CodeBrowser(App, uicallback):
                     if h.find(key) > -1:
                         self.generic_search_mgr.add(i)
             self.history_view.index = self.generic_search_mgr.get_index()
-            pass
-        elif self.preview_focused == self.symbol_listview:
-            if changed == True:
-                symlist = self._symbolload.symbols_list(self.codeview_file)
-                for i in range(len(symlist)):
-                    l = symlist[i]
-                    if l.symbol_display_name().lower().find(key) > -1:
-                        self.generic_search_mgr.add(i)
-            self.symbol_listview.index = self.generic_search_mgr.get_index()
             pass
         elif self.preview_focused == self.searchview:
             if changed:
@@ -615,7 +574,7 @@ class CodeBrowser(App, uicallback):
                 self.history_view.focus()
                 self.refresh_history_view()
             elif args[0] == "symbol":
-                self.symbol_listview.focus()
+                self.symbol_tree_view.focus()
                 self.refresh_symbol_view()
             elif args[0] == "refer":
                 self.action_refer()
@@ -705,10 +664,6 @@ class CodeBrowser(App, uicallback):
                     yield self.history_view
                 with TabPane("Symbol", id="symboltree"):
                     yield self.symbol_tree_view
-                with TabPane("Symbol", id="jessica"):
-                    self.symbol_listview = MyListView(id="symbol")
-                    self.symbol_listview.mainui = self
-                    yield self.symbol_listview
         yield Label(id="f1")
         # self.text = TextArea.code_editor("xxxx")
         # yield self.text
@@ -755,30 +710,6 @@ class CodeBrowser(App, uicallback):
         self.symbol_tree_view.on_symbol_tree_update(message)
         pass
 
-    def on_symbolsmessage(self, message: symbolsmessage) -> None:
-        try:
-            if message.file != self.codeview_file:
-                return
-            self.symbol_listview.loading = False
-            try:
-                self.symbol_listview.clear()
-            except Exception as e:
-                stack_trace = traceback.format_exc()
-                self.logview.write_line(str(stack_trace))
-                self.logview.write_line("clear exception %s" % (str(e)))
-
-            aa = list(map(lambda x: ListItem(Label(x)), message.data))
-            self.symbol_listview.extend(aa)
-            self.logview.write_line(
-                "on_symbolsmessage %s %d" %
-                (self.lsp.currentfile.file, len(message.data)))
-            self._symbolload = symbolload(message.file, self.lsp)
-        except Exception as e:
-            stack_trace = traceback.format_exc()
-            self.logview.write_line(str(stack_trace))
-            self.logview.write_line("exception %s" % (str(e)))
-        pass
-
     def refresh_symbol_view(self):
 
         def my_function():
@@ -794,10 +725,8 @@ class CodeBrowser(App, uicallback):
 
             if file != self.codeview_file:
                 return
-            self.post_message(symbolsmessage(liststr, file))
             self.post_message(symbol_tree_update(self.lsp.currentfile))
 
-        self.symbol_listview.loading = True
         self.post_message(symbol_tree_update(None))
         ThreadPoolExecutor(1).submit(my_function)
 
@@ -932,9 +861,7 @@ class CodeBrowser(App, uicallback):
     def action_refer(self) -> None:
         try:
 
-            if self.is_foucused(self.symbol_listview):
-                self.get_refer_for_symbol_list()
-            elif self.CodeView.is_focused():
+            if self.CodeView.is_focused():
                 s = self.CodeView.get_select_range()
                 if s is None:
                     return
@@ -972,17 +899,6 @@ class CodeBrowser(App, uicallback):
             pass
         pass
 
-    def get_refer_for_symbol_list(self) -> None:
-        try:
-            if self.symbol_listview.index is None:
-                return None
-            sym: Symbol = self._symbolload.symbols_list(
-                self.codeview_file)[self.symbol_listview.index]
-            self.get_symbol_refer(sym=sym)
-        except Exception as e:
-            self.logview.write_line(str(e))
-            pass
-
     def get_symbol_refer(self, sym: Symbol) -> None:
 
         def my_function(lsp: LspMain, sym: SymbolInformation, toFile):
@@ -1010,21 +926,6 @@ class CodeBrowser(App, uicallback):
                                          self.lsp,
                                          sym.sym,
                                          toFile=self.tofile)
-
-    def action_callin(self) -> None:
-        if self.is_foucused(self.symbol_listview):
-            self.action_callin_symlist()
-        else:
-            pass
-
-    def action_callin_symlist(self) -> None:
-        try:
-            if self.symbol_listview.index is None:
-                return
-            sym = self.lsp.currentfile.symbols_list[self.symbol_listview.index]
-            self.action_callin_sym(sym)
-        except Exception as e:
-            self.logview.write_line(str(e))
 
     def action_callin_sym(self, sym: Symbol) -> None:
         # if self.thread!=None:

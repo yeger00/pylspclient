@@ -164,7 +164,10 @@ class callinview:
         if len(self.findresult):
             self.index += 1
             self.index = self.index % len(self.findresult)
-            self.tree.select_node(self.findresult[self.index])  # type: ignore
+            node =self.findresult[self.index]
+            self.tree.select_node(node)  # type: ignore
+            node.expand_all()
+            self.tree.scroll_to_node(node)
 
     def find_text(self, text):
         self.index = 0

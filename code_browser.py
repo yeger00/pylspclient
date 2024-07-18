@@ -44,7 +44,7 @@ from pylspclient.lsp_pydantic_strcuts import Location, SymbolInformation
 from history import BackFoward, history
 from commandline import input_command_options
 from codesearch import generic_search
-from symbolload import message_line_change, symbol_tree_update, symbolload, _symbol_tree_view
+from symbolload import message_get_symbol_refer, message_line_change, symbol_tree_update, symbolload, _symbol_tree_view
 
 
 class UiOutput(OutputFile):
@@ -948,6 +948,14 @@ class CodeBrowser(App, uicallback):
             self.log.error("exception %s" % (str(e)))
             self.logview.write_line("exception %s" % (str(e)))
             pass
+
+    def on_message_get_symbol_refer(self, message: message_get_symbol_refer):
+        try:
+            self.get_symbol_refer(sym=message.sym)
+        except Exception as e:
+            self.logview.write_line(str(e))
+            pass
+        pass
 
     def get_refer_for_symbol_list(self) -> None:
         try:

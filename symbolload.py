@@ -4,6 +4,7 @@ from typing import Optional
 from textual.message import Message
 from textual.widgets import Tree
 from baseview import MyListView
+from callinview import log_message
 from codesearch import Symbol
 from common import from_file
 from lspcpp import LspMain, SymbolFile, SymbolKind
@@ -42,7 +43,34 @@ class message_line_change(Message):
         self.file = file
 
 
+class message_get_symbol_refer(Message):
+    sym: Symbol
+
+    def __init__(self, sym: Symbol) -> None:
+        super().__init__()
+        self.sym = sym
+
+
 class _symbol_tree_view(Tree):
+    BINDINGS = [
+        ("r", "refer", "Reference"),
+    ]
+
+    def get_refer_for_symbol_list(self):
+        root = self.cursor_node
+        if root is None:
+            return
+        sym: Optional[Symbol] = root.data
+        if sym is None:
+            return
+        self.post_message(message_get_symbol_refer(sym))
+
+    def action_refer(self) -> None:
+        try:
+            self.get_refer_for_symbol_list()
+        except Exception as e:
+            self.post_message(log_message("exception %s" % (str(e))))
+            pass
 
     def __init__(self):
         Tree.__init__(self, "", id="symbol-tree")
@@ -53,7 +81,7 @@ class _symbol_tree_view(Tree):
             self.loading = True
             return
         else:
-            self.loading = False 
+            self.loading = False
             self.set_data(message.symfile)
         pass
 

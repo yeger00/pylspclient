@@ -1,4 +1,4 @@
-from pylspclient import lsp_structs
+from . import lsp_structs
 from .lsp_endpoint import LspEndpoint
 
 class LspClient(object):

@@ -3,15 +3,16 @@ repos:
   rev: v0.6.9
   hooks:
     - id: ruff
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.11.2
-  hooks:
-    - id: mypy
-      args: ["--config-file=pyproject.toml", "pylspclient"]
 - repo: local
   hooks:
-  - id: poetry-pytest
-    name: Run Tests with Poetry and Pytest
-    entry: bash -c "poetry install --no-interaction --no-root --with tests && poetry run pytest $(PYTEST_FLAGS)"
-    language: system
-    types: [python]
+    - id: mypy
+      name: Install Poetry Dependencies and Run mypy
+      entry: bash -c "poetry install --no-interaction --no-root --with tests && poetry run mypy pylspclient"
+      language: system
+- repo: local
+  hooks:
+    - id: poetry-pytest
+      name: Run Tests with Poetry and Pytest
+      entry: bash -c "poetry install --no-interaction --no-root --with tests && poetry run pytest"
+      language: system
+      types: [python]

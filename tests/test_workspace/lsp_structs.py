@@ -8,7 +8,7 @@ def to_type(o, new_type):
     :param object|dict o: The object to convert
     :param Type new_type: The type to convert to.
     '''
-    if new_type == type(o):
+    if isinstance(o, new_type):
         return o
     else:
         return new_type(**o)

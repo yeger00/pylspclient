@@ -124,9 +124,9 @@ class LspClient(object):
         """
         result_dict =  self.lsp_endpoint.call_method("textDocument/documentSymbol", textDocument=textDocument.dict())
         try:
-            return [DocumentSymbol.parse_obj(sym) for sym in result_dict]
+            return [DocumentSymbol.model_validate(sym) for sym in result_dict]
         except ValidationError:
-            return [SymbolInformation.parse_obj(sym) for sym in result_dict]
+            return [SymbolInformation.model_validate(sym) for sym in result_dict]
 
 
     def typeDefinition(
@@ -141,7 +141,7 @@ class LspClient(object):
         :param Position position: The position inside the text document.
         """
         result_dict = self.lsp_endpoint.call_method("textDocument/typeDefinition", textDocument=textDocument, position=position)
-        return [Location.parse_obj(result) for result in result_dict]
+        return [Location.model_validate(result) for result in result_dict]
 
 
     def signatureHelp(
@@ -158,7 +158,7 @@ class LspClient(object):
             :param Position position: The position inside the text document.
             """
             result_dict = self.lsp_endpoint.call_method("textDocument/signatureHelp", textDocument=textDocument, position=position)
-            return SignatureHelp.parse_obj(result_dict)
+            return SignatureHelp.model_validate(result_dict)
 
 
     def completion(
@@ -177,9 +177,9 @@ class LspClient(object):
             """
             result_dict = self.lsp_endpoint.call_method("textDocument/completion", textDocument=textDocument, position=position, context=context)
             if "isIncomplete" in result_dict:
-                return CompletionList.parse_obj(result_dict)
+                return CompletionList.model_validate(result_dict)
             
-            return [CompletionItem.parse_obj(result) for result in result_dict]
+            return [CompletionItem.model_validate(result) for result in result_dict]
     
     
     def declaration(
@@ -199,12 +199,12 @@ class LspClient(object):
             """
             result_dict = self.lsp_endpoint.call_method("textDocument/declaration", textDocument=textDocument, position=position)
             if "uri" in result_dict:
-                return Location.parse_obj(result_dict)
+                return Location.model_validate(result_dict)
 
             try:
-                return [Location.parse_obj(result) for result in result_dict]
+                return [Location.model_validate(result) for result in result_dict]
             except ValidationError:
-                return [LocationLink.parse_obj(result) for result in result_dict]
+                return [LocationLink.model_validate(result) for result in result_dict]
 
    
 
@@ -227,9 +227,9 @@ class LspClient(object):
             """
             result_dict = self.lsp_endpoint.call_method("textDocument/definition", textDocument=textDocument, position=position)
             if "uri" in result_dict:
-                return Location.parse_obj(result_dict)
+                return Location.model_validate(result_dict)
 
             try:
-                return [Location.parse_obj(result) for result in result_dict]
+                return [Location.model_validate(result) for result in result_dict]
             except ValidationError:
-                return [LocationLink.parse_obj(result) for result in result_dict]
+                return [LocationLink.model_validate(result) for result in result_dict]

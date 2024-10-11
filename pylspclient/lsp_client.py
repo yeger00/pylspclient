@@ -1,5 +1,4 @@
 from typing import Any, Optional
-
 from pydantic import ValidationError
 from .lsp_endpoint import LspEndpoint
 from .lsp_pydantic_strcuts import (

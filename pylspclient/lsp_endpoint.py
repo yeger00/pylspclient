@@ -1,8 +1,8 @@
 from __future__ import print_function
 import threading
-from pylspclient.lsp_errors import ErrorCodes, ResponseError
-from pylspclient import JsonRpcEndpoint
 from typing import Any, Dict, Callable, Union, Optional, Tuple, TypeAlias, TypedDict
+from .lsp_errors import ErrorCodes, ResponseError
+from .json_rpc_endpoint import JsonRpcEndpoint
 
 ResultType: TypeAlias = Optional[Dict[str, Any]]
 

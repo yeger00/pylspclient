@@ -50,7 +50,7 @@ DEFAULT_CAPABILITIES = {
         }
     }
 }
-DEFAULT_ROOT = path.abspath("./tests/test-workspace/")
+DEFAULT_ROOT = path.abspath("./tests/test_workspace/")
 
 
 @pytest.fixture

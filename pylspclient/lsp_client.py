@@ -8,13 +8,13 @@ from .lsp_pydantic_strcuts import (
     SymbolInformation,
     LocationLink,
     Location,
-)
-from .lsp_pydantic_strcuts import (
     Position,
     SignatureHelp,
     CompletionContext,
     CompletionItem,
     CompletionList,
+    WorkspaceEdit,
+    TextEdit,
 )
 
 
@@ -261,3 +261,26 @@ class LspClient(object):
             return [Location.model_validate(result) for result in result_dict]
         except ValidationError:
             return [LocationLink.model_validate(result) for result in result_dict]
+
+    def rename(self, text_document: TextDocumentIdentifier, position: Position, new_name: str) -> WorkspaceEdit:
+        """Send a rename request to the language server at the specified position."""
+        response = self.lsp_endpoint.call_method(
+            "textDocument/rename",
+            textDocument=text_document,
+            position=position.dict(),
+            newName=new_name,
+        )
+
+        # Parse response into WorkspaceEdit using Pydantic
+        changes = {
+            uri: [
+                TextEdit(
+                    range_start=Position(**edit["range"]["start"]),
+                    range_end=Position(**edit["range"]["end"]),
+                    new_text=edit["newText"]
+                )
+                for edit in edits
+            ]
+            for uri, edits in response.get("changes", {}).items()
+        }
+        return WorkspaceEdit(changes=changes)

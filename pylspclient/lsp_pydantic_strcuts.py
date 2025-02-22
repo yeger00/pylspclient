@@ -53,6 +53,7 @@ class LanguageIdentifier(str, Enum):
     XML="xml"
     XSL="xsl"
     YAML="yaml"
+    LEAN="lean"
 
 class TextDocumentItem(BaseModel):
     """

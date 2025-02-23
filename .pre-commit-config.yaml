@@ -1,0 +1,26 @@
+repos:
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.6.9
+  hooks:
+    - id: ruff
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.11.2
+  hooks:
+    - id: mypy
+      args: ["pylspclient"]
+      pass_filenames: false
+      additional_dependencies: [pydantic~=2.5.2]
+- repo: local
+  hooks:
+    - id: poetry-install
+      name: Poetry install
+      entry: poetry install --no-interaction --no-root --with tests
+      language: system
+      types: [python]
+      pass_filenames: false
+    - id: poetry-pytest
+      name: Run Tests with Poetry and Pytest
+      entry: poetry run pytest
+      language: system
+      pass_filenames: false
+      types: [python]

@@ -2,7 +2,6 @@ from typing import Optional
 from os import path, listdir
 import pytest
 import subprocess
-import threading
 
 import pylspclient
 from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext
@@ -16,18 +15,6 @@ def to_uri(path: str) -> str:
 
 def from_uri(path: str) -> str:
     return path.replace("uri://", "").replace("uri:", "")
-
-
-class ReadPipe(threading.Thread):
-    def __init__(self, pipe):
-        threading.Thread.__init__(self)
-        self.pipe = pipe
-
-    def run(self):
-        line = self.pipe.readline().decode('utf-8')
-        while line:
-            print(line)
-            line = self.pipe.readline().decode('utf-8')
 
 
 @pytest.fixture
@@ -50,7 +37,7 @@ DEFAULT_CAPABILITIES = {
         }
     }
 }
-DEFAULT_ROOT = path.abspath("./tests/test-workspace/")
+DEFAULT_ROOT = path.abspath("./tests/test_workspace/")
 
 
 @pytest.fixture
@@ -188,3 +175,13 @@ def test_completion(lsp_client: pylspclient.LspClient):
     context = CompletionContext(triggerKind=CompletionTriggerKind.Invoked)
     completion_result = lsp_client.completion(TextDocumentIdentifier(uri=uri), position, context)
     assert all([i.insertText.startswith(to_complete) for i in completion_result.items])
+
+
+def test_rename(lsp_client: pylspclient.LspClient):
+    add_dir(lsp_client, DEFAULT_ROOT)
+    file_path = "lsp_client.py"
+    relative_file_path = path.join(DEFAULT_ROOT, file_path)
+    uri = to_uri(relative_file_path)
+    file_content = open(relative_file_path, "r").read()
+    position = string_in_text_to_position(file_content, "call_method")
+    lsp_client.rename(TextDocumentIdentifier(uri=uri), position, "call_method2")

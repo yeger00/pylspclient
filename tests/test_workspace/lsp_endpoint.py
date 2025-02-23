@@ -1,7 +1,6 @@
 from __future__ import print_function
 import threading
-from pylspclient import lsp_structs
-
+from . import lsp_structs
 
 class LspEndpoint(threading.Thread):
     def __init__(self, json_rpc_endpoint, method_callbacks={}, notify_callbacks={}, timeout=2):

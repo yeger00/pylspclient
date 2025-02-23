@@ -1,4 +1,4 @@
-from typing import Optional, List, Union
+from typing import Dict, Optional, List, Union
 from enum import Enum, IntEnum
 from pydantic import BaseModel, HttpUrl
 
@@ -240,3 +240,11 @@ class CompletionItem(BaseModel):
 class CompletionList(BaseModel):
     isIncomplete: bool
     items: List[CompletionItem]
+
+class TextEdit(BaseModel):
+    range_start: Position
+    range_end: Position
+    new_text: str
+
+class WorkspaceEdit(BaseModel):
+    changes: Dict[str, List[TextEdit]]

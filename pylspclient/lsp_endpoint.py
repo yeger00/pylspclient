@@ -1,8 +1,8 @@
 from __future__ import print_function
 import threading
-from pylspclient.lsp_errors import ErrorCodes, ResponseError
-from pylspclient import JsonRpcEndpoint
 from typing import Any, Dict, Callable, Union, Optional, Tuple, TypeAlias, TypedDict
+from .lsp_errors import ErrorCodes, ResponseError
+from .json_rpc_endpoint import JsonRpcEndpoint
 
 ResultType: TypeAlias = Optional[Dict[str, Any]]
 
@@ -67,7 +67,7 @@ class LspEndpoint(threading.Thread):
                         # a call for notify
                         if method not in self.notify_callbacks:
                             # Have nothing to do with this.
-                            print("Notify method not found: {method}.".format(method=method))
+                            print("Notify method not found: {method}, {params}".format(method=method, params=params))
                         else:
                             self.notify_callbacks[method](params)
                 else:

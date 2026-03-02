@@ -4,7 +4,7 @@ import pytest
 import subprocess
 
 import pylspclient
-from pylspclient.lsp_pydantic_strcuts import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext
+from pylspclient.lsp_pydantic_structs import TextDocumentIdentifier, TextDocumentItem, LanguageIdentifier, Position, Range, CompletionTriggerKind, CompletionContext
 
 
 def to_uri(path: str) -> str:

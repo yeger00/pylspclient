@@ -110,6 +110,7 @@ class LspEndpoint(threading.Thread):
             return None
 
         if not cond.wait(timeout=self._timeout):
+            cond.release()
             raise TimeoutError()
         cond.release()
 
